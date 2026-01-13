@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>StarMock | Live AI Interview Simulator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00e6cf",
+                        "background-light": "#f9fafb",
+                        "background-dark": "#0f131a",
+                        "surface": "#161d26",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .glow-border {
+            box-shadow: 0 0 15px rgba(0, 230, 207, 0.15);
+            border: 1px solid rgba(0, 230, 207, 0.3);
+        }
+        .glass-panel {
+            background: rgba(22, 29, 38, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .waveform-bar {
+            animation: pulse-height 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse-height {
+            0%, 100% { height: 10px; }
+            50% { height: 40px; }
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen overflow-hidden">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between px-8 py-4 border-b border-white/5 bg-background-dark/50 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-background-dark font-bold">query_stats</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight text-white">StarMock<span class="text-primary">.ai</span></h1>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold uppercase tracking-widest">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+</span>
+                Live Session: 04:22
+            </div>
+<div class="h-6 w-[1px] bg-white/10"></div>
+<button class="group flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-lg">exit_to_app</span>
+<span class="text-sm font-medium">Emergency Exit</span>
+</button>
+</div>
+</header>
+<main class="max-w-[1400px] mx-auto p-6 grid grid-cols-12 gap-6 h-[calc(100vh-80px)]">
+<!-- Left Sidebar: STAR Progress & Metrics -->
+<div class="col-span-3 flex flex-col gap-6">
+<div class="glass-panel rounded-xl p-6 flex-1">
+<h3 class="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-6">Response Structure</h3>
+<div class="space-y-8">
+<!-- STAR Steps -->
+<div class="relative flex gap-4">
+<div class="absolute left-4 top-8 bottom-0 w-[1px] bg-white/10"></div>
+<div class="z-10 size-8 rounded-full bg-primary flex items-center justify-center text-background-dark font-bold shadow-[0_0_15px_rgba(0,230,207,0.4)]">S</div>
+<div>
+<p class="text-sm font-bold text-white">Situation</p>
+<p class="text-xs text-slate-400 mt-1">Identified: Late delivery of a software patch.</p>
+</div>
+</div>
+<div class="relative flex gap-4">
+<div class="absolute left-4 top-8 bottom-0 w-[1px] bg-white/10"></div>
+<div class="z-10 size-8 rounded-full bg-primary flex items-center justify-center text-background-dark font-bold shadow-[0_0_15px_rgba(0,230,207,0.4)]">T</div>
+<div>
+<p class="text-sm font-bold text-white">Task</p>
+<p class="text-xs text-slate-400 mt-1">Identified: Coordinating 3 departments.</p>
+</div>
+</div>
+<div class="relative flex gap-4">
+<div class="absolute left-4 top-8 bottom-0 w-[1px] bg-white/10"></div>
+<div class="z-10 size-8 rounded-full border border-primary/40 bg-primary/10 flex items-center justify-center text-primary font-bold">A</div>
+<div>
+<p class="text-sm font-bold text-slate-300">Action</p>
+<p class="text-xs text-slate-500 mt-1 italic">Waiting for details...</p>
+</div>
+</div>
+<div class="relative flex gap-4">
+<div class="z-10 size-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-slate-500 font-bold">R</div>
+<div>
+<p class="text-sm font-bold text-slate-500">Result</p>
+</div>
+</div>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-6">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">Confidence</h3>
+<span class="text-primary font-mono text-sm">88%</span>
+</div>
+<div class="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 88%"></div>
+</div>
+</div>
+</div>
+<!-- Center: Interaction Hub -->
+<div class="col-span-6 flex flex-col gap-6">
+<!-- Question Prompt Card -->
+<div class="glass-panel rounded-xl p-8 text-center glow-border">
+<span class="text-primary text-xs font-bold tracking-[0.3em] uppercase mb-4 block">Current Prompt</span>
+<h2 class="text-2xl font-bold leading-tight text-white px-4">
+                    "Tell me about a time you failed to meet a deadline. How did you handle the communication?"
+                </h2>
+</div>
+<!-- Visualization & Action Area -->
+<div class="flex-1 glass-panel rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
+<!-- Decorative AI Grid Background -->
+<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#00e6cf 1px, transparent 1px); background-size: 30px 30px;"></div>
+<!-- Central Record Sphere -->
+<div class="relative z-10 flex flex-col items-center">
+<div class="relative">
+<!-- Pulsing rings -->
+<div class="absolute inset-0 rounded-full bg-primary/20 animate-ping"></div>
+<div class="absolute inset-[-10px] rounded-full border border-primary/30 animate-pulse"></div>
+<button class="relative size-32 rounded-full bg-primary flex flex-col items-center justify-center shadow-[0_0_50px_rgba(0,230,207,0.3)] hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-background-dark text-4xl font-bold">mic</span>
+</button>
+</div>
+<p class="mt-8 text-primary font-bold tracking-widest text-sm uppercase animate-pulse">Recording Active</p>
+</div>
+<!-- Waveform Visualizer -->
+<div class="absolute bottom-12 left-0 right-0 flex justify-center items-end gap-1 px-12 h-16">
+<div class="waveform-bar w-1 bg-primary/40 rounded-full" style="animation-delay: 0.1s"></div>
+<div class="waveform-bar w-1 bg-primary/60 rounded-full" style="animation-delay: 0.3s"></div>
+<div class="waveform-bar w-1 bg-primary/80 rounded-full" style="animation-delay: 0.2s"></div>
+<div class="waveform-bar w-1 bg-primary rounded-full" style="animation-delay: 0.4s"></div>
+<div class="waveform-bar w-1 bg-primary/90 rounded-full" style="animation-delay: 0.1s"></div>
+<div class="waveform-bar w-1 bg-primary/70 rounded-full" style="animation-delay: 0.5s"></div>
+<div class="waveform-bar w-1 bg-primary/40 rounded-full" style="animation-delay: 0.2s"></div>
+<div class="waveform-bar w-1 bg-primary/60 rounded-full" style="animation-delay: 0.6s"></div>
+<div class="waveform-bar w-1 bg-primary/80 rounded-full" style="animation-delay: 0.1s"></div>
+<div class="waveform-bar w-1 bg-primary rounded-full" style="animation-delay: 0.3s"></div>
+<div class="waveform-bar w-1 bg-primary/50 rounded-full" style="animation-delay: 0.4s"></div>
+<div class="waveform-bar w-1 bg-primary/30 rounded-full" style="animation-delay: 0.2s"></div>
+</div>
+</div>
+<!-- Footer Controls -->
+<div class="flex justify-center gap-4">
+<button class="size-14 rounded-xl glass-panel flex items-center justify-center text-slate-400 hover:text-white transition-all hover:border-white/20">
+<span class="material-symbols-outlined">pause</span>
+</button>
+<button class="size-14 rounded-xl glass-panel flex items-center justify-center text-slate-400 hover:text-white transition-all hover:border-white/20">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+<button class="px-8 h-14 rounded-xl bg-primary text-background-dark font-bold flex items-center gap-2 hover:opacity-90 transition-all">
+<span>Finish Interview</span>
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Right Sidebar: AI Persona & Transcription -->
+<div class="col-span-3 flex flex-col gap-6">
+<!-- AI Persona -->
+<div class="glass-panel rounded-xl overflow-hidden aspect-video relative group">
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-transparent z-10"></div>
+<div class="absolute inset-0 bg-primary/5 animate-pulse"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<!-- Abstract AI Persona Visualization -->
+<div class="size-24 border-2 border-primary/20 rounded-full flex items-center justify-center">
+<div class="size-16 border-2 border-primary/40 rounded-full animate-spin [animation-duration:3s] flex items-center justify-center">
+<div class="size-8 bg-primary rounded-sm rotate-45"></div>
+</div>
+</div>
+</div>
+<div class="absolute bottom-4 left-4 z-20">
+<p class="text-xs font-bold text-primary uppercase tracking-wider">Interviewer</p>
+<p class="text-white font-medium">Dr. Astra (Behavioral AI)</p>
+</div>
+<div class="bg-cover bg-center absolute inset-0 opacity-40 mix-blend-overlay" data-alt="Abstract cybernetic mesh pattern background" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAq5bc0A2mKO-jKBCUPbdREFTQq02tALWQzhaBsLBgOQEjR7ORSH8WF9wIdfP9__-JNkvQDfJVykVdvvFPW-UtNl4kxcXSU6_-i1G3o1Eoidj1DSPmVGTbb6Lff4kWdmxVVbg0uMNU7CKGs_QHG8gTfKNWhN-2IsDbWYZu2Stuf52EBYj4GGyRB_Qm6zE5gfw0AvHSc83M_SM3DH0EMneaQg3Oeqvn3Y6xKQ8etmve6gzfxH_8AnOTr9SNlBONUgDiWcbVThhyGviN_');"></div>
+</div>
+<!-- Live Transcription -->
+<div class="glass-panel rounded-xl flex-1 flex flex-col p-6 overflow-hidden">
+<h3 class="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Live Transcription</h3>
+<div class="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+<p class="text-slate-400 text-sm leading-relaxed">
+                        "In my previous role as a Junior Dev, we had a major deployment scheduled for Friday afternoon..."
+                    </p>
+<p class="text-slate-400 text-sm leading-relaxed">
+                        "I realized at 2 PM that the testing suite hadn't covered the legacy database connectors..."
+                    </p>
+<div class="flex items-start gap-2">
+<div class="size-1.5 rounded-full bg-primary mt-2"></div>
+<p class="text-white text-sm leading-relaxed font-medium">
+                            "Instead of pushing through, I immediately notified the project lead and the client success manager..."
+                        </p>
+</div>
+<div class="flex items-center gap-1">
+<span class="size-1 bg-primary/40 rounded-full animate-bounce"></span>
+<span class="size-1 bg-primary/40 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+<span class="size-1 bg-primary/40 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+</div>
+</div>
+<!-- Feedback Chips -->
+<div class="mt-4 pt-4 border-t border-white/5 space-y-2">
+<div class="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
+<span class="material-symbols-outlined text-primary text-sm">verified</span>
+<span class="text-[10px] font-bold text-primary uppercase tracking-wider">Strong Detail: Stakeholders mentioned</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 230, 207, 0.3);
+        }
+    </style>
+</body></html>

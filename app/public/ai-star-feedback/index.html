@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI STAR Feedback Analysis | StarMock</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Manrope:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00e6cf",
+                        "background-light": "#f9fafb",
+                        "background-dark": "#0a0e14",
+                        "card-dark": "rgba(24, 30, 41, 0.6)",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "body": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(0, 230, 207, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(0, 230, 207, 0.03) 0%, transparent 40%);
+        }
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+        .glass-card {
+            background: rgba(24, 30, 41, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 230, 207, 0.1);
+        }
+        .glow-border {
+            border: 1px solid rgba(0, 230, 207, 0.4);
+            box-shadow: 0 0 15px rgba(0, 230, 207, 0.1);
+        }
+        .grid-bg {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(0, 230, 207, 0.02) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(0, 230, 207, 0.02) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen grid-bg">
+<div class="relative flex min-h-screen flex-col">
+<!-- Top Navigation -->
+<header class="sticky top-0 z-50 border-b border-primary/10 bg-background-dark/80 backdrop-blur-md px-6 md:px-10 py-3">
+<div class="mx-auto flex max-w-7xl items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 text-primary border border-primary/30">
+<span class="material-symbols-outlined text-2xl">rocket_launch</span>
+</div>
+<h2 class="font-display text-xl font-bold tracking-tight text-white uppercase tracking-widest">StarMock <span class="text-primary">AI</span></h2>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="font-display text-sm font-medium text-slate-400 hover:text-primary transition-colors" href="#">DASHBOARD</a>
+<a class="font-display text-sm font-medium text-primary border-b border-primary pb-1" href="#">ANALYSIS</a>
+<a class="font-display text-sm font-medium text-slate-400 hover:text-primary transition-colors" href="#">PRACTICE</a>
+<a class="font-display text-sm font-medium text-slate-400 hover:text-primary transition-colors" href="#">LIBRARY</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/50 text-slate-300 border border-slate-700 hover:border-primary transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-10 w-10 rounded-full border-2 border-primary/30 p-0.5">
+<div class="h-full w-full rounded-full bg-cover bg-center" data-alt="Student user profile avatar" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBdqAxvKuC4ongnWnF9QBE855FW44C1HzaaLKYNRdkkUjbseLrnxnjt51goLux8cABZ-a2Q9ckhXDtIOMooRZPWe10P-pIIQJLSbZqTN6aCcafKTu4p5tx1k9i7kRvGwgRmUndodT1bbKNMGcMy3GwW4zc2ANRqyYX3Zj74dvHtxJi4-4g9Jy8rz93jxZsUSKhmi0i_c6weDgTLJs_X1tQgHab0-a-dYGrwNHJv4KAGCNOKzY7Np-T72RBO3GjwtxdjCCw6x7iwtZui')"></div>
+</div>
+</div>
+</div>
+</header>
+<main class="mx-auto w-full max-w-7xl flex-1 p-6 md:p-10 space-y-8">
+<!-- Hero Heading Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-primary font-display font-bold text-xs tracking-[0.2em] uppercase">
+<span class="material-symbols-outlined text-sm">analytics</span> Session Complete
+                    </div>
+<h1 class="font-display text-4xl md:text-5xl font-black text-white leading-none">
+                        Software Engineer <span class="text-primary/80 block md:inline">Behavioral</span>
+</h1>
+<p class="text-slate-400 text-lg max-w-2xl font-light">Detailed feedback for your answer to: <span class="italic font-normal">"Tell me about a time you handled a difficult technical tradeoff."</span></p>
+</div>
+<div class="flex flex-col items-center md:items-end gap-3">
+<div class="flex items-baseline gap-2">
+<span class="font-display text-6xl font-black text-primary">88</span>
+<span class="text-slate-500 font-display font-bold text-2xl">%</span>
+</div>
+<div class="bg-primary/10 px-4 py-1 rounded-full border border-primary/30">
+<span class="text-primary text-xs font-bold uppercase tracking-widest">Market Ready</span>
+</div>
+</div>
+</div>
+<!-- Main Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column: STAR Breakdown (Bento Style) -->
+<div class="lg:col-span-8 space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Situation -->
+<div class="glass-card rounded-xl p-6 relative overflow-hidden group hover:glow-border transition-all duration-300">
+<div class="absolute -right-4 -top-4 text-primary/5 select-none pointer-events-none">
+<span class="material-symbols-outlined text-8xl">location_on</span>
+</div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-xs font-display font-bold text-slate-500 uppercase tracking-widest">Phase 01</p>
+<h3 class="text-xl font-display font-bold text-white">Situation</h3>
+</div>
+<div class="text-primary font-display font-bold text-2xl">92%</div>
+</div>
+<div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_rgba(0,230,207,0.5)] w-[92%]"></div>
+</div>
+<p class="mt-4 text-sm text-slate-400 leading-relaxed">Excellent context. You clearly defined the legacy system constraints and the timeline pressure.</p>
+</div>
+<!-- Task -->
+<div class="glass-card rounded-xl p-6 relative overflow-hidden group hover:glow-border transition-all duration-300">
+<div class="absolute -right-4 -top-4 text-primary/5 select-none pointer-events-none">
+<span class="material-symbols-outlined text-8xl">assignment</span>
+</div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-xs font-display font-bold text-slate-500 uppercase tracking-widest">Phase 02</p>
+<h3 class="text-xl font-display font-bold text-white">Task</h3>
+</div>
+<div class="text-primary font-display font-bold text-2xl">85%</div>
+</div>
+<div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_rgba(0,230,207,0.5)] w-[85%]"></div>
+</div>
+<p class="mt-4 text-sm text-slate-400 leading-relaxed">The challenge was well-stated, but could emphasize the stakes for the business more explicitly.</p>
+</div>
+<!-- Action -->
+<div class="glass-card rounded-xl p-6 relative overflow-hidden border-primary/40 shadow-[0_0_20px_rgba(0,230,207,0.05)] group hover:glow-border transition-all duration-300">
+<div class="absolute -right-4 -top-4 text-primary/10 select-none pointer-events-none">
+<span class="material-symbols-outlined text-8xl">bolt</span>
+</div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-xs font-display font-bold text-primary uppercase tracking-widest">Core Impact</p>
+<h3 class="text-xl font-display font-bold text-white">Action</h3>
+</div>
+<div class="text-primary font-display font-bold text-2xl">78%</div>
+</div>
+<div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_rgba(0,230,207,0.5)] w-[78%]"></div>
+</div>
+<p class="mt-4 text-sm text-slate-300 leading-relaxed">You focused on technical steps. Suggest adding more "we" vs "I" balance to highlight collaboration.</p>
+</div>
+<!-- Result -->
+<div class="glass-card rounded-xl p-6 relative overflow-hidden group hover:glow-border transition-all duration-300">
+<div class="absolute -right-4 -top-4 text-primary/5 select-none pointer-events-none">
+<span class="material-symbols-outlined text-8xl">verified</span>
+</div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-xs font-display font-bold text-slate-500 uppercase tracking-widest">Outcome</p>
+<h3 class="text-xl font-display font-bold text-white">Result</h3>
+</div>
+<div class="text-primary font-display font-bold text-2xl">95%</div>
+</div>
+<div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_rgba(0,230,207,0.5)] w-[95%]"></div>
+</div>
+<p class="mt-4 text-sm text-slate-400 leading-relaxed">Strong quantification. Mentioning the 20% latency reduction was a highlight of the answer.</p>
+</div>
+</div>
+<!-- AI Critique Section -->
+<div class="glass-card rounded-xl p-8 border-l-4 border-l-primary relative overflow-hidden">
+<div class="flex items-center gap-3 mb-6">
+<div class="flex h-8 w-8 items-center justify-center rounded bg-primary/20 text-primary">
+<span class="material-symbols-outlined text-xl">psychology</span>
+</div>
+<h2 class="font-display text-2xl font-bold text-white">Streaming AI Critique</h2>
+</div>
+<div class="space-y-4 text-slate-300 font-body leading-relaxed">
+<p class="flex items-start gap-2">
+<span class="text-primary mt-1 select-none">›</span>
+<span>Analyzing your response structure... <span class="text-primary font-medium">Situation</span> was clearly defined, providing strong context for the interviewer. In the <span class="text-primary font-medium">Action</span> phase, try to emphasize the specific tools you used to manage the tradeoff, such as your decision-making framework or cost-benefit matrix.</span>
+</p>
+<p class="flex items-start gap-2">
+<span class="text-primary mt-1 select-none">›</span>
+<span>Your vocal tone shows high <span class="text-primary font-medium">confidence</span>, but your pace accelerated during the technical explanation. Aim for 130-140 words per minute to maintain maximum clarity.</span>
+</p>
+<div class="flex items-center gap-2 pt-2">
+<div class="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+<span class="text-xs font-display font-bold text-primary/60 uppercase tracking-widest italic">AI is generating further insights...</span>
+</div>
+</div>
+<div class="mt-8 flex flex-wrap gap-4">
+<button class="bg-primary text-background-dark px-6 py-2.5 rounded-lg font-display font-bold text-sm uppercase tracking-wider hover:bg-white transition-all shadow-lg shadow-primary/20">
+                                Generate More Tips
+                            </button>
+<button class="bg-slate-800 text-white px-6 py-2.5 rounded-lg font-display font-bold text-sm uppercase tracking-wider hover:bg-slate-700 transition-all border border-slate-700">
+                                Watch Full Replay
+                            </button>
+</div>
+</div>
+</div>
+<!-- Right Column: Sidebar Metrics -->
+<div class="lg:col-span-4 space-y-6">
+<!-- Performance Radar Summary -->
+<div class="glass-card rounded-xl p-6">
+<h3 class="font-display font-bold text-white mb-6 uppercase tracking-wider text-sm text-slate-400 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-lg">insights</span> Behavioral Metrics
+                        </h3>
+<div class="space-y-6">
+<!-- Clarity Score -->
+<div class="space-y-2">
+<div class="flex justify-between text-sm">
+<span class="text-slate-300 font-medium">Clarity &amp; Conciseness</span>
+<span class="text-white font-bold">94/100</span>
+</div>
+<div class="flex gap-1 h-3">
+<div class="flex-1 bg-primary rounded-sm opacity-100"></div>
+<div class="flex-1 bg-primary rounded-sm opacity-100"></div>
+<div class="flex-1 bg-primary rounded-sm opacity-100"></div>
+<div class="flex-1 bg-primary rounded-sm opacity-80"></div>
+<div class="flex-1 bg-primary rounded-sm opacity-40"></div>
+<div class="flex-1 bg-slate-800 rounded-sm"></div>
+</div>
+</div>
+<!-- Empathy Score -->
+<div class="space-y-2">
+<div class="flex justify-between text-sm">
+<span class="text-slate-300 font-medium">Empathy &amp; Leadership</span>
+<span class="text-white font-bold">68/100</span>
+</div>
+<div class="flex gap-1 h-3">
+<div class="flex-1 bg-primary rounded-sm opacity-100"></div>
+<div class="flex-1 bg-primary rounded-sm opacity-100"></div>
+<div class="flex-1 bg-primary rounded-sm opacity-100"></div>
+<div class="flex-1 bg-slate-800 rounded-sm"></div>
+<div class="flex-1 bg-slate-800 rounded-sm"></div>
+<div class="flex-1 bg-slate-800 rounded-sm"></div>
+</div>
+</div>
+<!-- Confidence Score -->
+<div class="space-y-2">
+<div class="flex justify-between text-sm">
+<span class="text-slate-300 font-medium">Technical Confidence</span>
+<span class="text-white font-bold">81/100</span>
+</div>
+<div class="flex gap-1 h-3">
+<div class="flex-1 bg-primary rounded-sm opacity-100"></div>
+<div class="flex-1 bg-primary rounded-sm opacity-100"></div>
+<div class="flex-1 bg-primary rounded-sm opacity-100"></div>
+<div class="flex-1 bg-primary rounded-sm opacity-100"></div>
+<div class="flex-1 bg-slate-800 rounded-sm"></div>
+<div class="flex-1 bg-slate-800 rounded-sm"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Actionable Improvements -->
+<div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-6">
+<h3 class="font-display font-bold text-indigo-300 mb-4 uppercase tracking-wider text-xs">Top 3 Improvements</h3>
+<ul class="space-y-4">
+<li class="flex gap-3">
+<div class="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500 text-background-dark text-[10px] flex items-center justify-center font-bold">1</div>
+<p class="text-sm text-indigo-100/80">Avoid technical jargon when explaining the 'Task' phase to recruiters.</p>
+</li>
+<li class="flex gap-3">
+<div class="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500 text-background-dark text-[10px] flex items-center justify-center font-bold">2</div>
+<p class="text-sm text-indigo-100/80">Use more eye contact with the camera during the 'Result' summary.</p>
+</li>
+<li class="flex gap-3">
+<div class="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500 text-background-dark text-[10px] flex items-center justify-center font-bold">3</div>
+<p class="text-sm text-indigo-100/80">Elaborate on the "Why" behind choosing the specific tradeoff.</p>
+</li>
+</ul>
+</div>
+<!-- Quick Actions -->
+<div class="flex flex-col gap-3">
+<button class="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-display font-bold py-4 rounded-xl transition-all border border-slate-700">
+<span class="material-symbols-outlined">refresh</span>
+                            RETRY THIS QUESTION
+                        </button>
+<button class="w-full flex items-center justify-center gap-2 bg-transparent hover:bg-primary/10 text-primary border border-primary font-display font-bold py-4 rounded-xl transition-all">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+                            EXPORT ANALYSIS (PDF)
+                        </button>
+</div>
+</div>
+</div>
+<!-- Footer Recording Timeline -->
+<div class="glass-card rounded-xl p-4 overflow-hidden">
+<div class="flex items-center gap-6">
+<button class="text-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-4xl">play_circle</span>
+</button>
+<div class="flex-1 relative h-12 flex items-center">
+<div class="absolute inset-0 flex items-center gap-[2px]">
+<!-- Visual Waveform Simulation -->
+<div class="h-4 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-6 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-8 w-1 bg-primary rounded-full"></div>
+<div class="h-10 w-1 bg-primary rounded-full"></div>
+<div class="h-4 w-1 bg-primary rounded-full"></div>
+<div class="h-7 w-1 bg-primary rounded-full"></div>
+<div class="h-9 w-1 bg-primary rounded-full"></div>
+<div class="h-5 w-1 bg-primary rounded-full"></div>
+<div class="h-3 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-6 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-8 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-4 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-10 w-1 bg-primary rounded-full"></div>
+<div class="h-10 w-1 bg-primary rounded-full"></div>
+<div class="h-7 w-1 bg-primary rounded-full"></div>
+<div class="h-5 w-1 bg-primary rounded-full"></div>
+<div class="h-3 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-6 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-8 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-4 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-10 w-1 bg-primary rounded-full"></div>
+<div class="h-10 w-1 bg-primary rounded-full"></div>
+<div class="h-7 w-1 bg-primary rounded-full"></div>
+<div class="h-5 w-1 bg-primary rounded-full"></div>
+<div class="h-3 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-6 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-8 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-4 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-10 w-1 bg-primary rounded-full"></div>
+<div class="h-10 w-1 bg-primary rounded-full"></div>
+<div class="h-7 w-1 bg-primary rounded-full"></div>
+<div class="h-5 w-1 bg-primary rounded-full"></div>
+<div class="h-3 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-6 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-8 w-1 bg-slate-700 rounded-full"></div>
+<div class="h-4 w-1 bg-slate-700 rounded-full"></div>
+</div>
+<div class="absolute left-[30%] h-full w-0.5 bg-primary shadow-[0_0_10px_rgba(0,230,207,1)] z-10"></div>
+<div class="absolute left-[30%] -top-6 translate-x-[-50%] bg-primary text-background-dark text-[10px] font-bold px-2 py-0.5 rounded uppercase">01:14</div>
+</div>
+<div class="flex items-center gap-4 text-slate-500 font-display text-sm font-bold">
+<span>01:14</span>
+<span class="text-slate-700">/</span>
+<span>03:45</span>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Interview Question Dashboard - StarMock AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00e6cf",
+                        "background-light": "#f9fafb",
+                        "background-dark": "#0f131a",
+                        "card-dark": "#181e29",
+                        "border-muted": "#273a38",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #273a38;
+            border-radius: 10px;
+        }
+        .glass-panel {
+            background: rgba(24, 30, 41, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glow-hover:hover {
+            border-color: #00e6cf;
+            box-shadow: 0 0 15px rgba(0, 230, 207, 0.1);
+        }
+        .neo-grid {
+            background-image: linear-gradient(#1a222e 1px, transparent 1px), linear-gradient(90deg, #1a222e 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white min-h-screen overflow-hidden">
+<div class="flex h-screen overflow-hidden neo-grid">
+<!-- Sidebar Navigation -->
+<aside class="w-64 flex flex-col glass-panel border-r border-border-muted/30">
+<div class="p-6 flex flex-col gap-8 h-full">
+<!-- Branding -->
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/40">
+<span class="material-symbols-outlined text-primary text-2xl">rocket_launch</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-white text-lg font-bold leading-none">StarMock</h1>
+<p class="text-primary text-[10px] font-bold tracking-widest uppercase mt-1">AI Prep Engine</p>
+</div>
+</div>
+<!-- Nav Items -->
+<nav class="flex flex-col gap-1 flex-grow">
+<div class="group flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-background-dark cursor-pointer transition-all">
+<span class="material-symbols-outlined fill-1">dashboard</span>
+<span class="text-sm font-bold">Practice</span>
+</div>
+<div class="group flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer transition-all">
+<span class="material-symbols-outlined">history</span>
+<span class="text-sm font-medium">History</span>
+</div>
+<div class="group flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer transition-all">
+<span class="material-symbols-outlined">category</span>
+<span class="text-sm font-medium">Categories</span>
+</div>
+<div class="group flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer transition-all">
+<span class="material-symbols-outlined">insights</span>
+<span class="text-sm font-medium">Analytics</span>
+</div>
+<div class="mt-auto group flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer transition-all">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</div>
+</nav>
+<!-- User Profile Summary -->
+<div class="p-4 rounded-2xl bg-border-muted/20 border border-border-muted/40">
+<div class="flex items-center gap-3 mb-3">
+<div class="size-8 rounded-full bg-slate-700" data-alt="User avatar placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAE-UQydlk_ZIF7vEsrcuIo6VZCd2yyr8L5CZ9Vztxibc5-LXQfUONE8O5icjLZxus1bES5sIZrtCP0S2MaQxpj0qn2dk5uWwj41ylGhouxvIMvEkj3kprWRKw5bFLTn-_AnfKA0udSkCvK4woKecZZX9jg5cQf0TFYXmBGvf01TvLq2Z3TeRlFJQWlMB3cCTzSZ5rP7Q9DzXBDB5SW7W47USwNhMEPdsmv2sz10NpMbXj9rwEq7X7mVg6lGLSC75WGkpRAKA5wldgC"); background-size: cover;'></div>
+<div class="overflow-hidden">
+<p class="text-xs font-bold truncate">User_01</p>
+<p class="text-[10px] text-primary">Pro Member</p>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-tighter text-slate-400">
+<span>Readiness</span>
+<span>78%</span>
+</div>
+<div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[78%]"></div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- Top Navbar -->
+<header class="h-20 flex items-center justify-between px-10 glass-panel border-b border-border-muted/30">
+<div class="flex items-center gap-6">
+<h2 class="text-xl font-bold tracking-tight">Mission Control</h2>
+<div class="h-6 w-[1px] bg-border-muted/50"></div>
+<div class="flex items-center bg-background-dark/50 border border-border-muted/30 rounded-full px-4 py-1.5 gap-2">
+<span class="material-symbols-outlined text-slate-500 text-lg">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder:text-slate-600" placeholder="Search data modules..." type="text"/>
+<span class="text-[10px] font-bold text-slate-600 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">⌘K</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="relative p-2 rounded-xl bg-border-muted/20 hover:bg-border-muted/40 transition-all">
+<span class="material-symbols-outlined text-slate-300">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-primary rounded-full border-2 border-background-dark"></span>
+</button>
+<button class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-background-dark px-4 py-2 rounded-xl font-bold text-sm transition-all">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>New Session</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Dashboard -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-10">
+<!-- Hero Section / Page Heading -->
+<div class="flex flex-wrap justify-between items-end gap-6 mb-10">
+<div class="max-w-2xl">
+<h1 class="text-4xl font-black mb-2 tracking-tighter">Behavioral Simulations</h1>
+<p class="text-slate-400 text-lg">Select a data module to begin your training. Your current session focus is <span class="text-primary font-bold">Leadership Excellence</span>.</p>
+</div>
+<!-- Quick Stats Row -->
+<div class="flex gap-4">
+<div class="flex flex-col gap-1 px-6 py-4 rounded-2xl glass-panel border border-border-muted/30">
+<p class="text-[10px] font-bold text-slate-500 uppercase">Sessions</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold">24</span>
+<span class="text-xs text-primary font-bold">+12%</span>
+</div>
+</div>
+<div class="flex flex-col gap-1 px-6 py-4 rounded-2xl glass-panel border border-border-muted/30">
+<p class="text-[10px] font-bold text-slate-500 uppercase">Avg Score</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold">82%</span>
+<span class="text-xs text-primary font-bold">+5%</span>
+</div>
+</div>
+<div class="flex flex-col gap-1 px-6 py-4 rounded-2xl glass-panel border border-border-muted/30">
+<p class="text-[10px] font-bold text-slate-500 uppercase">Total Time</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold">12.5h</span>
+<span class="text-xs text-primary font-bold">+2h</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Filters -->
+<div class="flex items-center gap-3 mb-8 overflow-x-auto pb-2">
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-primary text-background-dark font-bold px-6 cursor-pointer">
+<span class="text-sm">All Modules</span>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-border-muted/20 border border-border-muted/40 hover:border-primary/50 text-slate-300 font-medium px-6 cursor-pointer transition-all">
+<span class="text-sm">Conflict Resolution</span>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-border-muted/20 border border-border-muted/40 hover:border-primary/50 text-slate-300 font-medium px-6 cursor-pointer transition-all">
+<span class="text-sm">Leadership</span>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-border-muted/20 border border-border-muted/40 hover:border-primary/50 text-slate-300 font-medium px-6 cursor-pointer transition-all">
+<span class="text-sm">Technical Skills</span>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-border-muted/20 border border-border-muted/40 hover:border-primary/50 text-slate-300 font-medium px-6 cursor-pointer transition-all">
+<span class="text-sm">Adaptability</span>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-border-muted/20 border border-border-muted/40 hover:border-primary/50 text-slate-300 font-medium px-6 cursor-pointer transition-all">
+<span class="text-sm">Ambiguity</span>
+</div>
+</div>
+<!-- Question Grid (Bento Style) -->
+<div class="grid grid-cols-12 gap-6 pb-20">
+<!-- Main Recommended Card (Large) -->
+<div class="col-span-12 lg:col-span-8 group rounded-3xl bg-card-dark border border-border-muted p-8 flex flex-col justify-between min-h-[320px] relative overflow-hidden transition-all glow-hover">
+<div class="absolute top-0 right-0 p-8">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold border border-primary/30 uppercase tracking-widest">Priority Module</span>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-2 text-slate-500 mb-4">
+<span class="material-symbols-outlined text-sm">database</span>
+<span class="text-xs font-bold uppercase tracking-widest">Module ID: #CR-772</span>
+</div>
+<h3 class="text-3xl font-bold mb-4 max-w-xl">"Tell me about a time you led a team through a significant crisis or sudden change."</h3>
+<div class="flex gap-4 mb-6">
+<div class="flex items-center gap-2 bg-background-dark/60 rounded-lg px-3 py-1.5 border border-border-muted/30">
+<span class="material-symbols-outlined text-primary text-sm">trending_up</span>
+<span class="text-xs font-medium">Difficulty: Hard</span>
+</div>
+<div class="flex items-center gap-2 bg-background-dark/60 rounded-lg px-3 py-1.5 border border-border-muted/30">
+<span class="material-symbols-outlined text-primary text-sm">timer</span>
+<span class="text-xs font-medium">Avg Duration: 4m 30s</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between relative z-10 pt-6 border-t border-border-muted/30">
+<div class="flex items-center gap-4">
+<div class="flex -space-x-2">
+<div class="size-6 rounded-full border-2 border-card-dark bg-slate-600" data-alt="Reviewer 1" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD89-nCjItQas2c2xh99iZYF2v7q1tsdZZywB5LB-WJCSiebLTt3q5U6QVh7gFEn1Z2T_kMqP8CnoeK8gKOW3LYKN-EWHuHxehYclNYiGYgbbQ4xQ5C2bL8JQpn7jzlw_2lL23ek-N63draJhszzYcHt1eeGIZhMnxpseZ8sEZhT8IXJY7aGa62B_9K434XTRFL5dLk1lw6xBhE8g-EShlwgMLHsxNMJLLTpUNAMTZRL1z_qALwth9U9sN9TxgU6QXVY19ASJ1MK9wF"); background-size: cover;'></div>
+<div class="size-6 rounded-full border-2 border-card-dark bg-slate-600" data-alt="Reviewer 2" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDJNu1gBJIZ1Umd1M1CPnczgV9VQm6I5Lt6QoLiabQPHRZx6a3EUZBl8eTNYC0jXXLWK6SbKrfqrY9wF7chAfvE4JVM2wD9i22dGnXlXQcIvkt69vVyE3zaaj-pJfVyMswiQjSxNRr0gDxp0YjsaODbTzF1zsBdK9MgZElGUu9ZzsNV2rozJ3ELzB47kBzHmJuofBhjegM3myojPQmZsDZxNCtiwDXRzNjEKvhtsMozzyUjdZrtI4Zgy4-7VG5iE-woOcivEdTGhOuZ"); background-size: cover;'></div>
+<div class="flex items-center justify-center size-6 rounded-full border-2 border-card-dark bg-slate-800 text-[8px] font-bold">12+</div>
+</div>
+<span class="text-xs text-slate-500">Last attempted by 14 users today</span>
+</div>
+<button class="bg-primary hover:bg-white text-background-dark px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all group-hover:scale-105">
+<span>Initialize Simulation</span>
+<span class="material-symbols-outlined text-sm">arrow_forward_ios</span>
+</button>
+</div>
+<!-- Abstract Background Decoration -->
+<div class="absolute -bottom-10 -right-10 size-48 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all"></div>
+</div>
+<!-- Performance Stats Card -->
+<div class="col-span-12 lg:col-span-4 rounded-3xl bg-card-dark border border-border-muted p-8 flex flex-col glow-hover">
+<div class="flex items-center justify-between mb-8">
+<h4 class="font-bold">Recent Accuracy</h4>
+<span class="material-symbols-outlined text-slate-500">more_horiz</span>
+</div>
+<div class="flex-1 flex flex-col justify-center gap-6">
+<div class="flex items-end justify-between gap-1 h-32">
+<div class="w-full bg-primary/20 rounded-t-lg h-[40%] group-hover:bg-primary/40 transition-all"></div>
+<div class="w-full bg-primary/20 rounded-t-lg h-[65%] group-hover:bg-primary/40 transition-all"></div>
+<div class="w-full bg-primary/20 rounded-t-lg h-[45%] group-hover:bg-primary/40 transition-all"></div>
+<div class="w-full bg-primary/20 rounded-t-lg h-[85%] group-hover:bg-primary/40 transition-all"></div>
+<div class="w-full bg-primary/20 rounded-t-lg h-[60%] group-hover:bg-primary/40 transition-all"></div>
+<div class="w-full bg-primary/20 rounded-t-lg h-[75%] group-hover:bg-primary/40 transition-all"></div>
+<div class="w-full bg-primary rounded-t-lg h-[92%] transition-all"></div>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-sm text-slate-400">STAR Adherence</span>
+<span class="text-sm font-bold text-primary">High (88%)</span>
+</div>
+<div class="w-full h-1.5 bg-background-dark/50 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[88%]"></div>
+</div>
+<p class="text-[11px] text-slate-500 leading-relaxed italic">"Your 'Result' articulation is improving, but consider quantifying your impact more consistently." — StarMock AI</p>
+</div>
+</div>
+</div>
+<!-- Grid Question 1 -->
+<div class="col-span-12 md:col-span-6 lg:col-span-4 group rounded-3xl bg-card-dark border border-border-muted p-6 flex flex-col gap-6 glow-hover transition-all">
+<div class="flex justify-between items-start">
+<div class="p-3 rounded-xl bg-background-dark/50 border border-border-muted/30">
+<span class="material-symbols-outlined text-primary">groups</span>
+</div>
+<span class="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">LVL: MID</span>
+</div>
+<div>
+<h4 class="text-lg font-bold leading-snug group-hover:text-primary transition-all">"Describe a situation where you had to work with a difficult stakeholder."</h4>
+<p class="text-xs text-slate-500 mt-2">Topic: Conflict Resolution</p>
+</div>
+<div class="mt-auto flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-xs text-slate-500">history</span>
+<span class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">3 Attempts</span>
+</div>
+<button class="size-10 flex items-center justify-center rounded-full bg-border-muted/30 hover:bg-primary text-white hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-lg">play_arrow</span>
+</button>
+</div>
+</div>
+<!-- Grid Question 2 -->
+<div class="col-span-12 md:col-span-6 lg:col-span-4 group rounded-3xl bg-card-dark border border-border-muted p-6 flex flex-col gap-6 glow-hover transition-all">
+<div class="flex justify-between items-start">
+<div class="p-3 rounded-xl bg-background-dark/50 border border-border-muted/30">
+<span class="material-symbols-outlined text-primary">schedule</span>
+</div>
+<span class="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">LVL: JUNIOR</span>
+</div>
+<div>
+<h4 class="text-lg font-bold leading-snug group-hover:text-primary transition-all">"How do you handle competing deadlines and prioritize tasks under pressure?"</h4>
+<p class="text-xs text-slate-500 mt-2">Topic: Adaptability</p>
+</div>
+<div class="mt-auto flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-xs text-slate-500">history</span>
+<span class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">0 Attempts</span>
+</div>
+<button class="size-10 flex items-center justify-center rounded-full bg-border-muted/30 hover:bg-primary text-white hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-lg">play_arrow</span>
+</button>
+</div>
+</div>
+<!-- Grid Question 3 -->
+<div class="col-span-12 md:col-span-6 lg:col-span-4 group rounded-3xl bg-card-dark border border-border-muted p-6 flex flex-col gap-6 glow-hover transition-all">
+<div class="flex justify-between items-start">
+<div class="p-3 rounded-xl bg-background-dark/50 border border-border-muted/30">
+<span class="material-symbols-outlined text-primary">psychology</span>
+</div>
+<span class="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">LVL: SENIOR</span>
+</div>
+<div>
+<h4 class="text-lg font-bold leading-snug group-hover:text-primary transition-all">"Tell me about a time you had to make a quick decision without all the information."</h4>
+<p class="text-xs text-slate-500 mt-2">Topic: Ambiguity</p>
+</div>
+<div class="mt-auto flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-xs text-slate-500">history</span>
+<span class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">5 Attempts</span>
+</div>
+<button class="size-10 flex items-center justify-center rounded-full bg-border-muted/30 hover:bg-primary text-white hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-lg">play_arrow</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- AI Generation Overlay (Subtle Toast) -->
+<div class="fixed bottom-8 right-8 flex items-center gap-4 bg-background-dark border border-primary/20 px-6 py-4 rounded-2xl shadow-2xl glass-panel">
+<div class="flex gap-1.5">
+<div class="size-1.5 bg-primary rounded-full animate-pulse"></div>
+<div class="size-1.5 bg-primary rounded-full animate-pulse delay-75"></div>
+<div class="size-1.5 bg-primary rounded-full animate-pulse delay-150"></div>
+</div>
+<p class="text-xs font-bold tracking-tight">AI is analyzing your recent history...</p>
+</div>
+</body></html>
