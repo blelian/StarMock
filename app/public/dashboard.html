@@ -1,12 +1,10 @@
 <!DOCTYPE html>
-
 <html class="dark" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Interview Question Dashboard - StarMock AI</title>
+<title>StarMock AI - Desktop Dashboard</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script id="tailwind-config">
         tailwind.config = {
@@ -14,19 +12,18 @@
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#00e6cf",
-                        "background-light": "#f9fafb",
-                        "background-dark": "#0f131a",
-                        "card-dark": "#181e29",
-                        "border-muted": "#273a38",
+                        "primary": "#25e2f4",
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#102122",
+                        "surface-dark": "#1a2f31",
                     },
                     fontFamily: {
                         "display": ["Space Grotesk", "sans-serif"]
                     },
                     borderRadius: {
-                        "DEFAULT": "0.5rem",
-                        "lg": "1rem",
-                        "xl": "1.5rem",
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
                         "full": "9999px"
                     },
                 },
@@ -34,314 +31,194 @@
         }
     </script>
 <style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
         .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
+            height: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
+            background: #102122;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #273a38;
+            background: #224649;
             border-radius: 10px;
         }
-        .glass-panel {
-            background: rgba(24, 30, 41, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .glow-hover:hover {
-            border-color: #00e6cf;
-            box-shadow: 0 0 15px rgba(0, 230, 207, 0.1);
-        }
-        .neo-grid {
-            background-image: linear-gradient(#1a222e 1px, transparent 1px), linear-gradient(90deg, #1a222e 1px, transparent 1px);
-            background-size: 40px 40px;
+    </style>
+<style>
+        body {
+            min-height: 100dvh;
         }
     </style>
-</head>
-<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white min-h-screen overflow-hidden">
-<div class="flex h-screen overflow-hidden neo-grid">
-<!-- Sidebar Navigation -->
-<aside class="w-64 flex flex-col glass-panel border-r border-border-muted/30">
-<div class="p-6 flex flex-col gap-8 h-full">
-<!-- Branding -->
-<div class="flex items-center gap-3">
-<div class="size-10 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/40">
-<span class="material-symbols-outlined text-primary text-2xl">rocket_launch</span>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col font-display">
+<header class="sticky top-0 z-50 w-full bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10">
+<div class="flex items-center px-4 py-3 justify-between max-w-7xl mx-auto gap-4">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 shrink-0">
+<div class="bg-primary/20 p-2 rounded-lg">
+<span class="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
 </div>
-<div class="flex flex-col">
-<h1 class="text-white text-lg font-bold leading-none">StarMock</h1>
-<p class="text-primary text-[10px] font-bold tracking-widest uppercase mt-1">AI Prep Engine</p>
+<h1 class="text-xl font-bold tracking-tight">StarMock <span class="text-primary">AI</span></h1>
 </div>
-</div>
-<!-- Nav Items -->
-<nav class="flex flex-col gap-1 flex-grow">
-<div class="group flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-background-dark cursor-pointer transition-all">
-<span class="material-symbols-outlined fill-1">dashboard</span>
-<span class="text-sm font-bold">Practice</span>
-</div>
-<div class="group flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer transition-all">
-<span class="material-symbols-outlined">history</span>
-<span class="text-sm font-medium">History</span>
-</div>
-<div class="group flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer transition-all">
-<span class="material-symbols-outlined">category</span>
-<span class="text-sm font-medium">Categories</span>
-</div>
-<div class="group flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer transition-all">
-<span class="material-symbols-outlined">insights</span>
-<span class="text-sm font-medium">Analytics</span>
-</div>
-<div class="mt-auto group flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer transition-all">
-<span class="material-symbols-outlined">settings</span>
-<span class="text-sm font-medium">Settings</span>
-</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium text-primary hover:opacity-80 transition-opacity" href="#">Practice</a>
+<a class="text-sm font-medium text-slate-600 dark:text-white/60 hover:text-primary transition-colors" href="#">History</a>
+<a class="text-sm font-medium text-slate-600 dark:text-white/60 hover:text-primary transition-colors" href="./interview.html">Interview</a>
+<a class="text-sm font-medium text-slate-600 dark:text-white/60 hover:text-primary transition-colors" href="./feedback.html">Feedback</a>
 </nav>
-<!-- User Profile Summary -->
-<div class="p-4 rounded-2xl bg-border-muted/20 border border-border-muted/40">
-<div class="flex items-center gap-3 mb-3">
-<div class="size-8 rounded-full bg-slate-700" data-alt="User avatar placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAE-UQydlk_ZIF7vEsrcuIo6VZCd2yyr8L5CZ9Vztxibc5-LXQfUONE8O5icjLZxus1bES5sIZrtCP0S2MaQxpj0qn2dk5uWwj41ylGhouxvIMvEkj3kprWRKw5bFLTn-_AnfKA0udSkCvK4woKecZZX9jg5cQf0TFYXmBGvf01TvLq2Z3TeRlFJQWlMB3cCTzSZ5rP7Q9DzXBDB5SW7W47USwNhMEPdsmv2sz10NpMbXj9rwEq7X7mVg6lGLSC75WGkpRAKA5wldgC"); background-size: cover;'></div>
-<div class="overflow-hidden">
-<p class="text-xs font-bold truncate">User_01</p>
-<p class="text-[10px] text-primary">Pro Member</p>
 </div>
-</div>
-<div class="space-y-1">
-<div class="flex justify-between text-[10px] font-bold uppercase tracking-tighter text-slate-400">
-<span>Readiness</span>
-<span>78%</span>
-</div>
-<div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
-<div class="h-full bg-primary w-[78%]"></div>
-</div>
-</div>
-</div>
-</div>
-</aside>
-<!-- Main Content Area -->
-<main class="flex-1 flex flex-col overflow-hidden">
-<!-- Top Navbar -->
-<header class="h-20 flex items-center justify-between px-10 glass-panel border-b border-border-muted/30">
-<div class="flex items-center gap-6">
-<h2 class="text-xl font-bold tracking-tight">Mission Control</h2>
-<div class="h-6 w-[1px] bg-border-muted/50"></div>
-<div class="flex items-center bg-background-dark/50 border border-border-muted/30 rounded-full px-4 py-1.5 gap-2">
-<span class="material-symbols-outlined text-slate-500 text-lg">search</span>
-<input class="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder:text-slate-600" placeholder="Search data modules..." type="text"/>
-<span class="text-[10px] font-bold text-slate-600 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">⌘K</span>
-</div>
-</div>
-<div class="flex items-center gap-4">
-<button class="relative p-2 rounded-xl bg-border-muted/20 hover:bg-border-muted/40 transition-all">
-<span class="material-symbols-outlined text-slate-300">notifications</span>
-<span class="absolute top-2 right-2 size-2 bg-primary rounded-full border-2 border-background-dark"></span>
+<div class="flex items-center gap-3">
+<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
 </button>
-<button class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-background-dark px-4 py-2 rounded-xl font-bold text-sm transition-all">
-<span class="material-symbols-outlined text-sm">add</span>
-<span>New Session</span>
-</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border-2 border-primary/30">
+<img alt="Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiPai1U5ZAZjeZVyzPpAcKVRDEdsIYvNSsRB8w6fvcraYK_IoyNgznfKf7MJ6j-iwELENyDJAWp0OVY-kjiJwrbuta2A7-IHTzKA1PtZD17fEfBYfUghjzDmCqkstZ47is70LFIulDyLyc0mPNVYczCLfnIgYuD_PQBbTfBB6uUiG43N9ZCDtBXztaccxuC1_0oFhUjgtwH21DDBtZlteHF1l4d75AEVQaajOXUNiAx5to-nC2LbuqhlvGLKTiYV4YbLGXg4wNA0zH"/>
+</div>
+</div>
 </div>
 </header>
-<!-- Scrollable Dashboard -->
-<div class="flex-1 overflow-y-auto custom-scrollbar p-10">
-<!-- Hero Section / Page Heading -->
-<div class="flex flex-wrap justify-between items-end gap-6 mb-10">
-<div class="max-w-2xl">
-<h1 class="text-4xl font-black mb-2 tracking-tighter">Behavioral Simulations</h1>
-<p class="text-slate-400 text-lg">Select a data module to begin your training. Your current session focus is <span class="text-primary font-bold">Leadership Excellence</span>.</p>
+<main class="flex-1 w-full max-w-7xl mx-auto pb-12">
+<section class="px-4 pt-6">
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-primary/60 group-focus-within:text-primary transition-colors">search</span>
 </div>
-<!-- Quick Stats Row -->
-<div class="flex gap-4">
-<div class="flex flex-col gap-1 px-6 py-4 rounded-2xl glass-panel border border-border-muted/30">
-<p class="text-[10px] font-bold text-slate-500 uppercase">Sessions</p>
-<div class="flex items-baseline gap-2">
-<span class="text-2xl font-bold">24</span>
-<span class="text-xs text-primary font-bold">+12%</span>
+<input class="block w-full pl-12 pr-4 py-4 bg-white dark:bg-surface-dark border-none rounded-xl text-base focus:ring-2 focus:ring-primary shadow-sm dark:shadow-none placeholder-slate-400 dark:placeholder-white/40 transition-all" placeholder="Search interview questions..." type="text"/>
 </div>
+</section>
+<section class="mt-8">
+<div class="flex items-center justify-between px-4 mb-4">
+<h2 class="text-lg font-bold">Question Categories</h2>
+<button class="text-primary text-sm font-medium">View all</button>
 </div>
-<div class="flex flex-col gap-1 px-6 py-4 rounded-2xl glass-panel border border-border-muted/30">
-<p class="text-[10px] font-bold text-slate-500 uppercase">Avg Score</p>
-<div class="flex items-baseline gap-2">
-<span class="text-2xl font-bold">82%</span>
-<span class="text-xs text-primary font-bold">+5%</span>
+<div class="flex gap-3 px-4 overflow-x-auto custom-scrollbar pb-4 no-scrollbar">
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-primary px-5 shadow-lg shadow-primary/20">
+<p class="text-background-dark text-sm font-bold">All</p>
 </div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 px-5">
+<p class="text-slate-600 dark:text-white/80 text-sm font-medium">Behavioral</p>
 </div>
-<div class="flex flex-col gap-1 px-6 py-4 rounded-2xl glass-panel border border-border-muted/30">
-<p class="text-[10px] font-bold text-slate-500 uppercase">Total Time</p>
-<div class="flex items-baseline gap-2">
-<span class="text-2xl font-bold">12.5h</span>
-<span class="text-xs text-primary font-bold">+2h</span>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 px-5">
+<p class="text-slate-600 dark:text-white/80 text-sm font-medium">Technical</p>
 </div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 px-5">
+<p class="text-slate-600 dark:text-white/80 text-sm font-medium">Case Study</p>
 </div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 px-5">
+<p class="text-slate-600 dark:text-white/80 text-sm font-medium">Leadership</p>
 </div>
 </div>
-<!-- Filters -->
-<div class="flex items-center gap-3 mb-8 overflow-x-auto pb-2">
-<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-primary text-background-dark font-bold px-6 cursor-pointer">
-<span class="text-sm">All Modules</span>
-</div>
-<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-border-muted/20 border border-border-muted/40 hover:border-primary/50 text-slate-300 font-medium px-6 cursor-pointer transition-all">
-<span class="text-sm">Conflict Resolution</span>
-</div>
-<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-border-muted/20 border border-border-muted/40 hover:border-primary/50 text-slate-300 font-medium px-6 cursor-pointer transition-all">
-<span class="text-sm">Leadership</span>
-</div>
-<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-border-muted/20 border border-border-muted/40 hover:border-primary/50 text-slate-300 font-medium px-6 cursor-pointer transition-all">
-<span class="text-sm">Technical Skills</span>
-</div>
-<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-border-muted/20 border border-border-muted/40 hover:border-primary/50 text-slate-300 font-medium px-6 cursor-pointer transition-all">
-<span class="text-sm">Adaptability</span>
-</div>
-<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-border-muted/20 border border-border-muted/40 hover:border-primary/50 text-slate-300 font-medium px-6 cursor-pointer transition-all">
-<span class="text-sm">Ambiguity</span>
+</section>
+<section class="mt-6 px-4">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-lg font-bold">Available Questions</h2>
+<div class="flex items-center gap-2 text-slate-400">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+<span class="text-xs uppercase tracking-wider font-bold">Latest First</span>
 </div>
 </div>
-<!-- Question Grid (Bento Style) -->
-<div class="grid grid-cols-12 gap-6 pb-20">
-<!-- Main Recommended Card (Large) -->
-<div class="col-span-12 lg:col-span-8 group rounded-3xl bg-card-dark border border-border-muted p-8 flex flex-col justify-between min-h-[320px] relative overflow-hidden transition-all glow-hover">
-<div class="absolute top-0 right-0 p-8">
-<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold border border-primary/30 uppercase tracking-widest">Priority Module</span>
-</div>
-<div class="relative z-10">
-<div class="flex items-center gap-2 text-slate-500 mb-4">
-<span class="material-symbols-outlined text-sm">database</span>
-<span class="text-xs font-bold uppercase tracking-widest">Module ID: #CR-772</span>
-</div>
-<h3 class="text-3xl font-bold mb-4 max-w-xl">"Tell me about a time you led a team through a significant crisis or sudden change."</h3>
-<div class="flex gap-4 mb-6">
-<div class="flex items-center gap-2 bg-background-dark/60 rounded-lg px-3 py-1.5 border border-border-muted/30">
-<span class="material-symbols-outlined text-primary text-sm">trending_up</span>
-<span class="text-xs font-medium">Difficulty: Hard</span>
-</div>
-<div class="flex items-center gap-2 bg-background-dark/60 rounded-lg px-3 py-1.5 border border-border-muted/30">
-<span class="material-symbols-outlined text-primary text-sm">timer</span>
-<span class="text-xs font-medium">Avg Duration: 4m 30s</span>
-</div>
-</div>
-</div>
-<div class="flex items-center justify-between relative z-10 pt-6 border-t border-border-muted/30">
-<div class="flex items-center gap-4">
-<div class="flex -space-x-2">
-<div class="size-6 rounded-full border-2 border-card-dark bg-slate-600" data-alt="Reviewer 1" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD89-nCjItQas2c2xh99iZYF2v7q1tsdZZywB5LB-WJCSiebLTt3q5U6QVh7gFEn1Z2T_kMqP8CnoeK8gKOW3LYKN-EWHuHxehYclNYiGYgbbQ4xQ5C2bL8JQpn7jzlw_2lL23ek-N63draJhszzYcHt1eeGIZhMnxpseZ8sEZhT8IXJY7aGa62B_9K434XTRFL5dLk1lw6xBhE8g-EShlwgMLHsxNMJLLTpUNAMTZRL1z_qALwth9U9sN9TxgU6QXVY19ASJ1MK9wF"); background-size: cover;'></div>
-<div class="size-6 rounded-full border-2 border-card-dark bg-slate-600" data-alt="Reviewer 2" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDJNu1gBJIZ1Umd1M1CPnczgV9VQm6I5Lt6QoLiabQPHRZx6a3EUZBl8eTNYC0jXXLWK6SbKrfqrY9wF7chAfvE4JVM2wD9i22dGnXlXQcIvkt69vVyE3zaaj-pJfVyMswiQjSxNRr0gDxp0YjsaODbTzF1zsBdK9MgZElGUu9ZzsNV2rozJ3ELzB47kBzHmJuofBhjegM3myojPQmZsDZxNCtiwDXRzNjEKvhtsMozzyUjdZrtI4Zgy4-7VG5iE-woOcivEdTGhOuZ"); background-size: cover;'></div>
-<div class="flex items-center justify-center size-6 rounded-full border-2 border-card-dark bg-slate-800 text-[8px] font-bold">12+</div>
-</div>
-<span class="text-xs text-slate-500">Last attempted by 14 users today</span>
-</div>
-<button class="bg-primary hover:bg-white text-background-dark px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all group-hover:scale-105">
-<span>Initialize Simulation</span>
-<span class="material-symbols-outlined text-sm">arrow_forward_ios</span>
-</button>
-</div>
-<!-- Abstract Background Decoration -->
-<div class="absolute -bottom-10 -right-10 size-48 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all"></div>
-</div>
-<!-- Performance Stats Card -->
-<div class="col-span-12 lg:col-span-4 rounded-3xl bg-card-dark border border-border-muted p-8 flex flex-col glow-hover">
-<div class="flex items-center justify-between mb-8">
-<h4 class="font-bold">Recent Accuracy</h4>
-<span class="material-symbols-outlined text-slate-500">more_horiz</span>
-</div>
-<div class="flex-1 flex flex-col justify-center gap-6">
-<div class="flex items-end justify-between gap-1 h-32">
-<div class="w-full bg-primary/20 rounded-t-lg h-[40%] group-hover:bg-primary/40 transition-all"></div>
-<div class="w-full bg-primary/20 rounded-t-lg h-[65%] group-hover:bg-primary/40 transition-all"></div>
-<div class="w-full bg-primary/20 rounded-t-lg h-[45%] group-hover:bg-primary/40 transition-all"></div>
-<div class="w-full bg-primary/20 rounded-t-lg h-[85%] group-hover:bg-primary/40 transition-all"></div>
-<div class="w-full bg-primary/20 rounded-t-lg h-[60%] group-hover:bg-primary/40 transition-all"></div>
-<div class="w-full bg-primary/20 rounded-t-lg h-[75%] group-hover:bg-primary/40 transition-all"></div>
-<div class="w-full bg-primary rounded-t-lg h-[92%] transition-all"></div>
-</div>
-<div class="space-y-4">
-<div class="flex justify-between items-center">
-<span class="text-sm text-slate-400">STAR Adherence</span>
-<span class="text-sm font-bold text-primary">High (88%)</span>
-</div>
-<div class="w-full h-1.5 bg-background-dark/50 rounded-full overflow-hidden">
-<div class="h-full bg-primary w-[88%]"></div>
-</div>
-<p class="text-[11px] text-slate-500 leading-relaxed italic">"Your 'Result' articulation is improving, but consider quantifying your impact more consistently." — StarMock AI</p>
-</div>
-</div>
-</div>
-<!-- Grid Question 1 -->
-<div class="col-span-12 md:col-span-6 lg:col-span-4 group rounded-3xl bg-card-dark border border-border-muted p-6 flex flex-col gap-6 glow-hover transition-all">
-<div class="flex justify-between items-start">
-<div class="p-3 rounded-xl bg-background-dark/50 border border-border-muted/30">
-<span class="material-symbols-outlined text-primary">groups</span>
-</div>
-<span class="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">LVL: MID</span>
-</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<div class="bg-white dark:bg-surface-dark p-5 rounded-xl border border-slate-200 dark:border-white/5 flex flex-col justify-between hover:border-primary/50 transition-colors group">
 <div>
-<h4 class="text-lg font-bold leading-snug group-hover:text-primary transition-all">"Describe a situation where you had to work with a difficult stakeholder."</h4>
-<p class="text-xs text-slate-500 mt-2">Topic: Conflict Resolution</p>
+<div class="flex justify-between items-start mb-3">
+<span class="bg-primary/10 text-primary text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded">Behavioral</span>
+<span class="material-symbols-outlined text-slate-300 dark:text-white/20">bookmark</span>
 </div>
-<div class="mt-auto flex items-center justify-between">
-<div class="flex items-center gap-1.5">
-<span class="material-symbols-outlined text-xs text-slate-500">history</span>
-<span class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">3 Attempts</span>
+<h3 class="text-lg font-bold leading-snug mb-2 group-hover:text-primary transition-colors">Tell me about a time you handled a difficult conflict at work.</h3>
+<p class="text-sm text-slate-500 dark:text-white/50 mb-6">Master the STAR method for conflict resolution scenarios in management roles.</p>
 </div>
-<button class="size-10 flex items-center justify-center rounded-full bg-border-muted/30 hover:bg-primary text-white hover:text-background-dark transition-all">
-<span class="material-symbols-outlined text-lg">play_arrow</span>
+<button class="w-full bg-primary hover:bg-primary/90 text-background-dark font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                    Start Practice
+                    <span class="material-symbols-outlined text-sm">play_arrow</span>
 </button>
 </div>
-</div>
-<!-- Grid Question 2 -->
-<div class="col-span-12 md:col-span-6 lg:col-span-4 group rounded-3xl bg-card-dark border border-border-muted p-6 flex flex-col gap-6 glow-hover transition-all">
-<div class="flex justify-between items-start">
-<div class="p-3 rounded-xl bg-background-dark/50 border border-border-muted/30">
-<span class="material-symbols-outlined text-primary">schedule</span>
-</div>
-<span class="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">LVL: JUNIOR</span>
-</div>
+<div class="bg-white dark:bg-surface-dark p-5 rounded-xl border border-slate-200 dark:border-white/5 flex flex-col justify-between hover:border-primary/50 transition-colors group">
 <div>
-<h4 class="text-lg font-bold leading-snug group-hover:text-primary transition-all">"How do you handle competing deadlines and prioritize tasks under pressure?"</h4>
-<p class="text-xs text-slate-500 mt-2">Topic: Adaptability</p>
+<div class="flex justify-between items-start mb-3">
+<span class="bg-purple-500/10 text-purple-400 text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded">Technical</span>
+<span class="material-symbols-outlined text-slate-300 dark:text-white/20">bookmark</span>
 </div>
-<div class="mt-auto flex items-center justify-between">
-<div class="flex items-center gap-1.5">
-<span class="material-symbols-outlined text-xs text-slate-500">history</span>
-<span class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">0 Attempts</span>
+<h3 class="text-lg font-bold leading-snug mb-2 group-hover:text-primary transition-colors">Explain how you would optimize a slow database query.</h3>
+<p class="text-sm text-slate-500 dark:text-white/50 mb-6">Common technical prompt for Senior Software Engineering interviews.</p>
 </div>
-<button class="size-10 flex items-center justify-center rounded-full bg-border-muted/30 hover:bg-primary text-white hover:text-background-dark transition-all">
-<span class="material-symbols-outlined text-lg">play_arrow</span>
+<button class="w-full bg-primary hover:bg-primary/90 text-background-dark font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                    Start Practice
+                    <span class="material-symbols-outlined text-sm">play_arrow</span>
 </button>
 </div>
-</div>
-<!-- Grid Question 3 -->
-<div class="col-span-12 md:col-span-6 lg:col-span-4 group rounded-3xl bg-card-dark border border-border-muted p-6 flex flex-col gap-6 glow-hover transition-all">
-<div class="flex justify-between items-start">
-<div class="p-3 rounded-xl bg-background-dark/50 border border-border-muted/30">
-<span class="material-symbols-outlined text-primary">psychology</span>
-</div>
-<span class="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">LVL: SENIOR</span>
-</div>
+<div class="bg-white dark:bg-surface-dark p-5 rounded-xl border border-slate-200 dark:border-white/5 flex flex-col justify-between hover:border-primary/50 transition-colors group">
 <div>
-<h4 class="text-lg font-bold leading-snug group-hover:text-primary transition-all">"Tell me about a time you had to make a quick decision without all the information."</h4>
-<p class="text-xs text-slate-500 mt-2">Topic: Ambiguity</p>
+<div class="flex justify-between items-start mb-3">
+<span class="bg-amber-500/10 text-amber-400 text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded">Case Study</span>
+<span class="material-symbols-outlined text-slate-300 dark:text-white/20">bookmark</span>
 </div>
-<div class="mt-auto flex items-center justify-between">
-<div class="flex items-center gap-1.5">
-<span class="material-symbols-outlined text-xs text-slate-500">history</span>
-<span class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">5 Attempts</span>
+<h3 class="text-lg font-bold leading-snug mb-2 group-hover:text-primary transition-colors">How would you launch a car-sharing service in London?</h3>
+<p class="text-sm text-slate-500 dark:text-white/50 mb-6">Product Management case study focusing on market entry and scalability.</p>
 </div>
-<button class="size-10 flex items-center justify-center rounded-full bg-border-muted/30 hover:bg-primary text-white hover:text-background-dark transition-all">
-<span class="material-symbols-outlined text-lg">play_arrow</span>
+<button class="w-full bg-primary hover:bg-primary/90 text-background-dark font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                    Start Practice
+                    <span class="material-symbols-outlined text-sm">play_arrow</span>
 </button>
 </div>
 </div>
-</div>
-</div>
+</section>
 </main>
+<footer class="w-full bg-white dark:bg-surface-dark/50 border-t border-slate-200 dark:border-white/10 mt-auto pb-24 md:pb-8">
+<div class="max-w-7xl mx-auto px-6 py-10">
+<div class="flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex flex-col items-center md:items-start gap-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">auto_awesome</span>
+<span class="font-bold text-lg">StarMock <span class="text-primary">AI</span></span>
 </div>
-<!-- AI Generation Overlay (Subtle Toast) -->
-<div class="fixed bottom-8 right-8 flex items-center gap-4 bg-background-dark border border-primary/20 px-6 py-4 rounded-2xl shadow-2xl glass-panel">
-<div class="flex gap-1.5">
-<div class="size-1.5 bg-primary rounded-full animate-pulse"></div>
-<div class="size-1.5 bg-primary rounded-full animate-pulse delay-75"></div>
-<div class="size-1.5 bg-primary rounded-full animate-pulse delay-150"></div>
+<p class="text-sm text-slate-500 dark:text-white/40">© 2024 StarMock AI. All rights reserved.</p>
 </div>
-<p class="text-xs font-bold tracking-tight">AI is analyzing your recent history...</p>
+<div class="flex gap-8">
+<a class="text-sm text-slate-500 dark:text-white/60 hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="text-sm text-slate-500 dark:text-white/60 hover:text-primary transition-colors" href="#">Privacy Policy</a>
 </div>
+<div class="flex gap-4">
+<a class="h-10 w-10 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/60 hover:text-primary transition-colors" href="#">
+<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a class="h-10 w-10 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/60 hover:text-primary transition-colors" href="#">
+<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
+</a>
+<a class="h-10 w-10 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/60 hover:text-primary transition-colors" href="#">
+<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg>
+</a>
+</div>
+</div>
+</div>
+</footer>
+<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-white/10 px-6 py-4 flex justify-between items-center z-40 max-w-7xl mx-auto">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined fill-1">home</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400 dark:text-white/40">
+<span class="material-symbols-outlined">video_call</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Practice</span>
+</button>
+<div class="relative -top-10">
+<button class="bg-primary p-4 rounded-full shadow-lg shadow-primary/30 border-4 border-background-light dark:border-background-dark">
+<span class="material-symbols-outlined text-background-dark text-3xl">add</span>
+</button>
+</div>
+<button class="flex flex-col items-center gap-1 text-slate-400 dark:text-white/40">
+<span class="material-symbols-outlined">history</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">History</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400 dark:text-white/40">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Settings</span>
+</button>
+</nav>
+
 </body></html>

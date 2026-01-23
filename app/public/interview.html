@@ -1,252 +1,204 @@
 <!DOCTYPE html>
-
 <html class="dark" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>StarMock | Live AI Interview Simulator</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#00e6cf",
-                        "background-light": "#f9fafb",
-                        "background-dark": "#0f131a",
-                        "surface": "#161d26",
-                    },
-                    fontFamily: {
-                        "display": ["Space Grotesk", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.5rem",
-                        "lg": "1rem",
-                        "xl": "1.5rem",
-                        "full": "9999px"
-                    },
-                },
+<title>StarMock - Mission Control</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#00F2C3",
+              "background-light": "#F8FAFC",
+              "background-dark": "#0B1119",
+              "surface-dark": "#161E28",
+              "card-dark": "#1C2632",
+              "border-dark": "#2D3748",
             },
-        }
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              display: ["Inter", "sans-serif"],
+            },
+            borderRadius: {
+              DEFAULT: "12px",
+            },
+          },
+        },
+      };
     </script>
 <style>
         body {
-            font-family: 'Space Grotesk', sans-serif;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
-        .glow-border {
-            box-shadow: 0 0 15px rgba(0, 230, 207, 0.15);
-            border: 1px solid rgba(0, 230, 207, 0.3);
-        }
-        .glass-panel {
-            background: rgba(22, 29, 38, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .waveform-bar {
-            animation: pulse-height 1.5s ease-in-out infinite;
-        }
-        @keyframes pulse-height {
-            0%, 100% { height: 10px; }
-            50% { height: 40px; }
+        .grid-bg {
+            background-size: 30px 30px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
         }
     </style>
-</head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen overflow-hidden">
-<!-- Top Navigation Bar -->
-<header class="flex items-center justify-between px-8 py-4 border-b border-white/5 bg-background-dark/50 backdrop-blur-md sticky top-0 z-50">
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<div class="fixed inset-0 grid-bg pointer-events-none opacity-40"></div>
+<div class="h-12 w-full bg-transparent"></div>
+<header class="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+<div class="px-5 py-4 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-icons-round text-background-dark text-xl">auto_awesome</span>
+</div>
+<h1 class="font-extrabold text-xl tracking-tight">StarMock<span class="text-primary italic">.ai</span></h1>
+</div>
 <div class="flex items-center gap-3">
-<div class="size-8 bg-primary rounded-lg flex items-center justify-center">
-<span class="material-symbols-outlined text-background-dark font-bold">query_stats</span>
-</div>
-<h1 class="text-xl font-bold tracking-tight text-white">StarMock<span class="text-primary">.ai</span></h1>
-</div>
-<div class="flex items-center gap-6">
-<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold uppercase tracking-widest">
-<span class="relative flex h-2 w-2">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-</span>
-                Live Session: 04:22
-            </div>
-<div class="h-6 w-[1px] bg-white/10"></div>
-<button class="group flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
-<span class="material-symbols-outlined text-lg">exit_to_app</span>
-<span class="text-sm font-medium">Emergency Exit</span>
+<button class="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+<span class="material-icons-round text-[22px]">notifications</span>
 </button>
+<div class="w-9 h-9 rounded-full border-2 border-primary p-0.5">
+<img alt="User Avatar" class="w-full h-full rounded-full bg-slate-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8NaQUqXW_v5uybB3ZW6jg8NXR7mREwp_0QSHT3IJT_VUSvdTaSamjvTCljp_GsaKMo_jIzEP2kQ2P2O60JPSbFbtB41bqsrn7Su-TOXsffITQUKvFU0Mz1PhyXM0BBtZzj_lUlLI3m0e8LAywQgsdXy8loTC2qzqly-IGSMp8bGfBMhPhffjmZ-v5Nog7efBe3N4CiiQA1GRDtBuK8Y0lCMtMaQdqvxrqb2xMnDskZrJGL3iS1gJeLRN9nUQsF_iHeMld0GZoHvmo"/>
+</div>
+</div>
+</div>
+<div class="flex px-5 pb-1 gap-6">
+<a class="pb-3 border-b-2 border-primary text-primary font-semibold text-sm" href="./dashboard.html">Dashboard</a>
+<a class="pb-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 font-medium text-sm" href="./interview.html">Interview</a>
+<a class="pb-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 font-medium text-sm" href="./feedback.html">Feedback</a>
+<a class="pb-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 font-medium text-sm" href="#">History</a>
+
+
 </div>
 </header>
-<main class="max-w-[1400px] mx-auto p-6 grid grid-cols-12 gap-6 h-[calc(100vh-80px)]">
-<!-- Left Sidebar: STAR Progress & Metrics -->
-<div class="col-span-3 flex flex-col gap-6">
-<div class="glass-panel rounded-xl p-6 flex-1">
-<h3 class="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-6">Response Structure</h3>
-<div class="space-y-8">
-<!-- STAR Steps -->
-<div class="relative flex gap-4">
-<div class="absolute left-4 top-8 bottom-0 w-[1px] bg-white/10"></div>
-<div class="z-10 size-8 rounded-full bg-primary flex items-center justify-center text-background-dark font-bold shadow-[0_0_15px_rgba(0,230,207,0.4)]">S</div>
-<div>
-<p class="text-sm font-bold text-white">Situation</p>
-<p class="text-xs text-slate-400 mt-1">Identified: Late delivery of a software patch.</p>
+<main class="flex-1 px-5 py-6 relative z-10">
+<section class="mb-8">
+<h2 class="text-2xl font-bold mb-1">Mission Control</h2>
+<p class="text-slate-500 dark:text-slate-400 text-sm">Ready to level up your interview performance?</p>
+</section>
+<section>
+<div class="flex items-center justify-between mb-5">
+<h3 class="text-lg font-bold flex items-center gap-2">
+                    Recommended <span class="text-primary text-xs bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider">For You</span>
+</h3>
+</div>
+<div class="space-y-4">
+<div class="bg-white dark:bg-card-dark rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-xl shadow-black/5">
+<div class="flex justify-between items-start mb-4">
+<span class="px-3 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-bold uppercase tracking-widest rounded-full">Difficulty: Hard</span>
+<div class="flex -space-x-2">
+<img alt="User A" class="w-6 h-6 rounded-full border-2 border-card-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0UKPwtmQTZour7XVmqk5fyLbt0aTk4uiATmRnXUcv1ugi4fiqVwIE_y12NfKXcKS9MtqnIxhSyF5bfcyhmKiMBFzDOSxNx2Hir0xtvkeJfJ3TCDs4BnbhPN4RxILnSQrGsGA5CrbL02xkipK315ztnwiGkZt7QKLDixJUrR9a-ojRPYE5MvcAbSXnL3_h0Yhxv4FKiJZNs73ix5diSwdo0v_ANBxPTkMSFwup9-idMQ80c479Ku-zDphEZzpOjhMvcVLmYCi2Pybk"/>
+<img alt="User B" class="w-6 h-6 rounded-full border-2 border-card-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4ObfQ8vmWhUJpIPy5wEZ8fyGFBLxd1AGTKgr6Myf2U3h1cB--5HRHPJGp3UusBr4k9WYXRUDE0hu9btYioK0EW1WkWarxYwpD0IxZ5xYTFze00PQGUlfuC8Ly75Divn9DAGFEUWS3lRQ2zBdH4nMfk6xTyXK_WlP0_pMAnB5UOSZErlG2hZQOxZv8GlokE4K9PgZ2wnaLGVDf5E1-ACekB0CB-dKqVEZHhRvX6unowrRVy0iUho-zrJDi3N6nzPxd_Kc8tU3CeeQt"/>
+<div class="w-6 h-6 rounded-full bg-slate-700 border-2 border-card-dark flex items-center justify-center text-[8px] font-bold">+12</div>
 </div>
 </div>
-<div class="relative flex gap-4">
-<div class="absolute left-4 top-8 bottom-0 w-[1px] bg-white/10"></div>
-<div class="z-10 size-8 rounded-full bg-primary flex items-center justify-center text-background-dark font-bold shadow-[0_0_15px_rgba(0,230,207,0.4)]">T</div>
-<div>
-<p class="text-sm font-bold text-white">Task</p>
-<p class="text-xs text-slate-400 mt-1">Identified: Coordinating 3 departments.</p>
+<h4 class="text-lg font-semibold leading-snug mb-6 dark:text-slate-100">
+                        "Tell me about a time you led a team through a significant crisis or sudden change."
+                    </h4>
+<div class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+<div class="flex items-center gap-1 text-xs">
+<span class="material-icons-round text-sm">schedule</span>
+                                4m 30s
+                            </div>
 </div>
-</div>
-<div class="relative flex gap-4">
-<div class="absolute left-4 top-8 bottom-0 w-[1px] bg-white/10"></div>
-<div class="z-10 size-8 rounded-full border border-primary/40 bg-primary/10 flex items-center justify-center text-primary font-bold">A</div>
-<div>
-<p class="text-sm font-bold text-slate-300">Action</p>
-<p class="text-xs text-slate-500 mt-1 italic">Waiting for details...</p>
-</div>
-</div>
-<div class="relative flex gap-4">
-<div class="z-10 size-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-slate-500 font-bold">R</div>
-<div>
-<p class="text-sm font-bold text-slate-500">Result</p>
-</div>
-</div>
-</div>
-</div>
-<div class="glass-panel rounded-xl p-6">
-<div class="flex items-center justify-between mb-4">
-<h3 class="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">Confidence</h3>
-<span class="text-primary font-mono text-sm">88%</span>
-</div>
-<div class="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
-<div class="bg-primary h-full rounded-full" style="width: 88%"></div>
-</div>
-</div>
-</div>
-<!-- Center: Interaction Hub -->
-<div class="col-span-6 flex flex-col gap-6">
-<!-- Question Prompt Card -->
-<div class="glass-panel rounded-xl p-8 text-center glow-border">
-<span class="text-primary text-xs font-bold tracking-[0.3em] uppercase mb-4 block">Current Prompt</span>
-<h2 class="text-2xl font-bold leading-tight text-white px-4">
-                    "Tell me about a time you failed to meet a deadline. How did you handle the communication?"
-                </h2>
-</div>
-<!-- Visualization & Action Area -->
-<div class="flex-1 glass-panel rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
-<!-- Decorative AI Grid Background -->
-<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#00e6cf 1px, transparent 1px); background-size: 30px 30px;"></div>
-<!-- Central Record Sphere -->
-<div class="relative z-10 flex flex-col items-center">
-<div class="relative">
-<!-- Pulsing rings -->
-<div class="absolute inset-0 rounded-full bg-primary/20 animate-ping"></div>
-<div class="absolute inset-[-10px] rounded-full border border-primary/30 animate-pulse"></div>
-<button class="relative size-32 rounded-full bg-primary flex flex-col items-center justify-center shadow-[0_0_50px_rgba(0,230,207,0.3)] hover:scale-105 transition-transform">
-<span class="material-symbols-outlined text-background-dark text-4xl font-bold">mic</span>
-</button>
-</div>
-<p class="mt-8 text-primary font-bold tracking-widest text-sm uppercase animate-pulse">Recording Active</p>
-</div>
-<!-- Waveform Visualizer -->
-<div class="absolute bottom-12 left-0 right-0 flex justify-center items-end gap-1 px-12 h-16">
-<div class="waveform-bar w-1 bg-primary/40 rounded-full" style="animation-delay: 0.1s"></div>
-<div class="waveform-bar w-1 bg-primary/60 rounded-full" style="animation-delay: 0.3s"></div>
-<div class="waveform-bar w-1 bg-primary/80 rounded-full" style="animation-delay: 0.2s"></div>
-<div class="waveform-bar w-1 bg-primary rounded-full" style="animation-delay: 0.4s"></div>
-<div class="waveform-bar w-1 bg-primary/90 rounded-full" style="animation-delay: 0.1s"></div>
-<div class="waveform-bar w-1 bg-primary/70 rounded-full" style="animation-delay: 0.5s"></div>
-<div class="waveform-bar w-1 bg-primary/40 rounded-full" style="animation-delay: 0.2s"></div>
-<div class="waveform-bar w-1 bg-primary/60 rounded-full" style="animation-delay: 0.6s"></div>
-<div class="waveform-bar w-1 bg-primary/80 rounded-full" style="animation-delay: 0.1s"></div>
-<div class="waveform-bar w-1 bg-primary rounded-full" style="animation-delay: 0.3s"></div>
-<div class="waveform-bar w-1 bg-primary/50 rounded-full" style="animation-delay: 0.4s"></div>
-<div class="waveform-bar w-1 bg-primary/30 rounded-full" style="animation-delay: 0.2s"></div>
-</div>
-</div>
-<!-- Footer Controls -->
-<div class="flex justify-center gap-4">
-<button class="size-14 rounded-xl glass-panel flex items-center justify-center text-slate-400 hover:text-white transition-all hover:border-white/20">
-<span class="material-symbols-outlined">pause</span>
-</button>
-<button class="size-14 rounded-xl glass-panel flex items-center justify-center text-slate-400 hover:text-white transition-all hover:border-white/20">
-<span class="material-symbols-outlined">refresh</span>
-</button>
-<button class="px-8 h-14 rounded-xl bg-primary text-background-dark font-bold flex items-center gap-2 hover:opacity-90 transition-all">
-<span>Finish Interview</span>
-<span class="material-symbols-outlined">arrow_forward</span>
+<button class="bg-primary hover:opacity-90 transition-opacity text-slate-900 px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2">
+                            Start <span class="material-icons-round text-base">play_arrow</span>
 </button>
 </div>
 </div>
-<!-- Right Sidebar: AI Persona & Transcription -->
-<div class="col-span-3 flex flex-col gap-6">
-<!-- AI Persona -->
-<div class="glass-panel rounded-xl overflow-hidden aspect-video relative group">
-<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-transparent z-10"></div>
-<div class="absolute inset-0 bg-primary/5 animate-pulse"></div>
-<div class="absolute inset-0 flex items-center justify-center">
-<!-- Abstract AI Persona Visualization -->
-<div class="size-24 border-2 border-primary/20 rounded-full flex items-center justify-center">
-<div class="size-16 border-2 border-primary/40 rounded-full animate-spin [animation-duration:3s] flex items-center justify-center">
-<div class="size-8 bg-primary rounded-sm rotate-45"></div>
+<div class="bg-white dark:bg-card-dark rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-xl shadow-black/5">
+<div class="flex justify-between items-start mb-4">
+<span class="px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase tracking-widest rounded-full">Difficulty: Medium</span>
+<div class="flex -space-x-2">
+<img alt="User C" class="w-6 h-6 rounded-full border-2 border-card-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyI51WKE1eTeo3lkmbwhb8SrVJ9_1UtbRKZ5c9-MWj0Hq94UkBUtsCU8s1hKWSJOb2KpOBE_7Zx64-bLVBngqCuSWHVo5c7vqkpKIT4nE7VIyyV9s2kc5YlYkYPJQv8086JsgIWR4JtATAyWv603Gniig_o2Gg09CzxYJRm-7cOwcZLb4FzQOpUzD4Ufpa10uKrZj0lQDFwGGxlVNZW7sHdPJYFkBekAqNAwpGCdjoZ8-gIOEjP3yjXOtsZ6O4q6PF6On8eaoSv4S8"/>
+<img alt="User D" class="w-6 h-6 rounded-full border-2 border-card-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3JBPEwyRQme3hx0BKQnDQhmAQGLALVTkzlm5U5WCrbHUoOWu4O_kz5eYEGXvG3WdHhmwbTraFrYS_Yd3oYTaR7gzuhvdPxDzQyrIy2Z7RlXXWudVCNidudddx0b4XGIZqj7E39PTXCPUlbxmelo36kPeoGxx1ELCNAvXa1YlXpgeVEVADTjwW65RdlonWvImi7v6-bw04o2lIc3tnvdDn8t-ia5PQbEUChVabeU_rH5f1ADbIkOJ3byX9Ce175qdk8OwMVe4ju7Ry"/>
+<div class="w-6 h-6 rounded-full bg-slate-700 border-2 border-card-dark flex items-center justify-center text-[8px] font-bold">+24</div>
+</div>
+</div>
+<h4 class="text-lg font-semibold leading-snug mb-6 dark:text-slate-100">
+                        "How do you handle competing deadlines and prioritize tasks under pressure?"
+                    </h4>
+<div class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+<div class="flex items-center gap-1 text-xs">
+<span class="material-icons-round text-sm">schedule</span>
+                                3m 15s
+                            </div>
+</div>
+<button class="bg-primary hover:opacity-90 transition-opacity text-slate-900 px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2">
+                            Start <span class="material-icons-round text-base">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="bg-white dark:bg-card-dark rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-xl shadow-black/5 opacity-80">
+<div class="flex justify-between items-start mb-4">
+<span class="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-widest rounded-full">Difficulty: Easy</span>
+</div>
+<h4 class="text-lg font-semibold leading-snug mb-6 dark:text-slate-100">
+                        "Describe a situation where you had to work with a difficult stakeholder."
+                    </h4>
+<div class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+<div class="flex items-center gap-1 text-xs">
+<span class="material-icons-round text-sm">schedule</span>
+                                5m 00s
+                            </div>
+</div>
+<button class="bg-primary hover:opacity-90 transition-opacity text-slate-900 px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2">
+                            Start <span class="material-icons-round text-base">play_arrow</span>
+</button>
 </div>
 </div>
 </div>
-<div class="absolute bottom-4 left-4 z-20">
-<p class="text-xs font-bold text-primary uppercase tracking-wider">Interviewer</p>
-<p class="text-white font-medium">Dr. Astra (Behavioral AI)</p>
-</div>
-<div class="bg-cover bg-center absolute inset-0 opacity-40 mix-blend-overlay" data-alt="Abstract cybernetic mesh pattern background" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAq5bc0A2mKO-jKBCUPbdREFTQq02tALWQzhaBsLBgOQEjR7ORSH8WF9wIdfP9__-JNkvQDfJVykVdvvFPW-UtNl4kxcXSU6_-i1G3o1Eoidj1DSPmVGTbb6Lff4kWdmxVVbg0uMNU7CKGs_QHG8gTfKNWhN-2IsDbWYZu2Stuf52EBYj4GGyRB_Qm6zE5gfw0AvHSc83M_SM3DH0EMneaQg3Oeqvn3Y6xKQ8etmve6gzfxH_8AnOTr9SNlBONUgDiWcbVThhyGviN_');"></div>
-</div>
-<!-- Live Transcription -->
-<div class="glass-panel rounded-xl flex-1 flex flex-col p-6 overflow-hidden">
-<h3 class="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Live Transcription</h3>
-<div class="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-<p class="text-slate-400 text-sm leading-relaxed">
-                        "In my previous role as a Junior Dev, we had a major deployment scheduled for Friday afternoon..."
-                    </p>
-<p class="text-slate-400 text-sm leading-relaxed">
-                        "I realized at 2 PM that the testing suite hadn't covered the legacy database connectors..."
-                    </p>
-<div class="flex items-start gap-2">
-<div class="size-1.5 rounded-full bg-primary mt-2"></div>
-<p class="text-white text-sm leading-relaxed font-medium">
-                            "Instead of pushing through, I immediately notified the project lead and the client success manager..."
-                        </p>
-</div>
-<div class="flex items-center gap-1">
-<span class="size-1 bg-primary/40 rounded-full animate-bounce"></span>
-<span class="size-1 bg-primary/40 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-<span class="size-1 bg-primary/40 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+</section>
+<section class="mt-8 mb-24">
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-slate-100 dark:bg-slate-800/50 rounded-2xl p-4">
+<p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Avg Score</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold">82%</span>
+<span class="text-[10px] text-primary font-bold">+5%</span>
 </div>
 </div>
-<!-- Feedback Chips -->
-<div class="mt-4 pt-4 border-t border-white/5 space-y-2">
-<div class="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
-<span class="material-symbols-outlined text-primary text-sm">verified</span>
-<span class="text-[10px] font-bold text-primary uppercase tracking-wider">Strong Detail: Stakeholders mentioned</span>
+<div class="bg-slate-100 dark:bg-slate-800/50 rounded-2xl p-4">
+<p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Time Spent</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold">12.5h</span>
+<span class="text-[10px] text-primary font-bold">+2h</span>
 </div>
 </div>
 </div>
-</div>
+</section>
 </main>
-<style>
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 230, 207, 0.3);
-        }
-    </style>
+<nav class="fixed bottom-0 left-0 right-0 z-50 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 pb-8 pt-3 px-10">
+<div class="flex items-center justify-between max-w-sm mx-auto">
+<button class="flex flex-col items-center gap-1 group">
+<span class="material-icons-round text-primary">home</span>
+<span class="text-[10px] font-bold text-primary">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 group text-slate-400 dark:text-slate-500">
+<span class="material-icons-round transition-colors group-hover:text-primary">video_library</span>
+<span class="text-[10px] font-bold">Library</span>
+</button>
+<button class="flex flex-col items-center gap-1 group text-slate-400 dark:text-slate-500">
+<span class="material-icons-round transition-colors group-hover:text-primary">person_outline</span>
+<span class="text-[10px] font-bold">Profile</span>
+</button>
+</div>
+</nav>
+<div class="fixed bottom-24 right-5 z-40">
+<button class="w-14 h-14 bg-primary text-slate-900 rounded-full shadow-2xl shadow-primary/40 flex items-center justify-center">
+<span class="material-icons-round text-3xl">add</span>
+</button>
+</div>
+
 </body></html>
