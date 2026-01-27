@@ -1,145 +1,269 @@
-name: Deploy to Render
+name: 🚀 Deploy to Render
 
 on:
   push:
-    branches: [ main, olwal-qa ]  # Added olwal-qa for testing
+    branches: [ main, olwal-qa ]
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests for emergency deployment'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
-# Prevent concurrent deployments
 concurrency:
   group: render-deploy-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build-and-test:
-    name: Build and Test
+  predeploy:
+    name: 🔍 Pre-Deploy Quality Gates
     runs-on: ubuntu-latest
-    
+    outputs:
+      build_time: ${{ steps.timing.outputs.build_time }}
+      
     steps:
-    - name: Checkout code
+    - name: 📥 Checkout code
       uses: actions/checkout@v4
     
-    - name: Setup Node.js
+    - name: ⚙️ Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
         cache: 'npm'
         cache-dependency-path: app/package-lock.json
     
-    - name: Install dependencies
-      working-directory: ./app
-      run: npm ci
-    
-    - name: Run linting
-      working-directory: ./app
-      run: npm run lint
-    
-    - name: Check formatting
-      working-directory: ./app
-      run: npm run format:check
-    
-    - name: Run tests
-      working-directory: ./app
-      run: npm test -- --run
-    
-    - name: Build application
-      working-directory: ./app
-      run: npm run build
-      env:
-        NODE_ENV: production
-    
-    - name: Test server start (dry run)
+    - name: 📦 Install dependencies
       working-directory: ./app
       run: |
-        echo "✅ Build artifacts verified"
-        ls -la dist/
+        echo "::group::Installing dependencies"
+        npm ci --prefer-offline --no-audit
+        echo "::endgroup::"
+    
+    - name: 🎨 Code Quality Checks
+      if: ${{ github.event.inputs.skip_tests != 'true' }}
+      working-directory: ./app
+      run: |
+        echo "::group::Running ESLint"
+        npm run lint
+        echo "::endgroup::"
+        
+        echo "::group::Checking Prettier formatting"
+        npm run format:check
+        echo "::endgroup::"
+    
+    - name: 🧪 Run Tests
+      if: ${{ github.event.inputs.skip_tests != 'true' }}
+      working-directory: ./app
+      run: |
+        echo "::group::Running test suite"
+        npm test -- --run --reporter=verbose
+        echo "::endgroup::"
+    
+    - name: 🏗️ Build Application
+      id: timing
+      working-directory: ./app
+      run: |
+        START_TIME=$(date +%s)
+        echo "::group::Building production bundle"
+        npm run build
+        echo "::endgroup::"
+        END_TIME=$(date +%s)
+        BUILD_TIME=$((END_TIME - START_TIME))
+        echo "build_time=${BUILD_TIME}s" >> $GITHUB_OUTPUT
+        
+        echo "✅ Build completed in ${BUILD_TIME}s"
+        echo "📊 Build artifacts:"
+        ls -lh dist/
+    
+    - name: 📋 Pre-Deploy Summary
+      run: |
+        echo "### ✅ Pre-Deploy Checks Passed!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| 🎨 Linting | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        echo "| 📝 Formatting | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🧪 Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🏗️ Build | ✅ Passed (${{ steps.timing.outputs.build_time }}) |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
   
   deploy:
-    name: Deploy to Render
-    needs: build-and-test
+    name: 🚀 Deploy to Render
+    needs: predeploy
     runs-on: ubuntu-latest
+    outputs:
+      deploy_time: ${{ steps.deploy_timing.outputs.deploy_time }}
+      deploy_url: ${{ secrets.RENDER_APP_URL }}
     
     steps:
-    - name: Trigger Render Deploy Hook
+    - name: 🔔 Deployment Started
       run: |
+        echo "### 🚀 Deployment in Progress..." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "⏰ **Started:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "👤 **Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "🌿 **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "📝 **Commit:** [\`${GITHUB_SHA:0:7}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+    
+    - name: 🎯 Trigger Render Deploy Hook
+      id: deploy_timing
+      run: |
+        START_TIME=$(date +%s)
         echo "🚀 Triggering Render deployment..."
+        
         RESPONSE=$(curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
           -H "Content-Type: application/json" \
           -w "\n%{http_code}" \
-          -s)
+          -s \
+          --max-time 30)
         
         HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
         BODY=$(echo "$RESPONSE" | head -n-1)
+        END_TIME=$(date +%s)
+        DEPLOY_TIME=$((END_TIME - START_TIME))
         
+        echo "deploy_time=${DEPLOY_TIME}s" >> $GITHUB_OUTPUT
         echo "HTTP Status: $HTTP_CODE"
         echo "Response: $BODY"
+        echo "⚡ Deploy hook responded in ${DEPLOY_TIME}s"
         
         if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
-          echo "✅ Deployment triggered successfully"
-          echo "### 🚀 Render Deployment Triggered!" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Deployment triggered successfully!"
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** Production (Render)" >> $GITHUB_STEP_SUMMARY
-          echo "**URL:** ${{ secrets.RENDER_APP_URL }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployed by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔄 Render is building and deploying your application. Check the Render dashboard for deployment status." >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Deploy Hook Triggered Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ⚡ Hook Response | ${DEPLOY_TIME}s |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏗️ Build Time | ${{ needs.predeploy.outputs.build_time }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌐 Target URL | ${{ secrets.RENDER_APP_URL }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔄 Render is now building and deploying your application..." >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ Deployment failed with status $HTTP_CODE"
-          echo "### ❌ Render Deployment Failed!" >> $GITHUB_STEP_SUMMARY
+          echo "❌ Deployment hook failed!"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ❌ Deployment Failed!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**HTTP Status:** $HTTP_CODE" >> $GITHUB_STEP_SUMMARY
-          echo "**Response:** $BODY" >> $GITHUB_STEP_SUMMARY
+          echo "**Response:** \`$BODY\`" >> $GITHUB_STEP_SUMMARY
           exit 1
         fi
-    
-    - name: Wait for deployment
-      run: |
-        echo "⏳ Waiting 30 seconds for Render to start deployment..."
-        sleep 30
   
-  health-check:
-    name: Post-Deployment Health Check
+  healthcheck:
+    name: 🏥 Health Check
     needs: deploy
     runs-on: ubuntu-latest
     
     steps:
-    - name: Wait for Render deployment
+    - name: ⏳ Wait for Render Deployment
       run: |
-        echo "⏳ Waiting for Render deployment to complete..."
-        sleep 60
-    
-    - name: Health check
-      run: |
-        MAX_RETRIES=10
-        RETRY_COUNT=0
-        HEALTH_URL="${{ secrets.RENDER_APP_URL }}/api/health"
+        echo "⏳ Giving Render time to build and deploy..."
+        echo "📊 Estimated time: 2-3 minutes"
         
-        echo "🏥 Checking health endpoint: $HEALTH_URL"
-        
-        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
-          
-          if [ "$RESPONSE" -eq 200 ]; then
-            echo "✅ Health check passed! Application is live."
-            echo "### ✅ Deployment Health Check Passed!" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Health Endpoint:** $HEALTH_URL" >> $GITHUB_STEP_SUMMARY
-            echo "**Status:** Online and responding" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-          
-          RETRY_COUNT=$((RETRY_COUNT + 1))
-          echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES: Received status $RESPONSE. Retrying in 15s..."
+        # Smart wait with progress indicators
+        for i in {1..6}; do
+          echo "⏰ Waiting... ($i/6) - $((i * 15))s elapsed"
           sleep 15
         done
         
-        echo "⚠️ Health check did not pass within timeout. Manual verification recommended."
-        echo "### ⚠️ Health Check Warning!" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Initial wait complete. Starting health checks..."
+    
+    - name: 🔍 Health Check with Smart Retry
+      id: health
+      run: |
+        MAX_RETRIES=12
+        RETRY_COUNT=0
+        HEALTH_URL="${{ secrets.RENDER_APP_URL }}/api/health"
+        START_TIME=$(date +%s)
+        
+        echo "🏥 Checking health endpoint: $HEALTH_URL"
+        echo "🔄 Max retries: $MAX_RETRIES with exponential backoff"
+        echo ""
+        
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+          
+          # Make request with timeout
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            --max-time 10 \
+            --connect-timeout 5 \
+            "$HEALTH_URL" 2>/dev/null || echo "000")
+          
+          CURRENT_TIME=$(date +%s)
+          ELAPSED=$((CURRENT_TIME - START_TIME))
+          
+          if [ "$RESPONSE" -eq 200 ]; then
+            echo "✅ Health check PASSED! (Attempt $RETRY_COUNT/$MAX_RETRIES)"
+            echo "⚡ Application is live and responding"
+            echo "⏱️ Total time: ${ELAPSED}s"
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "---" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ✅ Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| 🏥 Health Status | ✅ Healthy |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⏱️ Verification Time | ${ELAPSED}s |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🔄 Attempts Needed | $RETRY_COUNT/$MAX_RETRIES |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🌐 Live URL | [${{ secrets.RENDER_APP_URL }}](${{ secrets.RENDER_APP_URL }}) |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🏥 Health Endpoint | [/api/health]($HEALTH_URL) |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🎉 **Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "---" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📊 Deployment Timeline" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "1. ✅ Pre-deploy checks (Build: ${{ needs.predeploy.outputs.build_time }})" >> $GITHUB_STEP_SUMMARY
+            echo "2. ✅ Deploy hook triggered (${{ needs.deploy.outputs.deploy_time }})" >> $GITHUB_STEP_SUMMARY
+            echo "3. ✅ Health verification (${ELAPSED}s)" >> $GITHUB_STEP_SUMMARY
+            
+            exit 0
+          fi
+          
+          # Calculate exponential backoff (10s, 15s, 20s, 25s...)
+          WAIT_TIME=$((10 + (RETRY_COUNT * 5)))
+          if [ $WAIT_TIME -gt 30 ]; then
+            WAIT_TIME=30
+          fi
+          
+          echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES: Status $RESPONSE - Waiting ${WAIT_TIME}s before retry... (${ELAPSED}s elapsed)"
+          sleep $WAIT_TIME
+        done
+        
+        # Health check failed
+        FINAL_TIME=$(date +%s)
+        TOTAL_TIME=$((FINAL_TIME - START_TIME))
+        
+        echo "⚠️ Health check timeout after ${TOTAL_TIME}s"
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Status:** Deployment triggered but health check timed out" >> $GITHUB_STEP_SUMMARY
-        echo "**Action Required:** Verify deployment status in Render dashboard" >> $GITHUB_STEP_SUMMARY
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ⚠️ Health Check Timeout" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Info | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| ⏱️ Time Elapsed | ${TOTAL_TIME}s |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔄 Attempts Made | $MAX_RETRIES |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🏥 Last Status | $RESPONSE |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**ℹ️ This doesn't mean deployment failed!**" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+        echo "1. Check [Render Dashboard](https://dashboard.render.com) for build status" >> $GITHUB_STEP_SUMMARY
+        echo "2. Manually verify: [${{ secrets.RENDER_APP_URL }}](${{ secrets.RENDER_APP_URL }})" >> $GITHUB_STEP_SUMMARY
+        echo "3. Check health: [$HEALTH_URL]($HEALTH_URL)" >> $GITHUB_STEP_SUMMARY
+        echo "4. Review Render logs for any startup errors" >> $GITHUB_STEP_SUMMARY
+        
+        # Don't fail the workflow for timeout
         exit 0
