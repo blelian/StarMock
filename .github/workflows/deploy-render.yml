@@ -2,7 +2,7 @@ name: Deploy to Render
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, olwal-qa ]  # Added olwal-qa for testing
   workflow_dispatch:
 
 permissions:
