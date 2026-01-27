@@ -165,22 +165,6 @@ jobs:
         echo "✅ Build completed in ${BUILD_TIME}s"
         echo "📊 Build artifacts:"
         ls -lh dist/
-    
-    - name: 📋 Pre-Deploy Summary
-      run: |
-        echo "### ✅ Pre-Deploy Checks Passed!" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Check | Status | Duration |" >> $GITHUB_STEP_SUMMARY
-        echo "|-------|--------|----------|" >> $GITHUB_STEP_SUMMARY
-        echo "| 🎨 Code Quality | ✅ Passed | Parallel |" >> $GITHUB_STEP_SUMMARY
-        echo "| 🧪 Unit Tests | ✅ Passed | Parallel |" >> $GITHUB_STEP_SUMMARY
-        echo "| 🔒 Security Audit | ✅ Passed | Parallel |" >> $GITHUB_STEP_SUMMARY
-        echo "| 🏗️ Build | ✅ Passed | ${{ steps.timing.outputs.build_time }} |" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "⚡ **Performance:** Quality checks ran in parallel for faster feedback!" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
   
   deploy:
     name: 🚀 Deploy to Render
@@ -191,15 +175,6 @@ jobs:
       deploy_url: ${{ secrets.RENDER_APP_URL }}
     
     steps:
-    - name: 🔔 Deployment Started
-      run: |
-        echo "### 🚀 Deployment in Progress..." >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "⏰ **Started:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-        echo "👤 **Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-        echo "🌿 **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "📝 **Commit:** [\`${GITHUB_SHA:0:7}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
-    
     - name: 🎯 Trigger Render Deploy Hook
       id: deploy_timing
       run: |
@@ -224,32 +199,20 @@ jobs:
         
         if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
           echo "✅ Deployment triggered successfully!"
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ✅ Deploy Hook Triggered Successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| ⚡ Hook Response | ${DEPLOY_TIME}s |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🏗️ Build Time | ${{ needs.build.outputs.build_time }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🌐 Target URL | ${{ secrets.RENDER_APP_URL }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔄 Render is now building and deploying your application..." >> $GITHUB_STEP_SUMMARY
+          echo "🔄 Render is now building and deploying your application..."
         else
-          echo "❌ Deployment hook failed!"
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ❌ Deployment Failed!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**HTTP Status:** $HTTP_CODE" >> $GITHUB_STEP_SUMMARY
-          echo "**Response:** \`$BODY\`" >> $GITHUB_STEP_SUMMARY
+          echo "❌ Deployment hook failed with status $HTTP_CODE"
           exit 1
         fi
   
   healthcheck:
     name: 🏥 Health Check
-    needs: deploy
+    needs: [build, deploy]
     runs-on: ubuntu-latest
+    outputs:
+      health_status: ${{ steps.health.outputs.health_status }}
+      health_time: ${{ steps.health.outputs.health_time }}
+      health_attempts: ${{ steps.health.outputs.health_attempts }}
     
     steps:
     - name: ⏳ Wait for Render Deployment
@@ -272,6 +235,7 @@ jobs:
         RETRY_COUNT=0
         HEALTH_URL="${{ secrets.RENDER_APP_URL }}/api/health"
         START_TIME=$(date +%s)
+        SUCCESS=false
         
         echo "🏥 Checking health endpoint: $HEALTH_URL"
         echo "🔄 Max retries: $MAX_RETRIES with exponential backoff"
@@ -293,32 +257,11 @@ jobs:
             echo "✅ Health check PASSED! (Attempt $RETRY_COUNT/$MAX_RETRIES)"
             echo "⚡ Application is live and responding"
             echo "⏱️ Total time: ${ELAPSED}s"
-            
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "---" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### ✅ Deployment Successful!" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
-            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| 🏥 Health Status | ✅ Healthy |" >> $GITHUB_STEP_SUMMARY
-            echo "| ⏱️ Verification Time | ${ELAPSED}s |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🔄 Attempts Needed | $RETRY_COUNT/$MAX_RETRIES |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🌐 Live URL | [${{ secrets.RENDER_APP_URL }}](${{ secrets.RENDER_APP_URL }}) |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🏥 Health Endpoint | [/api/health]($HEALTH_URL) |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "🎉 **Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "---" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 📊 Deployment Timeline" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "1. ✅ Pre-deploy checks (Parallel: Quality + Tests + Security)" >> $GITHUB_STEP_SUMMARY
-            echo "2. ✅ Build completed (Time: ${{ needs.build.outputs.build_time }})" >> $GITHUB_STEP_SUMMARY
-            echo "3. ✅ Deploy hook triggered (${{ needs.deploy.outputs.deploy_time }})" >> $GITHUB_STEP_SUMMARY
-            echo "4. ✅ Health verification (${ELAPSED}s)" >> $GITHUB_STEP_SUMMARY
-            
-            exit 0
+            echo "health_time=${ELAPSED}s" >> $GITHUB_OUTPUT
+            echo "health_attempts=$RETRY_COUNT" >> $GITHUB_OUTPUT
+            echo "health_status=success" >> $GITHUB_OUTPUT
+            SUCCESS=true
+            break
           fi
           
           # Calculate exponential backoff (10s, 15s, 20s, 25s...)
@@ -331,29 +274,209 @@ jobs:
           sleep $WAIT_TIME
         done
         
-        # Health check failed
-        FINAL_TIME=$(date +%s)
-        TOTAL_TIME=$((FINAL_TIME - START_TIME))
+        if [ "$SUCCESS" = false ]; then
+          # Health check failed
+          FINAL_TIME=$(date +%s)
+          TOTAL_TIME=$((FINAL_TIME - START_TIME))
+          
+          echo "⚠️ Health check timeout after ${TOTAL_TIME}s"
+          echo "health_time=${TOTAL_TIME}s" >> $GITHUB_OUTPUT
+          echo "health_attempts=$MAX_RETRIES" >> $GITHUB_OUTPUT
+          echo "health_status=timeout" >> $GITHUB_OUTPUT
+        fi
+  
+  dashboard:
+    name: 📊 Deployment Dashboard
+    needs: [quality-checks, tests, security, build, deploy, healthcheck]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: 📊 Generate Deployment Dashboard
+      run: |
+        # Determine overall status
+        QUALITY_STATUS="${{ needs.quality-checks.result }}"
+        TESTS_STATUS="${{ needs.tests.result }}"
+        SECURITY_STATUS="${{ needs.security.result }}"
+        BUILD_STATUS="${{ needs.build.result }}"
+        DEPLOY_STATUS="${{ needs.deploy.result }}"
+        HEALTH_STATUS="${{ needs.healthcheck.outputs.health_status }}"
         
-        echo "⚠️ Health check timeout after ${TOTAL_TIME}s"
-        echo "" >> $GITHUB_STEP_SUMMARY
+        # Status emojis
+        get_status_emoji() {
+          case "$1" in
+            "success") echo "✅" ;;
+            "skipped") echo "⏭️" ;;
+            "failure") echo "❌" ;;
+            "cancelled") echo "🚫" ;;
+            "timeout") echo "⏱️" ;;
+            *) echo "❓" ;;
+          esac
+        }
+        
+        # Overall deployment status
+        if [ "$DEPLOY_STATUS" = "success" ] && [ "$HEALTH_STATUS" = "success" ]; then
+          OVERALL_STATUS="✅ SUCCESS"
+          OVERALL_EMOJI="🎉"
+        elif [ "$DEPLOY_STATUS" = "success" ] && [ "$HEALTH_STATUS" = "timeout" ]; then
+          OVERALL_STATUS="⚠️ DEPLOYED (Health Check Timeout)"
+          OVERALL_EMOJI="⚠️"
+        else
+          OVERALL_STATUS="❌ FAILED"
+          OVERALL_EMOJI="💥"
+        fi
+        
+        # Create beautiful dashboard
+        cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+        # 🚀 StarMock Deployment Dashboard
+        
+        ---
+        
+        ## ${{ env.OVERALL_EMOJI }} Overall Status: ${{ env.OVERALL_STATUS }}
+        
+        **Branch:** `${{ github.ref_name }}`  
+        **Commit:** [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})  
+        **Triggered by:** @${{ github.actor }}  
+        **Time:** ${{ github.event.head_commit.timestamp }}
+        
+        ---
+        
+        ## 📋 Pipeline Stages
+        
+        | Stage | Status | Details |
+        |-------|--------|---------|
+        | 🎨 Code Quality | $(get_status_emoji "$QUALITY_STATUS") $QUALITY_STATUS | ESLint + Prettier checks |
+        | 🧪 Unit Tests | $(get_status_emoji "$TESTS_STATUS") $TESTS_STATUS | Vitest test suite |
+        | 🔒 Security Audit | $(get_status_emoji "$SECURITY_STATUS") $SECURITY_STATUS | npm audit (high severity) |
+        | 🏗️ Build | $(get_status_emoji "$BUILD_STATUS") $BUILD_STATUS | Production bundle |
+        | 🚀 Deploy | $(get_status_emoji "$DEPLOY_STATUS") $DEPLOY_STATUS | Render deployment |
+        | 🏥 Health Check | $(get_status_emoji "$HEALTH_STATUS") $HEALTH_STATUS | Endpoint verification |
+        
+        ---
+        
+        ## ⚡ Performance Metrics
+        
+        | Metric | Value | Notes |
+        |--------|-------|-------|
+        | 🏗️ Build Time | ${{ needs.build.outputs.build_time }} | Production bundle compilation |
+        | 🚀 Deploy Hook | ${{ needs.deploy.outputs.deploy_time }} | Render webhook response |
+        | 🏥 Health Check | ${{ needs.healthcheck.outputs.health_time }} | ${{ needs.healthcheck.outputs.health_attempts }} attempts |
+        | ⚡ Parallel Stages | 3 jobs | Quality + Tests + Security |
+        
+        ---
+        
+        ## 🌐 Deployment Information
+        
+        EOF
+        
+        if [ "$DEPLOY_STATUS" = "success" ]; then
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+        **🎯 Live Application:** [${{ secrets.RENDER_APP_URL }}](${{ secrets.RENDER_APP_URL }})  
+        **🏥 Health Endpoint:** [${{ secrets.RENDER_APP_URL }}/api/health](${{ secrets.RENDER_APP_URL }}/api/health)  
+        **📊 Render Dashboard:** [View Logs](https://dashboard.render.com)
+        
+        EOF
+        
+          if [ "$HEALTH_STATUS" = "success" ]; then
+            cat << EOF >> $GITHUB_STEP_SUMMARY
+        ### ✅ Application Status: Healthy
+        
+        Your application is live and responding to requests!
+        
+        **Quick Links:**
+        - 🌐 [Open Application](${{ secrets.RENDER_APP_URL }})
+        - 🏥 [Check Health](${{ secrets.RENDER_APP_URL }}/api/health)
+        - 📊 [View Metrics](https://dashboard.render.com)
+        
+        EOF
+          else
+            cat << EOF >> $GITHUB_STEP_SUMMARY
+        ### ⚠️ Health Check Notice
+        
+        The deployment was successful, but the health check timed out. This doesn't necessarily mean the deployment failed.
+        
+        **Action Items:**
+        1. ✅ Check [Render Dashboard](https://dashboard.render.com) for build status
+        2. ✅ Manually verify: [${{ secrets.RENDER_APP_URL }}](${{ secrets.RENDER_APP_URL }})
+        3. ✅ Review Render logs for any startup errors
+        
+        EOF
+          fi
+        else
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+        ### ❌ Deployment Failed
+        
+        **Troubleshooting Steps:**
+        1. Review the failed job logs above
+        2. Check [Render Dashboard](https://dashboard.render.com) for errors
+        3. Verify all secrets are configured correctly
+        4. Check `render.yaml` configuration
+        
+        EOF
+        fi
+        
+        cat << EOF >> $GITHUB_STEP_SUMMARY
+        ---
+        
+        ## � Workflow Architecture
+        
+        \`\`\`mermaid
+        graph LR
+            A[🎨 Quality] --> D[🏗️ Build]
+            B[🧪 Tests] --> D
+            C[🔒 Security] --> D
+            D --> E[🚀 Deploy]
+            E --> F[🏥 Health Check]
+            F --> G[📊 Dashboard]
+            
+            style A fill:#e1f5ff
+            style B fill:#e1f5ff
+            style C fill:#e1f5ff
+            style D fill:#fff3e0
+            style E fill:#f3e5f5
+            style F fill:#e8f5e9
+            style G fill:#fce4ec
+        \`\`\`
+        
+        **Pipeline Features:**
+        - ⚡ Parallel execution for pre-deploy checks (3x faster)
+        - 🎯 Smart health check with exponential backoff
+        - 📊 Comprehensive metrics tracking
+        - 🔄 Automatic retry logic
+        - 🚨 Emergency deployment mode available
+        
+        ---
+        
+        ## 🎯 Next Steps
+        
+        EOF
+        
+        if [ "$DEPLOY_STATUS" = "success" ] && [ "$HEALTH_STATUS" = "success" ]; then
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+        ✅ **Deployment completed successfully!** Your changes are now live.
+        
+        **Recommended Actions:**
+        - 🧪 Perform smoke tests on the live application
+        - 📊 Monitor application metrics and logs
+        - 👀 Review user feedback and error reports
+        - 🔄 Consider monitoring the first few minutes for any issues
+        
+        EOF
+        else
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+        ⚠️ **Review Required:** Please check the logs and take appropriate action.
+        
+        **Need Help?**
+        - 📖 Check [DEPLOYMENT.md](./DEPLOYMENT.md) for troubleshooting
+        - 💬 Contact the team for deployment support
+        - 🔧 Use emergency deployment mode if needed
+        
+        EOF
+        fi
+        
         echo "---" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### ⚠️ Health Check Timeout" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Info | Value |" >> $GITHUB_STEP_SUMMARY
-        echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-        echo "| ⏱️ Time Elapsed | ${TOTAL_TIME}s |" >> $GITHUB_STEP_SUMMARY
-        echo "| 🔄 Attempts Made | $MAX_RETRIES |" >> $GITHUB_STEP_SUMMARY
-        echo "| 🏥 Last Status | $RESPONSE |" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**ℹ️ This doesn't mean deployment failed!**" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
-        echo "1. Check [Render Dashboard](https://dashboard.render.com) for build status" >> $GITHUB_STEP_SUMMARY
-        echo "2. Manually verify: [${{ secrets.RENDER_APP_URL }}](${{ secrets.RENDER_APP_URL }})" >> $GITHUB_STEP_SUMMARY
-        echo "3. Check health: [$HEALTH_URL]($HEALTH_URL)" >> $GITHUB_STEP_SUMMARY
-        echo "4. Review Render logs for any startup errors" >> $GITHUB_STEP_SUMMARY
-        
-        # Don't fail the workflow for timeout
-        exit 0
+        echo "*Generated by StarMock CI/CD Pipeline • [View Workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*" >> $GITHUB_STEP_SUMMARY
+      env:
+        OVERALL_STATUS: ${{ env.OVERALL_STATUS }}
+        OVERALL_EMOJI: ${{ env.OVERALL_EMOJI }}
