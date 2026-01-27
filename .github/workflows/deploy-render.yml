@@ -19,12 +19,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  predeploy:
-    name: 🔍 Pre-Deploy Quality Gates
+  quality-checks:
+    name: 🎨 Code Quality
     runs-on: ubuntu-latest
-    outputs:
-      build_time: ${{ steps.timing.outputs.build_time }}
-      
+    if: ${{ github.event.inputs.skip_tests != true }}
+    
     steps:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
@@ -43,25 +42,113 @@ jobs:
         npm ci --prefer-offline --no-audit
         echo "::endgroup::"
     
-    - name: 🎨 Code Quality Checks
-      if: ${{ github.event.inputs.skip_tests != 'true' }}
+    - name: 🎨 Linting & Formatting
       working-directory: ./app
       run: |
         echo "::group::Running ESLint"
-        npm run lint
+        npm run lint &
+        LINT_PID=$!
         echo "::endgroup::"
         
         echo "::group::Checking Prettier formatting"
-        npm run format:check
+        npm run format:check &
+        FORMAT_PID=$!
         echo "::endgroup::"
+        
+        # Wait for both to complete
+        wait $LINT_PID
+        LINT_EXIT=$?
+        wait $FORMAT_PID
+        FORMAT_EXIT=$?
+        
+        if [ $LINT_EXIT -ne 0 ]; then
+          echo "❌ Linting failed"
+          exit 1
+        fi
+        
+        if [ $FORMAT_EXIT -ne 0 ]; then
+          echo "❌ Formatting check failed"
+          exit 1
+        fi
+        
+        echo "✅ Code quality checks passed!"
+  
+  tests:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_tests != true }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: ⚙️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: 📦 Install dependencies
+      working-directory: ./app
+      run: npm ci --prefer-offline --no-audit
     
     - name: 🧪 Run Tests
-      if: ${{ github.event.inputs.skip_tests != 'true' }}
       working-directory: ./app
       run: |
         echo "::group::Running test suite"
         npm test -- --run --reporter=verbose
         echo "::endgroup::"
+  
+  security:
+    name: 🔒 Security Audit
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_tests != true }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: ⚙️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: 📦 Install dependencies
+      working-directory: ./app
+      run: npm ci --prefer-offline --no-audit
+    
+    - name: 🔒 Security Audit
+      working-directory: ./app
+      run: |
+        echo "::group::Running npm audit"
+        npm audit --audit-level=high
+        echo "::endgroup::"
+  
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+    needs: [quality-checks, tests, security]
+    if: always() && (needs.quality-checks.result == 'success' || needs.quality-checks.result == 'skipped') && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && (needs.security.result == 'success' || needs.security.result == 'skipped')
+    outputs:
+      build_time: ${{ steps.timing.outputs.build_time }}
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: ⚙️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: 📦 Install dependencies
+      working-directory: ./app
+      run: npm ci --prefer-offline --no-audit
     
     - name: 🏗️ Build Application
       id: timing
@@ -83,19 +170,21 @@ jobs:
       run: |
         echo "### ✅ Pre-Deploy Checks Passed!" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
-        echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-        echo "| 🎨 Linting | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-        echo "| 📝 Formatting | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-        echo "| 🧪 Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-        echo "| 🏗️ Build | ✅ Passed (${{ steps.timing.outputs.build_time }}) |" >> $GITHUB_STEP_SUMMARY
+        echo "| Check | Status | Duration |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|--------|----------|" >> $GITHUB_STEP_SUMMARY
+        echo "| 🎨 Code Quality | ✅ Passed | Parallel |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🧪 Unit Tests | ✅ Passed | Parallel |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔒 Security Audit | ✅ Passed | Parallel |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🏗️ Build | ✅ Passed | ${{ steps.timing.outputs.build_time }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "⚡ **Performance:** Quality checks ran in parallel for faster feedback!" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
         echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
   
   deploy:
     name: 🚀 Deploy to Render
-    needs: predeploy
+    needs: build
     runs-on: ubuntu-latest
     outputs:
       deploy_time: ${{ steps.deploy_timing.outputs.deploy_time }}
@@ -143,7 +232,7 @@ jobs:
           echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| ⚡ Hook Response | ${DEPLOY_TIME}s |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🏗️ Build Time | ${{ needs.predeploy.outputs.build_time }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏗️ Build Time | ${{ needs.build.outputs.build_time }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🌐 Target URL | ${{ secrets.RENDER_APP_URL }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔄 Render is now building and deploying your application..." >> $GITHUB_STEP_SUMMARY
@@ -224,9 +313,10 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### 📊 Deployment Timeline" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "1. ✅ Pre-deploy checks (Build: ${{ needs.predeploy.outputs.build_time }})" >> $GITHUB_STEP_SUMMARY
-            echo "2. ✅ Deploy hook triggered (${{ needs.deploy.outputs.deploy_time }})" >> $GITHUB_STEP_SUMMARY
-            echo "3. ✅ Health verification (${ELAPSED}s)" >> $GITHUB_STEP_SUMMARY
+            echo "1. ✅ Pre-deploy checks (Parallel: Quality + Tests + Security)" >> $GITHUB_STEP_SUMMARY
+            echo "2. ✅ Build completed (Time: ${{ needs.build.outputs.build_time }})" >> $GITHUB_STEP_SUMMARY
+            echo "3. ✅ Deploy hook triggered (${{ needs.deploy.outputs.deploy_time }})" >> $GITHUB_STEP_SUMMARY
+            echo "4. ✅ Health verification (${ELAPSED}s)" >> $GITHUB_STEP_SUMMARY
             
             exit 0
           fi
