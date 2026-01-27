@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ '**' ]
 
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
 jobs:
   lint-and-test:
     name: Lint and Test
@@ -37,6 +42,31 @@ jobs:
     - name: Run tests
       working-directory: ./app
       run: npm test -- --run
+    
+    - name: Run security audit
+      working-directory: ./app
+      run: npm audit --audit-level=moderate
+      continue-on-error: true
+    
+    - name: Check for outdated dependencies
+      working-directory: ./app
+      run: npm outdated || true
+  
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript, typescript
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
   
   build:
     name: Build

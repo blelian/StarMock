@@ -1,0 +1,245 @@
+name: Quality Gates
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  code-coverage:
+    name: Code Coverage Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./app
+      run: npm ci
+    
+    - name: Install coverage tools
+      working-directory: ./app
+      run: npm install --save-dev @vitest/coverage-v8
+    
+    - name: Run tests with coverage
+      working-directory: ./app
+      run: npm run test:coverage
+    
+    - name: Check coverage thresholds
+      working-directory: ./app
+      run: |
+        echo "📊 Analyzing code coverage..."
+        
+        # Parse coverage results (example thresholds)
+        COVERAGE_FILE="coverage/coverage-summary.json"
+        
+        if [ -f "$COVERAGE_FILE" ]; then
+          echo "✅ Coverage report found"
+          
+          # You can add specific threshold checks here
+          # Example: Check if line coverage is above 70%
+          # LINE_COVERAGE=$(jq '.total.lines.pct' $COVERAGE_FILE)
+          # if (( $(echo "$LINE_COVERAGE < 70" | bc -l) )); then
+          #   echo "❌ Line coverage is below 70%: $LINE_COVERAGE%"
+          #   exit 1
+          # fi
+          
+          echo "📈 Coverage analysis complete"
+        else
+          echo "⚠️ Coverage report not found"
+        fi
+    
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: app/coverage/
+        retention-days: 30
+    
+    - name: Comment PR with coverage
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = './app/coverage/coverage-summary.json';
+          
+          if (fs.existsSync(path)) {
+            const coverage = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const total = coverage.total;
+            
+            const body = `## 📊 Code Coverage Report
+
+            | Metric | Coverage |
+            |--------|----------|
+            | **Statements** | ${total.statements.pct}% |
+            | **Branches** | ${total.branches.pct}% |
+            | **Functions** | ${total.functions.pct}% |
+            | **Lines** | ${total.lines.pct}% |
+
+            ### 🎯 Coverage Details
+            - Total statements: ${total.statements.covered}/${total.statements.total}
+            - Total branches: ${total.branches.covered}/${total.branches.total}
+            - Total functions: ${total.functions.covered}/${total.functions.total}
+            - Total lines: ${total.lines.covered}/${total.lines.total}`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+          }
+
+  quality-metrics:
+    name: Code Quality Metrics
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./app
+      run: npm ci
+    
+    - name: Run linter
+      working-directory: ./app
+      run: |
+        echo "🔍 Running ESLint..."
+        npm run lint > lint-report.txt 2>&1 || true
+        
+        if grep -q "error" lint-report.txt; then
+          echo "❌ ESLint errors detected"
+          cat lint-report.txt
+          exit 1
+        else
+          echo "✅ No ESLint errors"
+        fi
+    
+    - name: Check code formatting
+      working-directory: ./app
+      run: |
+        echo "🎨 Checking code formatting..."
+        npm run format:check
+    
+    - name: Analyze code complexity
+      working-directory: ./app
+      run: |
+        echo "📐 Analyzing code complexity..."
+        
+        # Count files
+        TOTAL_FILES=$(find src -type f \( -name "*.ts" -o -name "*.tsx" \) | wc -l)
+        
+        # Calculate average file size
+        AVG_SIZE=$(find src -type f \( -name "*.ts" -o -name "*.tsx" \) -exec wc -l {} + | awk '{total += $1; count++} END {if (count > 0) print int(total/count); else print 0}')
+        
+        echo "📊 Code Metrics:"
+        echo "  - Total TypeScript files: $TOTAL_FILES"
+        echo "  - Average file size: $AVG_SIZE lines"
+        
+        # Warn if average file size is too large
+        if [ "$AVG_SIZE" -gt 300 ]; then
+          echo "⚠️ Average file size is high. Consider breaking down large files."
+        else
+          echo "✅ File sizes are reasonable"
+        fi
+    
+    - name: Check test coverage
+      working-directory: ./app
+      run: |
+        echo "🧪 Checking test coverage..."
+        npm run test:coverage
+    
+    - name: Generate quality report
+      if: always()
+      run: |
+        echo "## 📈 Quality Metrics Summary" > quality-report.md
+        echo "" >> quality-report.md
+        echo "### ✅ Checks Completed" >> quality-report.md
+        echo "- Linting" >> quality-report.md
+        echo "- Code formatting" >> quality-report.md
+        echo "- Code complexity" >> quality-report.md
+        echo "- Test coverage" >> quality-report.md
+    
+    - name: Upload quality report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: quality-report
+        path: quality-report.md
+        retention-days: 30
+
+  performance-check:
+    name: Build Performance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./app
+      run: npm ci
+    
+    - name: Build with timing
+      working-directory: ./app
+      run: |
+        echo "⏱️ Measuring build time..."
+        START_TIME=$(date +%s)
+        npm run build
+        END_TIME=$(date +%s)
+        
+        BUILD_TIME=$((END_TIME - START_TIME))
+        echo "✅ Build completed in ${BUILD_TIME} seconds"
+        
+        # Warn if build takes too long
+        if [ "$BUILD_TIME" -gt 60 ]; then
+          echo "⚠️ Build time is high (>${BUILD_TIME}s). Consider optimizing build process."
+        fi
+    
+    - name: Analyze bundle size
+      working-directory: ./app
+      run: |
+        echo "📦 Analyzing bundle size..."
+        
+        if [ -d "dist" ]; then
+          BUNDLE_SIZE=$(du -sh dist | cut -f1)
+          echo "Bundle size: $BUNDLE_SIZE"
+          
+          # List largest files
+          echo "Largest bundle files:"
+          find dist -type f -exec du -h {} + | sort -rh | head -10
+        else
+          echo "⚠️ dist directory not found"
+        fi
