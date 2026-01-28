@@ -172,9 +172,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       deploy_time: ${{ steps.deploy_timing.outputs.deploy_time }}
-      deploy_url: ${{ steps.set_env.outputs.app_url }}
-      deploy_target: ${{ steps.set_env.outputs.deploy_target }}
-      deploy_hook: ${{ steps.set_env.outputs.deploy_hook }}
+      deploy_status: ${{ steps.deploy_timing.outputs.deploy_status }}
+      deploy_target: ${{ steps.deploy_timing.outputs.deploy_target }}
     
     steps:
     - name: 🎯 Set Deployment Target
@@ -290,14 +289,17 @@ jobs:
         DEPLOY_TIME=$((END_TIME - START_TIME))
         
         echo "deploy_time=${DEPLOY_TIME}s" >> $GITHUB_OUTPUT
+        echo "deploy_target=$DEPLOY_TARGET" >> $GITHUB_OUTPUT
         echo "HTTP Status: $HTTP_CODE"
         echo "Response: $BODY"
         echo "⚡ Deploy hook responded in ${DEPLOY_TIME}s"
         
         if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+          echo "deploy_status=success" >> $GITHUB_OUTPUT
           echo "✅ Deployment triggered successfully to $DEPLOY_TARGET!"
           echo "🔄 Render is now building and deploying your application..."
         else
+          echo "deploy_status=failed" >> $GITHUB_OUTPUT
           echo "❌ Deployment hook failed with status $HTTP_CODE"
           exit 1
         fi
@@ -328,21 +330,28 @@ jobs:
     - name: 🔍 Health Check with Smart Retry
       id: health
       run: |
+        # Get the correct URL based on branch (same logic as deploy job)
+        if [ "${{ github.ref_name }}" = "main" ]; then
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
+          DEPLOY_TARGET="Production"
+        else
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
+          DEPLOY_TARGET="Development (${{ github.ref_name }})"
+        fi
+        
         MAX_RETRIES=12
         RETRY_COUNT=0
-        HEALTH_URL="${{ needs.deploy.outputs.deploy_url }}/api/health"
-        DEPLOY_TARGET="${{ needs.deploy.outputs.deploy_target }}"
+        HEALTH_URL="${APP_URL}/api/health"
         START_TIME=$(date +%s)
         SUCCESS=false
         
-        echo "🔍 DEBUG - Deploy URL from output: [${{ needs.deploy.outputs.deploy_url }}]"
+        echo "🔍 DEBUG - App URL: [$APP_URL]"
         echo "🔍 DEBUG - Health URL: [$HEALTH_URL]"
         
         # Validate health URL is not empty
-        if [ -z "${{ needs.deploy.outputs.deploy_url }}" ]; then
-          echo "❌ ERROR: Deploy URL is empty!"
+        if [ -z "$APP_URL" ]; then
+          echo "❌ ERROR: App URL is empty!"
           echo "🔍 Check that RENDER_APP_URL or RENDER_APP_URL_DEV secret is configured"
-          echo "🔍 The secret value might contain whitespace - check the secret configuration"
           echo "health_status=error" >> $GITHUB_OUTPUT
           echo "health_time=0s" >> $GITHUB_OUTPUT
           echo "health_attempts=0" >> $GITHUB_OUTPUT
@@ -593,9 +602,15 @@ jobs:
         
         EOF
         
+        # Get deployment URL based on branch (same as deploy/healthcheck jobs)
+        if [ "${{ github.ref_name }}" = "main" ]; then
+          DEPLOY_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
+        else
+          DEPLOY_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
+        fi
+        
         # Deployment-specific sections
         if [ "$DEPLOY_STATUS" = "success" ]; then
-          DEPLOY_URL="${{ needs.deploy.outputs.deploy_url }}"
           DEPLOY_TARGET="${{ needs.deploy.outputs.deploy_target }}"
           cat << EOF >> $GITHUB_STEP_SUMMARY
         ## 🌐 Live Deployment
@@ -634,7 +649,6 @@ jobs:
         
         EOF
           else
-            DEPLOY_URL="${{ needs.deploy.outputs.deploy_url }}"
             cat << EOF >> $GITHUB_STEP_SUMMARY
         ### ⚠️ Health Check Notice
         
