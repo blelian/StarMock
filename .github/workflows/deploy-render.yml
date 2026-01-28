@@ -189,11 +189,12 @@ jobs:
           echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
           echo "🔍 DEBUG - App URL value: [$APP_URL]"
           
-          {
-            echo "deploy_hook=$DEPLOY_HOOK_URL"
-            echo "app_url=$APP_URL"
-            echo "deploy_target=Production"
-          } >> $GITHUB_OUTPUT
+          echo "deploy_hook=$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
+          echo "app_url=$APP_URL" >> "$GITHUB_OUTPUT"
+          echo "deploy_target=Production" >> "$GITHUB_OUTPUT"
+          
+          echo "🔍 DEBUG - GITHUB_OUTPUT file contents:"
+          cat "$GITHUB_OUTPUT"
           
           echo "📍 Deploying to: Production (Main Branch)"
           echo "🌐 Target URL: $APP_URL"
@@ -207,11 +208,12 @@ jobs:
           echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
           echo "🔍 DEBUG - App URL value: [$APP_URL]"
           
-          {
-            echo "deploy_hook=$DEPLOY_HOOK_URL"
-            echo "app_url=$APP_URL"
-            echo "deploy_target=Development (${{ github.ref_name }})"
-          } >> $GITHUB_OUTPUT
+          echo "deploy_hook=$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
+          echo "app_url=$APP_URL" >> "$GITHUB_OUTPUT"
+          echo "deploy_target=Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
+          
+          echo "🔍 DEBUG - GITHUB_OUTPUT file contents:"
+          cat "$GITHUB_OUTPUT"
           
           echo "📍 Deploying to: Development (${{ github.ref_name }})"
           echo "🌐 Target URL: $APP_URL"
