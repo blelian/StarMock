@@ -180,8 +180,9 @@ jobs:
       id: set_env
       run: |
         if [ "${{ github.ref_name }}" = "main" ]; then
-          DEPLOY_HOOK_URL="${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-          APP_URL="${{ secrets.RENDER_APP_URL }}"
+          # Strip whitespace from secrets
+          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | tr -d '[:space:]')
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | tr -d '[:space:]')
           
           echo "🔍 DEBUG - Production deploy hook length: ${#DEPLOY_HOOK_URL}"
           echo "🔍 DEBUG - Production app URL length: ${#APP_URL}"
@@ -194,10 +195,16 @@ jobs:
           echo "📍 Deploying to: Production (Main Branch)"
           echo "🌐 Target URL: $APP_URL"
         else
-          APP_URL="${{ secrets.RENDER_APP_URL_DEV }}"
-          echo "🔍 DEBUG - Raw URL length: ${#APP_URL}"
-          echo "🔍 DEBUG - URL value: [$APP_URL]"
-          echo "deploy_hook=${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" >> $GITHUB_OUTPUT
+          # Strip whitespace from secrets
+          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | tr -d '[:space:]')
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | tr -d '[:space:]')
+          
+          echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
+          echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
+          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
+          echo "🔍 DEBUG - App URL value: [$APP_URL]"
+          
+          echo "deploy_hook=$DEPLOY_HOOK_URL" >> $GITHUB_OUTPUT
           echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
           echo "deploy_target=Development (${{ github.ref_name }})" >> $GITHUB_OUTPUT
           echo "📍 Deploying to: Development (${{ github.ref_name }})"
@@ -287,6 +294,20 @@ jobs:
         DEPLOY_TARGET="${{ needs.deploy.outputs.deploy_target }}"
         START_TIME=$(date +%s)
         SUCCESS=false
+        
+        echo "🔍 DEBUG - Deploy URL from output: [${{ needs.deploy.outputs.deploy_url }}]"
+        echo "🔍 DEBUG - Health URL: [$HEALTH_URL]"
+        
+        # Validate health URL is not empty
+        if [ -z "${{ needs.deploy.outputs.deploy_url }}" ]; then
+          echo "❌ ERROR: Deploy URL is empty!"
+          echo "🔍 Check that RENDER_APP_URL or RENDER_APP_URL_DEV secret is configured"
+          echo "🔍 The secret value might contain whitespace - check the secret configuration"
+          echo "health_status=error" >> $GITHUB_OUTPUT
+          echo "health_time=0s" >> $GITHUB_OUTPUT
+          echo "health_attempts=0" >> $GITHUB_OUTPUT
+          exit 1
+        fi
         
         echo "🏥 Checking health endpoint: $HEALTH_URL"
         echo "📍 Target: $DEPLOY_TARGET"
