@@ -1,0 +1,55 @@
+/* ========================== */
+/* Shared UI Utilities        */
+/* ========================== */
+
+.glass-panel {
+  background: rgba(18, 23, 33, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 230, 207, 0.1);
+}
+
+.neon-glow {
+  box-shadow: 0 0 15px rgba(0, 230, 207, 0.3);
+}
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+}
+
+.cyber-grid {
+  background-image: linear-gradient(rgba(0, 230, 207, 0.05) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0, 230, 207, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Logo Utilities */
+.site-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.site-logo h1 {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.site-logo:hover {
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+
+/* Utility for min-height on header placeholder */
+#site-header {
+  min-height: 80px;
+}
+
+/* CTA / Hero tweaks (kept from index.html) */
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+  0% { transform: scale(1); opacity: 1; }
+  75%, 100% { transform: scale(2); opacity: 0; }
+}

@@ -1,192 +1,44 @@
 <!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StarMock | Access the Future</title>
 
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>StarMock | Access the Future</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#00e6cf",
-                        "background-light": "#f9fafb",
-                        "background-dark": "#0f131a",
-                        "card-bg": "rgba(24, 30, 41, 0.6)",
-                    },
-                    fontFamily: {
-                        "display": ["Space Grotesk", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.5rem",
-                        "lg": "1rem",
-                        "xl": "1.5rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
-<style>
-        body {
-            font-family: 'Space Grotesk', sans-serif;
-        }
-        .glass {
-            background: rgba(27, 40, 38, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(0, 230, 207, 0.2);
-        }
-        .mesh-bg {
-            background-color: #0f131a;
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(0, 230, 207, 0.15) 0, transparent 50%), 
-                radial-gradient(at 100% 100%, rgba(0, 230, 207, 0.05) 0, transparent 50%);
-        }
-        .scanline {
-            width: 100%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #00e6cf, transparent);
-            position: absolute;
-            top: 0;
-            left: 0;
-            opacity: 0.2;
-        }
-        .input-focus-glow:focus-within {
-            box-shadow: 0 0 15px rgba(0, 230, 207, 0.1);
-        }
-    </style>
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" defer></script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="/styles/login.css" />
+
+  <!-- External Tailwind config -->
+  <script src="/components/tailwind-config.js" defer></script>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-white overflow-hidden font-display">
-<div class="relative flex min-h-screen w-full mesh-bg">
-<!-- Brand Panel (Left) - Hidden on mobile, 40% on desktop -->
-<div class="hidden lg:flex lg:w-[40%] flex-col justify-between p-12 relative border-r border-white/5">
-<div class="z-10">
-<div class="flex items-center gap-3">
-<div class="size-10 bg-primary/20 rounded-lg flex items-center justify-center border border-primary/40 shadow-[0_0_20px_rgba(0,230,207,0.2)]">
-<span class="material-symbols-outlined text-primary scale-125">auto_awesome</span>
-</div>
-<h2 class="text-2xl font-bold tracking-tight">StarMock</h2>
-</div>
-</div>
-<div class="z-10 space-y-6">
-<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest">
-<span class="relative flex h-2 w-2">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-</span>
-                    AI Engine Active
-                </div>
-<h1 class="text-6xl font-bold leading-[1.1] tracking-tight">
-                    Master the <span class="text-primary italic">STAR</span> Method with AI.
-                </h1>
-<p class="text-[#9abcb8] text-lg max-w-md leading-relaxed">
-                    Precision practice for the next generation of leaders. Real-time feedback, behavioral analysis, and career-defining preparation.
-                </p>
-</div>
-<div class="z-10 flex gap-8 opacity-50 text-sm">
-<span>© 2024 StarMock AI</span>
-<a class="hover:text-primary transition-colors" href="#">System Status</a>
-<a class="hover:text-primary transition-colors" href="#">Privacy Protocol</a>
-</div>
-<!-- Decorative Elements -->
-<div class="absolute inset-0 overflow-hidden pointer-events-none">
-<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-20">
-<svg class="w-full h-full text-primary" viewbox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-<path d="M44.7,-76.4C58.1,-69.2,69.2,-58.1,76.4,-44.7C83.7,-31.3,87.1,-15.7,86.3,-0.5C85.5,14.7,80.4,29.3,72.4,42.4C64.4,55.5,53.4,67,40.3,74.3C27.2,81.5,13.6,84.4,-0.4,85.1C-14.4,85.8,-28.8,84.3,-41.7,77.5C-54.6,70.7,-66,58.6,-73.8,44.9C-81.6,31.2,-85.8,15.6,-86.1,-0.2C-86.4,-16,-82.8,-32,-74.2,-45.5C-65.5,-59.1,-51.9,-70.2,-37.5,-76.8C-23.1,-83.4,-11.5,-85.4,1.8,-88.6C15.1,-91.8,31.3,-83.6,44.7,-76.4Z" fill="currentColor" transform="translate(100 100)"></path>
-</svg>
-</div>
-</div>
-</div>
-<!-- Form Panel (Right) -->
-<div class="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 relative">
-<div class="w-full max-w-[480px]">
-<!-- Mobile Logo -->
-<div class="lg:hidden flex justify-center mb-10">
-<div class="flex items-center gap-3">
-<div class="size-8 bg-primary/20 rounded-lg flex items-center justify-center border border-primary/40">
-<span class="material-symbols-outlined text-primary scale-110">auto_awesome</span>
-</div>
-<h2 class="text-xl font-bold">StarMock</h2>
-</div>
-</div>
-<!-- Glassmorphic Card -->
-<div class="glass rounded-xl p-8 lg:p-10 shadow-2xl relative overflow-hidden">
-<div class="scanline"></div>
-<div class="mb-8">
-<h3 class="text-2xl font-bold mb-2">Initialize Session</h3>
-<p class="text-[#9abcb8] text-sm">Select your authentication protocol to proceed.</p>
-</div>
-<!-- Segmented Control -->
-<div class="flex h-12 items-center justify-center rounded-lg bg-[#273a38]/40 p-1 mb-8">
-<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 has-[:checked]:bg-primary has-[:checked]:text-background-dark text-[#9abcb8] text-sm font-bold transition-all duration-300">
-<span class="truncate">Login</span>
-<input checked="" class="invisible w-0" name="auth-mode" type="radio" value="Login"/>
-</label>
-<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 has-[:checked]:bg-primary has-[:checked]:text-background-dark text-[#9abcb8] text-sm font-bold transition-all duration-300">
-<span class="truncate">Sign Up</span>
-<input class="invisible w-0" name="auth-mode" type="radio" value="Sign Up"/>
-</label>
-</div>
-<form class="space-y-5">
-<div class="space-y-2 group">
-<label class="text-xs font-bold uppercase tracking-wider text-[#9abcb8] ml-1">Email Address</label>
-<div class="relative input-focus-glow rounded-lg">
-<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#9abcb8] text-xl">alternate_email</span>
-<input class="w-full h-14 pl-12 pr-4 bg-[#1b2826]/50 border border-[#395653] focus:border-primary focus:ring-0 rounded-lg text-white placeholder:text-[#9abcb8]/40 transition-all outline-none" placeholder="student@university.edu" type="email"/>
-</div>
-</div>
-<div class="space-y-2 group">
-<div class="flex justify-between items-center px-1">
-<label class="text-xs font-bold uppercase tracking-wider text-[#9abcb8]">Access Code</label>
-<a class="text-xs text-primary hover:underline font-medium" href="#">Reset Protocol?</a>
-</div>
-<div class="relative input-focus-glow rounded-lg">
-<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#9abcb8] text-xl">lock_open</span>
-<input class="w-full h-14 pl-12 pr-4 bg-[#1b2826]/50 border border-[#395653] focus:border-primary focus:ring-0 rounded-lg text-white placeholder:text-[#9abcb8]/40 transition-all outline-none" placeholder="••••••••" type="password"/>
-</div>
-</div>
-<button class="w-full h-14 bg-primary text-background-dark font-bold rounded-lg shadow-[0_0_20px_rgba(0,230,207,0.3)] hover:shadow-[0_0_30px_rgba(0,230,207,0.5)] transition-all duration-300 flex items-center justify-center gap-2 mt-4 group" type="submit">
-                            Confirm Authorization
-                            <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-</button>
-</form>
-<div class="mt-10">
-<div class="relative flex items-center mb-6">
-<div class="flex-grow border-t border-white/10"></div>
-<span class="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-widest text-[#9abcb8]">Direct Linkage</span>
-<div class="flex-grow border-t border-white/10"></div>
-</div>
-<div class="grid place-items-center">
-  <button class="flex items-center justify-center h-12 rounded-lg bg-[#273a38]/30 border border-white/5 hover:bg-[#273a38]/50 hover:border-white/20 transition-all gap-2 text-sm font-medium">
-    <img alt="" class="size-4 brightness-200" src="./google.png"/>
-    Google
-  </button>
-</div>
-</div>
-</div>
-<!-- Footer Links -->
-<div class="mt-8 flex flex-col items-center gap-4">
-<a class="group flex items-center gap-3 text-[#9abcb8] hover:text-primary transition-all text-sm font-medium" href="#">
-                        Try StarMock without an account
-                        <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
-</a>
-<div class="h-1 w-1 rounded-full bg-white/10"></div>
-<p class="text-xs text-[#9abcb8]/40 text-center leading-relaxed">
-                        By initializing session, you agree to our 
-                        <a class="underline hover:text-primary" href="#">Engagement Terms</a> and 
-                        <a class="underline hover:text-primary" href="#">Data Security Protocol</a>.
-                    </p>
-</div>
-</div>
-<!-- Background Texture for Right side -->
-<div class="absolute inset-0 z-[-1] opacity-30 pointer-events-none">
-<div class="h-full w-full" style="background-image: radial-gradient(circle at 2px 2px, rgba(0,230,207,0.05) 1px, transparent 0); background-size: 40px 40px;"></div>
-</div>
-</div>
-</div>
-</body></html>
+<body class="bg-background-light dark:bg-background-dark text-white font-display">
+
+  <!-- Shared Header -->
+  <div id="site-header"></div>
+
+  <div class="relative flex min-h-screen w-full">
+    <!-- Left Brand Panel -->
+    <div id="brand-panel" class="hidden lg:flex lg:w-[40%] flex-col justify-center items-center relative"></div>
+
+    <!-- Right Login/Signup Form Panel -->
+    <div id="login-form" class="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 relative"></div>
+  </div>
+
+  <!-- Shared Footer -->
+  <div id="site-footer"></div>
+
+  <!-- External JS Components -->
+  <script src="/components/header.js" defer></script>
+  <script src="/components/footer.js" defer></script>
+  <script src="/components/brand-panel.js" defer></script>
+  <script src="/components/login-form.js" defer></script>
+
+</body>
+</html>

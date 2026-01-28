@@ -1,0 +1,100 @@
+/* Base font */
+body {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Glass Card */
+.glass {
+  background: rgba(27, 40, 38, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 230, 207, 0.2);
+}
+
+/* Background mesh for page */
+.mesh-bg {
+  background-color: #0f131a;
+  background-image: 
+    radial-gradient(
+      at 0% 0%, 
+      rgba(0, 230, 207, 0.15) 0, 
+      transparent 50%
+    ), 
+    radial-gradient(
+      at 100% 100%, 
+      rgba(0, 230, 207, 0.05) 0, 
+      transparent 50%
+    );
+}
+
+/* Scanline for glass card */
+.scanline {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #00e6cf, transparent);
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0.2;
+}
+
+/* Input focus glow */
+.input-focus-glow:focus-within {
+  box-shadow: 0 0 15px rgba(0, 230, 207, 0.1);
+}
+
+/* Neon blob */
+.neon-blob {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%, 
+    rgba(0, 230, 207, 0.2), 
+    rgba(0, 230, 207, 0.05) 70%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.5rem;
+  color: #00e6cf;
+  font-weight: bold;
+  backdrop-filter: blur(12px);
+  box-shadow: 
+    0 0 30px rgba(0, 230, 207, 0.5),
+    0 0 60px rgba(0, 230, 207, 0.2) inset;
+  line-height: 1.2;
+  animation: neonPulse 2s infinite ease-in-out;
+}
+
+/* Neon pulse animation */
+@keyframes neonPulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 20px rgba(0,230,207,0.4),
+      0 0 40px rgba(0,230,207,0.2) inset;
+  }
+  50% {
+    box-shadow: 
+      0 0 30px rgba(0,230,207,0.6),
+      0 0 60px rgba(0,230,207,0.3) inset;
+  }
+}
+
+/* Tailwind-style pulse for other animations */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.25;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.35;
+  }
+}
+
+.animate-[pulse_6s_ease-in-out_infinite] {
+  animation: pulse 6s ease-in-out infinite;
+}
