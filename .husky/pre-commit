@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+echo "🔍 Current directory: $(pwd)"
+echo "🔍 Script directory: $(dirname -- "$0")"
+
+# Get the repository root (parent of .husky directory)
+REPO_ROOT="$(dirname -- "$0")/.."
+echo "🔍 Repository root: $REPO_ROOT"
+
+# Change to app directory and run checks
+cd "$REPO_ROOT/app"
+echo "🔍 Changed to app directory: $(pwd)"
+
+# Run linting
+echo "🎨 Running ESLint..."
+npm run lint
+
+# Run formatting check
+echo "💅 Checking Prettier formatting..."
+npm run format:check
+
+# Run tests
+echo "🧪 Running tests..."
+npm test
+
+echo "✅ All pre-commit checks passed!"
