@@ -196,63 +196,71 @@ jobs:
           fi
         fi
 
-        if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "blelian/StarMock" ] ); then
-          # Strip only leading/trailing whitespace from secrets
-          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | xargs)
-          APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
-          
-          echo "🔍 DEBUG - Production deploy hook length: ${#DEPLOY_HOOK_URL}"
-          echo "🔍 DEBUG - Production app URL length: ${#APP_URL}"
-          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
-          echo "🔍 DEBUG - App URL value: [$APP_URL]"
-          
-          # Use GitHub Actions format with proper delimiter for multiline/special chars
-          echo "deploy_hook<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-          
-          echo "app_url<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$APP_URL" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-          
-          echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
-          echo "Production" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-          
-          echo "🔍 DEBUG - GITHUB_OUTPUT file contents:"
-          cat "$GITHUB_OUTPUT" | tail -20
-          
-          echo "📍 Deploying to: Production (Main Branch)"
-          echo "🌐 Target URL: $APP_URL"
-        else
-          # Strip only leading/trailing whitespace from secrets
+        # Determine which secrets to use based on repository and branch
+        if [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
+          # Always use dev secrets for fork repository
           DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
           
+          echo "🔍 DEBUG - Fork repo (olwalgeorge/StarMock) - using dev secrets"
           echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
           echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
           echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
           echo "🔍 DEBUG - App URL value: [$APP_URL]"
           
-          # Use GitHub Actions format with proper delimiter for multiline/special chars
-          echo "deploy_hook<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
+          echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
+          echo "Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
           
-          echo "app_url<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$APP_URL" >> "$GITHUB_OUTPUT"
+          echo "📍 Deploying to: Development (${{ github.ref_name }})"
+          echo "🌐 Target URL: $APP_URL"
+        elif [ "${{ github.repository }}" = "blelian/StarMock" ] && [ "${{ github.ref_name }}" = "main" ]; then
+          # Use prod secrets for main branch in upstream repository
+          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | xargs)
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
+          
+          echo "🔍 DEBUG - Upstream main branch - using prod secrets"
+          echo "🔍 DEBUG - Production deploy hook length: ${#DEPLOY_HOOK_URL}"
+          echo "🔍 DEBUG - Production app URL length: ${#APP_URL}"
+          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
+          echo "🔍 DEBUG - App URL value: [$APP_URL]"
+          
+          echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
+          echo "Production" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
+          
+          echo "📍 Deploying to: Production (Main Branch)"
+          echo "🌐 Target URL: $APP_URL"
+        else
+          # Use dev secrets for non-main branches in upstream repository
+          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
+          
+          echo "🔍 DEBUG - Upstream non-main branch - using dev secrets"
+          echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
+          echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
+          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
+          echo "🔍 DEBUG - App URL value: [$APP_URL]"
           
           echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
           echo "Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
           
-          echo "🔍 DEBUG - GITHUB_OUTPUT file contents:"
-          cat "$GITHUB_OUTPUT" | tail -20
-          
           echo "📍 Deploying to: Development (${{ github.ref_name }})"
           echo "🌐 Target URL: $APP_URL"
         fi
+
+        # Use GitHub Actions format with proper delimiter for multiline/special chars
+        echo "deploy_hook<<EOF" >> "$GITHUB_OUTPUT"
+        echo "$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
+        echo "EOF" >> "$GITHUB_OUTPUT"
+        
+        echo "app_url<<EOF" >> "$GITHUB_OUTPUT"
+        echo "$APP_URL" >> "$GITHUB_OUTPUT"
+        echo "EOF" >> "$GITHUB_OUTPUT"
+        
+        echo "🔍 DEBUG - GITHUB_OUTPUT file contents:"
+        cat "$GITHUB_OUTPUT" | tail -20
         # If required secrets are missing, mark this run to skip deploy.
         if [ -z "$APP_URL" ] || [ -z "$DEPLOY_HOOK_URL" ]; then
           echo "⚠️ WARNING: Deployment secrets missing or empty. Skipping deploy step."
@@ -417,13 +425,21 @@ jobs:
           fi
         fi
         
-        if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "blelian/StarMock" ] ); then
+        # Determine which secrets to use based on repository and branch
+        if [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
+          # Always use dev secrets for fork repository
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
+          echo "🔍 DEBUG - Fork repo (olwalgeorge/StarMock) - using dev secrets"
+          echo "🔍 DEBUG - Dev app URL configured: ${#APP_URL} chars"
+        elif [ "${{ github.repository }}" = "blelian/StarMock" ] && [ "${{ github.ref_name }}" = "main" ]; then
+          # Use prod secrets for main branch in upstream repository
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
-          
+          echo "🔍 DEBUG - Upstream main branch - using prod secrets"
           echo "🔍 DEBUG - Production app URL configured: ${#APP_URL} chars"
         else
+          # Use dev secrets for non-main branches in upstream repository
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
-          
+          echo "🔍 DEBUG - Upstream non-main branch - using dev secrets"
           echo "🔍 DEBUG - Dev app URL configured: ${#APP_URL} chars"
         fi
         
