@@ -380,6 +380,7 @@ jobs:
   healthcheck:
     name: 🏥 Health Check
     needs: [build, deploy]
+    if: ${{ needs.deploy.outputs.deploy_status == 'success' }}
     runs-on: ubuntu-latest
     outputs:
       health_status: ${{ steps.health.outputs.health_status }}
@@ -404,12 +405,26 @@ jobs:
       id: health
       run: |
         # Get the correct URL based on branch (same logic as deploy job)
-        if [ "${{ github.ref_name }}" = "main" ]; then
+        # Determine if this run should be treated as a Production deploy.
+        # We allow two canonical flows that can trigger a production deploy:
+        #  1) A push to the main branch in the canonical repository.
+        #  2) A merged pull request (closed with merged=true) targeting main in the canonical repository.
+        IS_PROD=false
+        
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
+            IS_PROD=true
+          fi
+        fi
+        
+        if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ] ); then
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
-          DEPLOY_TARGET="Production"
+          
+          echo "🔍 DEBUG - Production app URL configured: ${#APP_URL} chars"
         else
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
-          DEPLOY_TARGET="Development (${{ github.ref_name }})"
+          
+          echo "🔍 DEBUG - Dev app URL configured: ${#APP_URL} chars"
         fi
         
         MAX_RETRIES=12
@@ -423,12 +438,13 @@ jobs:
         
         # Validate health URL is not empty
         if [ -z "$APP_URL" ]; then
-          echo "❌ ERROR: App URL is empty!"
-          echo "🔍 Check that RENDER_APP_URL or RENDER_APP_URL_DEV secret is configured"
-          echo "health_status=error" >> $GITHUB_OUTPUT
+          echo "⚠️ WARNING: App URL is empty — skipping health checks"
+          echo "🔍 This may indicate that RENDER_APP_URL_DEV secret is not set in the fork repository"
+          echo "🔍 For branch deployments, dev secrets must be configured in the fork repository"
+          echo "health_status=skipped" >> $GITHUB_OUTPUT
           echo "health_time=0s" >> $GITHUB_OUTPUT
           echo "health_attempts=0" >> $GITHUB_OUTPUT
-          exit 1
+          exit 0
         fi
         
         echo "🏥 Checking health endpoint: $HEALTH_URL"
