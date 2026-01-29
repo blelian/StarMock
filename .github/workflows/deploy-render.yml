@@ -380,7 +380,7 @@ jobs:
   healthcheck:
     name: 🏥 Health Check
     needs: [build, deploy]
-    if: ${{ needs.deploy.outputs.deploy_status == 'success' }}
+    if: ${{ needs.deploy.outputs.deploy_status == 'success' || needs.deploy.outputs.deploy_status == 'skipped' }}
     runs-on: ubuntu-latest
     outputs:
       health_status: ${{ steps.health.outputs.health_status }}
@@ -438,13 +438,12 @@ jobs:
         
         # Validate health URL is not empty
         if [ -z "$APP_URL" ]; then
-          echo "⚠️ WARNING: App URL is empty — skipping health checks"
-          echo "🔍 This may indicate that RENDER_APP_URL_DEV secret is not set in the fork repository"
-          echo "🔍 For branch deployments, dev secrets must be configured in the fork repository"
-          echo "health_status=skipped" >> $GITHUB_OUTPUT
+          echo "❌ ERROR: App URL is empty!"
+          echo "🔍 Check that RENDER_APP_URL or RENDER_APP_URL_DEV secret is configured"
+          echo "health_status=failed" >> $GITHUB_OUTPUT
           echo "health_time=0s" >> $GITHUB_OUTPUT
           echo "health_attempts=0" >> $GITHUB_OUTPUT
-          exit 0
+          exit 1
         fi
         
         echo "🏥 Checking health endpoint: $HEALTH_URL"
@@ -473,16 +472,21 @@ jobs:
             echo "health_status=success" >> $GITHUB_OUTPUT
             SUCCESS=true
             break
+          elif [ "$RESPONSE" -eq 000 ]; then
+            # Connection failed - network error
+            echo "❌ Attempt $RETRY_COUNT/$MAX_RETRIES: Connection failed - network error (${ELAPSED}s elapsed)"
+          elif [ "$RESPONSE" -ge 400 ] && [ "$RESPONSE" -lt 600 ]; then
+            # HTTP error response - fail immediately
+            echo "❌ Health check FAILED! HTTP $RESPONSE error (Attempt $RETRY_COUNT/$MAX_RETRIES)"
+            echo "🔍 Application returned error status - deployment may have issues"
+            echo "health_time=${ELAPSED}s" >> $GITHUB_OUTPUT
+            echo "health_attempts=$RETRY_COUNT" >> $GITHUB_OUTPUT
+            echo "health_status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            # Other response codes (3xx, etc.) - retry
+            echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES: Status $RESPONSE - Waiting ${WAIT_TIME}s before retry... (${ELAPSED}s elapsed)"
           fi
-          
-          # Calculate exponential backoff (10s, 15s, 20s, 25s...)
-          WAIT_TIME=$((10 + (RETRY_COUNT * 5)))
-          if [ $WAIT_TIME -gt 30 ]; then
-            WAIT_TIME=30
-          fi
-          
-          echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES: Status $RESPONSE - Waiting ${WAIT_TIME}s before retry... (${ELAPSED}s elapsed)"
-          sleep $WAIT_TIME
         done
         
         if [ "$SUCCESS" = false ]; then
@@ -518,6 +522,7 @@ jobs:
           case "$1" in
             "success") echo "✅" ;;
             "skipped") echo "⏭️" ;;
+            "failed") echo "❌" ;;
             "failure") echo "❌" ;;
             "cancelled") echo "🚫" ;;
             "timeout") echo "⏱️" ;;
@@ -529,6 +534,7 @@ jobs:
           case "$1" in
             "success") echo "🟢 PASSED" ;;
             "skipped") echo "⚪ SKIPPED" ;;
+            "failed") echo "🔴 FAILED" ;;
             "failure") echo "🔴 FAILED" ;;
             "cancelled") echo "⚫ CANCELLED" ;;
             "timeout") echo "🟡 TIMEOUT" ;;
@@ -541,6 +547,10 @@ jobs:
           OVERALL_STATUS="SUCCESS"
           OVERALL_EMOJI="🎉"
           OVERALL_COLOR="🟢"
+        elif [ "$DEPLOY_STATUS" = "success" ] && [ "$HEALTH_STATUS" = "failed" ]; then
+          OVERALL_STATUS="DEPLOYED (Health Check Failed)"
+          OVERALL_EMOJI="⚠️"
+          OVERALL_COLOR="🔴"
         elif [ "$DEPLOY_STATUS" = "success" ] && [ "$HEALTH_STATUS" = "timeout" ]; then
           OVERALL_STATUS="DEPLOYED (Health Check Timeout)"
           OVERALL_EMOJI="⚠️"
