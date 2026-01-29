@@ -33,3 +33,4 @@ function App() {
 }
 
 export default App
+# Test comment for pre-commit hook
