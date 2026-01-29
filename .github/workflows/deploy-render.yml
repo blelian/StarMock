@@ -3,6 +3,8 @@ name: 🚀 Deploy to Render
 on:
   push:
     branches: [ main, olwal-qa ]
+  pull_request:
+    types: [closed]
   workflow_dispatch:
     inputs:
       skip_tests:
@@ -179,7 +181,22 @@ jobs:
     - name: 🎯 Set Deployment Target
       id: set_env
       run: |
-        if [ "${{ github.ref_name }}" = "main" ]; then
+        echo "🔍 DEBUG - Repo: ${{ github.repository }}"
+        echo "🔍 DEBUG - Branch: ${{ github.ref_name }}"
+
+        # Determine if this run should be treated as a Production deploy.
+        # We allow two canonical flows that can trigger a production deploy:
+        #  1) A push to the main branch in the canonical repository.
+        #  2) A merged pull request (closed with merged=true) targeting main in the canonical repository.
+        IS_PROD=false
+
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
+            IS_PROD=true
+          fi
+        fi
+
+        if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ] ); then
           # Strip only leading/trailing whitespace from secrets
           DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
@@ -266,6 +283,8 @@ jobs:
     - name: � Verify Step Outputs
       run: |
         echo "🔍 Verifying step outputs are accessible..."
+        echo "🔍 Repo: ${{ github.repository }}"
+        echo "🔍 Branch: ${{ github.ref_name }}"
         echo "Deploy Hook: [${{ steps.set_env.outputs.deploy_hook }}]"
         echo "App URL: [${{ steps.set_env.outputs.app_url }}]"
         echo "Deploy Target: [${{ steps.set_env.outputs.deploy_target }}]"
@@ -280,7 +299,8 @@ jobs:
 
         if [ -z "${{ steps.set_env.outputs.app_url }}" ]; then
           echo "❌ ERROR: app_url output is empty in same job and skip_deploy is not set!"
-          echo "🔍 This could indicate the secret is missing from the host repository or contains only whitespace/newlines."
+          echo "🔍 This could indicate the secret is missing (not set in this repository) or contains only whitespace/newlines."
+          echo "🔍 If this run is from a fork or a contributor repo, production secrets are not available here — production deploys must be triggered from the canonical repository (olwalgeorge/StarMock)."
           exit 1
         fi
 
@@ -384,11 +404,37 @@ jobs:
       id: health
       run: |
         # Get the correct URL based on branch (same logic as deploy job)
-        if [ "${{ github.ref_name }}" = "main" ]; then
+        # Determine if this run should be treated as a Production deploy.
+        # We allow two canonical flows that can trigger a production deploy:
+        #  1) A push to the main branch in the canonical repository.
+        #  2) A merged pull request (closed with merged=true) targeting main in the canonical repository.
+        IS_PROD=false
+        
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
+            IS_PROD=true
+          fi
+        fi
+        
+        if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ] ); then
+          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
+          
+          echo "🔍 DEBUG - Production deploy hook length: ${#DEPLOY_HOOK_URL}"
+          echo "🔍 DEBUG - Production app URL length: ${#APP_URL}"
+          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
+          echo "🔍 DEBUG - App URL value: [$APP_URL]"
+          
           DEPLOY_TARGET="Production"
         else
+          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
+          
+          echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
+          echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
+          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
+          echo "🔍 DEBUG - App URL value: [$APP_URL]"
+          
           DEPLOY_TARGET="Development (${{ github.ref_name }})"
         fi
         
