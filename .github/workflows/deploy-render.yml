@@ -198,56 +198,55 @@ jobs:
 
         # Determine which secrets to use based on repository and branch
         if [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
-          # Always use dev secrets for fork repository
+          # Always use dev secrets for fork repository (any branch)
           DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
-          
+
           echo "🔍 DEBUG - Fork repo (olwalgeorge/StarMock) - using dev secrets"
           echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
           echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
           echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
           echo "🔍 DEBUG - App URL value: [$APP_URL]"
-          
+
           echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
           echo "Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
-          
+
           echo "📍 Deploying to: Development (${{ github.ref_name }})"
           echo "🌐 Target URL: $APP_URL"
         elif [ "${{ github.repository }}" = "blelian/StarMock" ] && [ "${{ github.ref_name }}" = "main" ]; then
           # Use prod secrets for main branch in upstream repository
           DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
-          
+
           echo "🔍 DEBUG - Upstream main branch - using prod secrets"
           echo "🔍 DEBUG - Production deploy hook length: ${#DEPLOY_HOOK_URL}"
           echo "🔍 DEBUG - Production app URL length: ${#APP_URL}"
           echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
           echo "🔍 DEBUG - App URL value: [$APP_URL]"
-          
+
           echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
           echo "Production" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
-          
+
           echo "📍 Deploying to: Production (Main Branch)"
           echo "🌐 Target URL: $APP_URL"
         else
-          # Use dev secrets for non-main branches in upstream repository
-          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
-          APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
-          
-          echo "🔍 DEBUG - Upstream non-main branch - using dev secrets"
-          echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
-          echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
-          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
-          echo "🔍 DEBUG - App URL value: [$APP_URL]"
-          
+          # Skip deployment for upstream non-main branches (no secrets available)
+          echo "🔍 DEBUG - Upstream non-main branch - skipping deployment (no secrets)"
           echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
-          echo "Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
+          echo "Skipped (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
-          
-          echo "📍 Deploying to: Development (${{ github.ref_name }})"
-          echo "🌐 Target URL: $APP_URL"
+
+          echo "skip_deploy<<EOF" >> "$GITHUB_OUTPUT"
+          echo "true" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          echo "skip_reason<<EOF" >> "$GITHUB_OUTPUT"
+          echo "Branch deployments in upstream repository are not supported. Use the fork (olwalgeorge/StarMock) for branch deployments." >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          echo "📍 Skipping deployment: Branch deployments only supported in fork repository"
         fi
 
         # Use GitHub Actions format with proper delimiter for multiline/special chars
@@ -388,7 +387,7 @@ jobs:
   healthcheck:
     name: 🏥 Health Check
     needs: [build, deploy]
-    if: ${{ needs.deploy.outputs.deploy_status == 'success' || needs.deploy.outputs.deploy_status == 'skipped' }}
+    if: ${{ needs.deploy.outputs.deploy_status == 'success' || needs.deploy.outputs.deploy_status == 'skipped' || needs.deploy.outputs.skip_deploy == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       health_status: ${{ steps.health.outputs.health_status }}
@@ -412,6 +411,17 @@ jobs:
     - name: 🔍 Health Check with Smart Retry
       id: health
       run: |
+        # Check if deployment was skipped due to missing secrets
+        if [ "${{ needs.deploy.outputs.skip_deploy }}" = "true" ]; then
+          echo "❌ ERROR: Deployment was skipped due to missing secrets"
+          echo "🔍 Reason: ${{ needs.deploy.outputs.skip_reason }}"
+          echo "🔍 Healthcheck cannot run without a deployment URL"
+          echo "health_status=failed" >> $GITHUB_OUTPUT
+          echo "health_time=0s" >> $GITHUB_OUTPUT
+          echo "health_attempts=0" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
         # Get the correct URL based on branch (same logic as deploy job)
         # Determine if this run should be treated as a Production deploy.
         # We allow two canonical flows that can trigger a production deploy:
@@ -427,7 +437,7 @@ jobs:
         
         # Determine which secrets to use based on repository and branch
         if [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
-          # Always use dev secrets for fork repository
+          # Always use dev secrets for fork repository (any branch)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
           echo "🔍 DEBUG - Fork repo (olwalgeorge/StarMock) - using dev secrets"
           echo "🔍 DEBUG - Dev app URL configured: ${#APP_URL} chars"
@@ -437,10 +447,12 @@ jobs:
           echo "🔍 DEBUG - Upstream main branch - using prod secrets"
           echo "🔍 DEBUG - Production app URL configured: ${#APP_URL} chars"
         else
-          # Use dev secrets for non-main branches in upstream repository
-          APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
-          echo "🔍 DEBUG - Upstream non-main branch - using dev secrets"
-          echo "🔍 DEBUG - Dev app URL configured: ${#APP_URL} chars"
+          # Skip healthcheck for upstream non-main branches (no deployment occurred)
+          echo "🔍 DEBUG - Upstream non-main branch - skipping healthcheck (no deployment)"
+          echo "health_status=skipped" >> $GITHUB_OUTPUT
+          echo "health_time=0s" >> $GITHUB_OUTPUT
+          echo "health_attempts=0" >> $GITHUB_OUTPUT
+          exit 0
         fi
         
         MAX_RETRIES=12
