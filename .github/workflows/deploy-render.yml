@@ -231,25 +231,44 @@ jobs:
 
           echo "📍 Deploying to: Production (Main Branch)"
           echo "🌐 Target URL: $APP_URL"
-        else
-          # Skip deployment for upstream non-main branches (no secrets available)
-          echo "🔍 DEBUG - Upstream non-main branch - skipping deployment (no secrets)"
-          echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
-          echo "Skipped (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-          echo "skip_deploy<<EOF" >> "$GITHUB_OUTPUT"
-          echo "true" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-          echo "skip_reason<<EOF" >> "$GITHUB_OUTPUT"
-          echo "Branch deployments in upstream repository are not supported. Use the fork (olwalgeorge/StarMock) for branch deployments." >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-          echo "📍 Skipping deployment: Branch deployments only supported in fork repository"
+        elif [ "${{ github.repository }}" = "blelian/StarMock" ]; then
+          # Check if upstream has dev secrets configured for branch deployments
+          DEV_DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
+          DEV_APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
+          
+          if [ -n "$DEV_APP_URL" ] && [ -n "$DEV_DEPLOY_HOOK_URL" ]; then
+            # Use dev secrets if configured in upstream
+            DEPLOY_HOOK_URL="$DEV_DEPLOY_HOOK_URL"
+            APP_URL="$DEV_APP_URL"
+            
+            echo "🔍 DEBUG - Upstream branch with dev secrets - using dev secrets"
+            echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
+            echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
+            
+            echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
+            echo "Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            
+            echo "📍 Deploying to: Development (${{ github.ref_name }})"
+            echo "🌐 Target URL: $APP_URL"
+          else
+            # Skip deployment if no dev secrets configured in upstream
+            echo "🔍 DEBUG - Upstream branch without dev secrets - skipping deployment"
+            echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
+            echo "Skipped (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            
+            echo "skip_deploy<<EOF" >> "$GITHUB_OUTPUT"
+            echo "true" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            
+            echo "skip_reason<<EOF" >> "$GITHUB_OUTPUT"
+            echo "Branch deployments require RENDER_APP_URL_DEV and RENDER_DEPLOY_HOOK_URL_DEV secrets to be configured in the upstream repository." >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            
+            echo "📍 Skipping deployment: Dev secrets not configured in upstream repository"
+          fi
         fi
-
-        # Use GitHub Actions format with proper delimiter for multiline/special chars
         echo "deploy_hook<<EOF" >> "$GITHUB_OUTPUT"
         echo "$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
         echo "EOF" >> "$GITHUB_OUTPUT"
