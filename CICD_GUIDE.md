@@ -12,16 +12,25 @@ When you commit code locally, these checks run automatically:
 
 ```bash
 🔍 Running pre-commit checks...
-🎨 Running ESLint...          # Code linting
-💅 Checking Prettier formatting...  # Code formatting validation
-🧪 Running tests...           # Unit tests
+🎨 Running ESLint...          # Code linting (always runs)
+💅 Checking Prettier formatting...  # Code formatting validation (always runs)
+🧪 Running tests...           # Unit tests (optional - can be skipped)
 ✅ All pre-commit checks passed!
+```
+
+**Skipping tests in pre-commit:**
+```bash
+# Skip tests for faster commits
+SKIP_TESTS=true git commit -m "your message"
+
+# Or set it permanently for your session
+export SKIP_TESTS=true
 ```
 
 **What happens if checks fail:**
 - ❌ Commit is blocked
 - 🔧 Fix linting/formatting issues: `npm run lint:fix` and `npm run format`
-- 🧪 Fix test failures and re-run: `npm test`
+- 🧪 Fix test failures and re-run: `npm test` (if tests are enabled)
 
 #### Git Push Triggers
 Pushing to these branches triggers the CI/CD pipeline:
@@ -134,6 +143,9 @@ npm run format
 
 # Run tests
 npm test
+
+# Skip tests for faster commits (when working on non-test changes)
+SKIP_TESTS=true git commit -m "your message"
 ```
 
 ### Pipeline Failures

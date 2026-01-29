@@ -23,8 +23,12 @@ npm run lint
 echo "💅 Checking Prettier formatting..."
 npm run format:check
 
-# Run tests
-echo "🧪 Running tests..."
-npm test
+# Run tests (optional - skip if SKIP_TESTS=true)
+if [ "$SKIP_TESTS" = "true" ]; then
+  echo "⏭️ Skipping tests (SKIP_TESTS=true)"
+else
+  echo "🧪 Running tests..."
+  npm test
+fi
 
 echo "✅ All pre-commit checks passed!"
