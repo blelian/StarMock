@@ -417,10 +417,24 @@ jobs:
         fi
         
         if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ] ); then
+          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
+          
+          echo "🔍 DEBUG - Production deploy hook length: ${#DEPLOY_HOOK_URL}"
+          echo "🔍 DEBUG - Production app URL length: ${#APP_URL}"
+          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
+          echo "🔍 DEBUG - App URL value: [$APP_URL]"
+          
           DEPLOY_TARGET="Production"
         else
+          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
+          
+          echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
+          echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
+          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
+          echo "🔍 DEBUG - App URL value: [$APP_URL]"
+          
           DEPLOY_TARGET="Development (${{ github.ref_name }})"
         fi
         
