@@ -176,6 +176,7 @@ jobs:
       deploy_time: ${{ steps.deploy_timing.outputs.deploy_time }}
       deploy_status: ${{ steps.deploy_timing.outputs.deploy_status }}
       deploy_target: ${{ steps.deploy_timing.outputs.deploy_target }}
+      app_url: ${{ steps.set_env.outputs.app_url }}
     
     steps:
     - name: 🎯 Set Deployment Target
@@ -404,40 +405,9 @@ jobs:
     - name: 🔍 Health Check with Smart Retry
       id: health
       run: |
-        # Get the correct URL based on branch (same logic as deploy job)
-        # Determine if this run should be treated as a Production deploy.
-        # We allow two canonical flows that can trigger a production deploy:
-        #  1) A push to the main branch in the canonical repository.
-        #  2) A merged pull request (closed with merged=true) targeting main in the canonical repository.
-        IS_PROD=false
-        
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
-            IS_PROD=true
-          fi
-        fi
-        
-        if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ] ); then
-          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | xargs)
-          APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
-          
-          echo "🔍 DEBUG - Production deploy hook length: ${#DEPLOY_HOOK_URL}"
-          echo "🔍 DEBUG - Production app URL length: ${#APP_URL}"
-          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
-          echo "🔍 DEBUG - App URL value: [$APP_URL]"
-          
-          DEPLOY_TARGET="Production"
-        else
-          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
-          APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
-          
-          echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
-          echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
-          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
-          echo "🔍 DEBUG - App URL value: [$APP_URL]"
-          
-          DEPLOY_TARGET="Development (${{ github.ref_name }})"
-        fi
+        # Get the app URL from deploy job outputs
+        APP_URL="${{ needs.deploy.outputs.app_url }}"
+        DEPLOY_TARGET="${{ needs.deploy.outputs.deploy_target }}"
         
         MAX_RETRIES=12
         RETRY_COUNT=0
@@ -450,12 +420,12 @@ jobs:
         
         # Validate health URL is not empty
         if [ -z "$APP_URL" ]; then
-          echo "⚠️ WARNING: App URL is empty — skipping health checks"
-          echo "🔍 Check that RENDER_APP_URL or RENDER_APP_URL_DEV secret is configured for this repository"
-          echo "health_status=skipped" >> $GITHUB_OUTPUT
+          echo "❌ ERROR: App URL is empty!"
+          echo "🔍 Check that RENDER_APP_URL or RENDER_APP_URL_DEV secret is configured"
+          echo "health_status=failed" >> $GITHUB_OUTPUT
           echo "health_time=0s" >> $GITHUB_OUTPUT
           echo "health_attempts=0" >> $GITHUB_OUTPUT
-          exit 0
+          exit 1
         fi
         
         echo "🏥 Checking health endpoint: $HEALTH_URL"
