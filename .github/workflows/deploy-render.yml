@@ -191,12 +191,12 @@ jobs:
         IS_PROD=false
 
         if [ "${{ github.event_name }}" = "pull_request" ]; then
-          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
+          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "main" ] && [ "${{ github.repository }}" = "blelian/StarMock" ]; then
             IS_PROD=true
           fi
         fi
 
-        if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ] ); then
+        if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "blelian/StarMock" ] ); then
           # Strip only leading/trailing whitespace from secrets
           DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
@@ -412,12 +412,12 @@ jobs:
         IS_PROD=false
         
         if [ "${{ github.event_name }}" = "pull_request" ]; then
-          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
+          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "main" ] && [ "${{ github.repository }}" = "blelian/StarMock" ]; then
             IS_PROD=true
           fi
         fi
         
-        if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "olwalgeorge/StarMock" ] ); then
+        if [ "$IS_PROD" = "true" ] || ( [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.repository }}" = "blelian/StarMock" ] ); then
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
           
           echo "🔍 DEBUG - Production app URL configured: ${#APP_URL} chars"
