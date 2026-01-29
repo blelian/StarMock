@@ -236,6 +236,32 @@ jobs:
           echo "📍 Deploying to: Development (${{ github.ref_name }})"
           echo "🌐 Target URL: $APP_URL"
         fi
+        # If required secrets are missing, mark this run to skip deploy.
+        if [ -z "$APP_URL" ] || [ -z "$DEPLOY_HOOK_URL" ]; then
+          echo "⚠️ WARNING: Deployment secrets missing or empty. Skipping deploy step."
+          echo "skip_deploy<<EOF" >> "$GITHUB_OUTPUT"
+          echo "true" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          # Provide a readable reason for logs and dashboard
+          if [ -z "$APP_URL" ] && [ -z "$DEPLOY_HOOK_URL" ]; then
+            SKIP_REASON="Missing both RENDER_APP_URL and RENDER_DEPLOY_HOOK_URL (or their DEV equivalents). This often happens for PRs from forks where repository secrets are not available to the runner."
+          elif [ -z "$APP_URL" ]; then
+            SKIP_REASON="Missing RENDER_APP_URL (or RENDER_APP_URL_DEV)."
+          else
+            SKIP_REASON="Missing RENDER_DEPLOY_HOOK_URL (or RENDER_DEPLOY_HOOK_URL_DEV)."
+          fi
+
+          echo "skip_reason<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$SKIP_REASON" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          echo "🔍 DEBUG - Skip reason: $SKIP_REASON"
+        else
+          echo "skip_deploy<<EOF" >> "$GITHUB_OUTPUT"
+          echo "false" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+        fi
     
     - name: � Verify Step Outputs
       run: |
@@ -243,11 +269,21 @@ jobs:
         echo "Deploy Hook: [${{ steps.set_env.outputs.deploy_hook }}]"
         echo "App URL: [${{ steps.set_env.outputs.app_url }}]"
         echo "Deploy Target: [${{ steps.set_env.outputs.deploy_target }}]"
-        
+        SKIP_DEPLOY="${{ steps.set_env.outputs.skip_deploy }}"
+        SKIP_REASON="${{ steps.set_env.outputs.skip_reason }}"
+
+        if [ "$SKIP_DEPLOY" = "true" ]; then
+          echo "⚠️ Skipping deploy: $SKIP_REASON"
+          echo "✅ Verify step completed — deploy will be skipped for this run."
+          exit 0
+        fi
+
         if [ -z "${{ steps.set_env.outputs.app_url }}" ]; then
-          echo "❌ ERROR: app_url output is empty in same job!"
+          echo "❌ ERROR: app_url output is empty in same job and skip_deploy is not set!"
+          echo "🔍 This could indicate the secret is missing from the host repository or contains only whitespace/newlines."
           exit 1
         fi
+
         echo "✅ Step outputs verified successfully"
     
     - name: �🚀 Trigger Render Deploy Hook
@@ -256,6 +292,20 @@ jobs:
         START_TIME=$(date +%s)
         DEPLOY_HOOK="${{ steps.set_env.outputs.deploy_hook }}"
         DEPLOY_TARGET="${{ steps.set_env.outputs.deploy_target }}"
+
+          SKIP_DEPLOY="${{ steps.set_env.outputs.skip_deploy }}"
+          SKIP_REASON="${{ steps.set_env.outputs.skip_reason }}"
+
+          if [ "$SKIP_DEPLOY" = "true" ]; then
+            echo "🚫 Skipping Render deploy: $SKIP_REASON"
+            END_TIME=$(date +%s)
+            DEPLOY_TIME=$((END_TIME - START_TIME))
+            echo "deploy_time=${DEPLOY_TIME}s" >> $GITHUB_OUTPUT
+            echo "deploy_status=skipped" >> $GITHUB_OUTPUT
+            echo "deploy_target=$DEPLOY_TARGET" >> $GITHUB_OUTPUT
+            echo "✅ Marked deploy as skipped."
+            exit 0
+          fi
         
         echo "🔍 DEBUG - Final deploy hook: [$DEPLOY_HOOK]"
         echo "🔍 DEBUG - Deploy hook length: ${#DEPLOY_HOOK}"
@@ -264,6 +314,9 @@ jobs:
         if [ -z "$DEPLOY_HOOK" ]; then
           echo "❌ ERROR: Deploy hook URL is empty!"
           echo "🔍 Check that the secret RENDER_DEPLOY_HOOK_URL (production) or RENDER_DEPLOY_HOOK_URL_DEV is configured"
+          echo "deploy_time=0s" >> $GITHUB_OUTPUT
+          echo "deploy_status=failed" >> $GITHUB_OUTPUT
+          echo "deploy_target=$DEPLOY_TARGET" >> $GITHUB_OUTPUT
           exit 1
         fi
         
