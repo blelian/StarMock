@@ -380,7 +380,7 @@ jobs:
   healthcheck:
     name: 🏥 Health Check
     needs: [build, deploy]
-    if: ${{ needs.deploy.outputs.deploy_status == 'success' }}
+    if: ${{ needs.deploy.outputs.deploy_status == 'success' || (needs.deploy.outputs.deploy_status == 'skipped' && needs.deploy.outputs.deploy_target == 'Production') }}
     runs-on: ubuntu-latest
     outputs:
       health_status: ${{ steps.health.outputs.health_status }}
