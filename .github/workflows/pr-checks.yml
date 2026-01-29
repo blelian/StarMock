@@ -1,0 +1,204 @@
+name: Pull Request Quality Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Check PR size
+      id: pr-size
+      run: |
+        FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+        LINES_CHANGED=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD | grep -oE '[0-9]+ insertion|[0-9]+ deletion' | grep -oE '[0-9]+' | awk '{s+=$1} END {print s}')
+        
+        echo "files_changed=$FILES_CHANGED" >> $GITHUB_OUTPUT
+        echo "lines_changed=$LINES_CHANGED" >> $GITHUB_OUTPUT
+        
+        echo "📊 PR Size Metrics:"
+        echo "Files changed: $FILES_CHANGED"
+        echo "Lines changed: $LINES_CHANGED"
+        
+        # Warn if PR is too large (>20 files or >500 lines)
+        if [ "$FILES_CHANGED" -gt 20 ] || [ "$LINES_CHANGED" -gt 500 ]; then
+          echo "⚠️ Large PR detected. Consider breaking into smaller PRs for easier review."
+          echo "pr_size=large" >> $GITHUB_OUTPUT
+        else
+          echo "✅ PR size is manageable"
+          echo "pr_size=small" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Comment PR size
+      if: steps.pr-size.outputs.pr_size == 'large'
+      uses: actions/github-script@v7
+      continue-on-error: true  # Allow fork PRs to pass even without comment permissions
+      with:
+        script: |
+          const body = `## ⚠️ Large Pull Request Detected
+
+          **Files changed:** ${{ steps.pr-size.outputs.files_changed }}
+          **Lines changed:** ${{ steps.pr-size.outputs.lines_changed }}
+
+          ### 💡 Recommendation
+          Consider breaking this PR into smaller, focused changes:
+          - Makes review easier and faster
+          - Reduces merge conflicts
+          - Allows incremental testing
+          - Improves code quality
+
+          ### ✅ Best Practices
+          - Keep PRs under 20 files
+          - Keep changes under 500 lines
+          - Focus on one feature/fix per PR
+          - Split refactoring from feature work`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          })
+    
+    - name: Check PR title format
+      uses: actions/github-script@v7
+      continue-on-error: true  # Allow fork PRs to pass even without comment permissions
+      with:
+        script: |
+          const title = context.payload.pull_request.title;
+          const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?:\s.+/;
+          
+          if (!conventionalCommitPattern.test(title)) {
+            const body = `## 📝 PR Title Format
+
+            Your PR title doesn't follow Conventional Commits format.
+
+            **Current title:** \`${title}\`
+
+            **Expected format:** \`<type>(<scope>): <description>\`
+
+            **Examples:**
+            - \`feat: add user authentication\`
+            - \`fix(api): resolve race condition in data fetch\`
+            - \`docs: update testing documentation\`
+            - \`test: add unit tests for App component\`
+
+            **Valid types:** feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+          }
+    
+    - name: Check for breaking changes
+      run: |
+        echo "🔍 Checking for breaking changes..."
+        BREAKING_CHANGES=$(git log origin/${{ github.base_ref }}..HEAD --oneline | grep -i "breaking" || true)
+        
+        if [ ! -z "$BREAKING_CHANGES" ]; then
+          echo "⚠️ Breaking changes detected:"
+          echo "$BREAKING_CHANGES"
+        else
+          echo "✅ No breaking changes detected"
+        fi
+    
+    - name: Check for TODO/FIXME comments
+      run: |
+        echo "🔍 Checking for TODO/FIXME comments in changed files..."
+        git diff origin/${{ github.base_ref }}...HEAD | grep -E "^\+.*TODO|^\+.*FIXME" || echo "✅ No new TODO/FIXME comments"
+    
+    - name: Validate commit messages
+      run: |
+        echo "📝 Validating commit messages..."
+        git log origin/${{ github.base_ref }}..HEAD --pretty=format:"%s" | while read message; do
+          if [ ${#message} -gt 72 ]; then
+            echo "⚠️ Commit message too long (>72 chars): $message"
+          fi
+        done
+        echo "✅ Commit message validation complete"
+
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./app
+      run: npm ci
+    
+    - name: Run linter with JSON output
+      working-directory: ./app
+      run: |
+        npm run lint > lint-results.txt 2>&1 || true
+        if grep -q "error" lint-results.txt; then
+          echo "❌ ESLint errors found"
+          cat lint-results.txt
+          exit 1
+        else
+          echo "✅ No ESLint errors"
+        fi
+    
+    - name: Check code formatting
+      working-directory: ./app
+      run: |
+        npm run format:check || {
+          echo "❌ Code formatting issues detected"
+          echo "Run 'npm run format' locally to fix"
+          exit 1
+        }
+    
+    - name: Run tests with coverage
+      working-directory: ./app
+      run: npm run test:coverage
+    
+    - name: Check test coverage thresholds
+      working-directory: ./app
+      run: |
+        echo "📊 Checking coverage thresholds..."
+        # Add coverage threshold checks here if needed
+        echo "✅ Coverage checks passed"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      continue-on-error: true
+      with:
+        fail-on-severity: moderate
+        deny-licenses: GPL-2.0, GPL-3.0

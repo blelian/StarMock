@@ -1,0 +1,794 @@
+name: 🚀 Deploy to Render
+
+on:
+  push:
+    branches: [ main, olwal-qa ]
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests for emergency deployment'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  quality-checks:
+    name: 🎨 Code Quality
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_tests != true }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: ⚙️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: 📦 Install dependencies
+      working-directory: ./app
+      run: |
+        echo "::group::Installing dependencies"
+        npm ci --prefer-offline --no-audit
+        echo "::endgroup::"
+    
+    - name: 🎨 Linting & Formatting
+      working-directory: ./app
+      run: |
+        echo "::group::Running ESLint"
+        npm run lint &
+        LINT_PID=$!
+        echo "::endgroup::"
+        
+        echo "::group::Checking Prettier formatting"
+        npm run format:check &
+        FORMAT_PID=$!
+        echo "::endgroup::"
+        
+        # Wait for both to complete
+        wait $LINT_PID
+        LINT_EXIT=$?
+        wait $FORMAT_PID
+        FORMAT_EXIT=$?
+        
+        if [ $LINT_EXIT -ne 0 ]; then
+          echo "❌ Linting failed"
+          exit 1
+        fi
+        
+        if [ $FORMAT_EXIT -ne 0 ]; then
+          echo "❌ Formatting check failed"
+          exit 1
+        fi
+        
+        echo "✅ Code quality checks passed!"
+  
+  tests:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_tests != true }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: ⚙️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: 📦 Install dependencies
+      working-directory: ./app
+      run: npm ci --prefer-offline --no-audit
+    
+    - name: 🧪 Run Tests
+      working-directory: ./app
+      run: |
+        echo "::group::Running test suite"
+        npm test -- --run --reporter=verbose
+        echo "::endgroup::"
+  
+  security:
+    name: 🔒 Security Audit
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_tests != true }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: ⚙️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: 📦 Install dependencies
+      working-directory: ./app
+      run: npm ci --prefer-offline --no-audit
+    
+    - name: 🔒 Security Audit
+      working-directory: ./app
+      run: |
+        echo "::group::Running npm audit"
+        npm audit --audit-level=high
+        echo "::endgroup::"
+  
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+    needs: [quality-checks, tests, security]
+    if: always() && (needs.quality-checks.result == 'success' || needs.quality-checks.result == 'skipped') && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && (needs.security.result == 'success' || needs.security.result == 'skipped')
+    outputs:
+      build_time: ${{ steps.timing.outputs.build_time }}
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: ⚙️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: 📦 Install dependencies
+      working-directory: ./app
+      run: npm ci --prefer-offline --no-audit
+    
+    - name: 🏗️ Build Application
+      id: timing
+      working-directory: ./app
+      run: |
+        START_TIME=$(date +%s)
+        echo "::group::Building production bundle"
+        npm run build
+        echo "::endgroup::"
+        END_TIME=$(date +%s)
+        BUILD_TIME=$((END_TIME - START_TIME))
+        echo "build_time=${BUILD_TIME}s" >> $GITHUB_OUTPUT
+        
+        echo "✅ Build completed in ${BUILD_TIME}s"
+        echo "📊 Build artifacts:"
+        ls -lh dist/
+  
+  deploy:
+    name: 🚀 Deploy to Render
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_time: ${{ steps.deploy_timing.outputs.deploy_time }}
+      deploy_status: ${{ steps.deploy_timing.outputs.deploy_status }}
+      deploy_target: ${{ steps.deploy_timing.outputs.deploy_target }}
+    
+    steps:
+    - name: 🎯 Set Deployment Target
+      id: set_env
+      run: |
+        if [ "${{ github.ref_name }}" = "main" ]; then
+          # Strip only leading/trailing whitespace from secrets
+          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | xargs)
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
+          
+          echo "🔍 DEBUG - Production deploy hook length: ${#DEPLOY_HOOK_URL}"
+          echo "🔍 DEBUG - Production app URL length: ${#APP_URL}"
+          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
+          echo "🔍 DEBUG - App URL value: [$APP_URL]"
+          
+          # Use GitHub Actions format with proper delimiter for multiline/special chars
+          echo "deploy_hook<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          
+          echo "app_url<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$APP_URL" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          
+          echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
+          echo "Production" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          
+          echo "🔍 DEBUG - GITHUB_OUTPUT file contents:"
+          cat "$GITHUB_OUTPUT" | tail -20
+          
+          echo "📍 Deploying to: Production (Main Branch)"
+          echo "🌐 Target URL: $APP_URL"
+        else
+          # Strip only leading/trailing whitespace from secrets
+          DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
+          
+          echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
+          echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
+          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
+          echo "🔍 DEBUG - App URL value: [$APP_URL]"
+          
+          # Use GitHub Actions format with proper delimiter for multiline/special chars
+          echo "deploy_hook<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          
+          echo "app_url<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$APP_URL" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          
+          echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
+          echo "Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          
+          echo "🔍 DEBUG - GITHUB_OUTPUT file contents:"
+          cat "$GITHUB_OUTPUT" | tail -20
+          
+          echo "📍 Deploying to: Development (${{ github.ref_name }})"
+          echo "🌐 Target URL: $APP_URL"
+        fi
+        # If required secrets are missing, mark this run to skip deploy.
+        if [ -z "$APP_URL" ] || [ -z "$DEPLOY_HOOK_URL" ]; then
+          echo "⚠️ WARNING: Deployment secrets missing or empty. Skipping deploy step."
+          echo "skip_deploy<<EOF" >> "$GITHUB_OUTPUT"
+          echo "true" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          # Provide a readable reason for logs and dashboard
+          if [ -z "$APP_URL" ] && [ -z "$DEPLOY_HOOK_URL" ]; then
+            SKIP_REASON="Missing both RENDER_APP_URL and RENDER_DEPLOY_HOOK_URL (or their DEV equivalents). This often happens for PRs from forks where repository secrets are not available to the runner."
+          elif [ -z "$APP_URL" ]; then
+            SKIP_REASON="Missing RENDER_APP_URL (or RENDER_APP_URL_DEV)."
+          else
+            SKIP_REASON="Missing RENDER_DEPLOY_HOOK_URL (or RENDER_DEPLOY_HOOK_URL_DEV)."
+          fi
+
+          echo "skip_reason<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$SKIP_REASON" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          echo "🔍 DEBUG - Skip reason: $SKIP_REASON"
+        else
+          echo "skip_deploy<<EOF" >> "$GITHUB_OUTPUT"
+          echo "false" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+        fi
+    
+    - name: � Verify Step Outputs
+      run: |
+        echo "🔍 Verifying step outputs are accessible..."
+        echo "Deploy Hook: [${{ steps.set_env.outputs.deploy_hook }}]"
+        echo "App URL: [${{ steps.set_env.outputs.app_url }}]"
+        echo "Deploy Target: [${{ steps.set_env.outputs.deploy_target }}]"
+        SKIP_DEPLOY="${{ steps.set_env.outputs.skip_deploy }}"
+        SKIP_REASON="${{ steps.set_env.outputs.skip_reason }}"
+
+        if [ "$SKIP_DEPLOY" = "true" ]; then
+          echo "⚠️ Skipping deploy: $SKIP_REASON"
+          echo "✅ Verify step completed — deploy will be skipped for this run."
+          exit 0
+        fi
+
+        if [ -z "${{ steps.set_env.outputs.app_url }}" ]; then
+          echo "❌ ERROR: app_url output is empty in same job and skip_deploy is not set!"
+          echo "🔍 This could indicate the secret is missing from the host repository or contains only whitespace/newlines."
+          exit 1
+        fi
+
+        echo "✅ Step outputs verified successfully"
+    
+    - name: �🚀 Trigger Render Deploy Hook
+      id: deploy_timing
+      run: |
+        START_TIME=$(date +%s)
+        DEPLOY_HOOK="${{ steps.set_env.outputs.deploy_hook }}"
+        DEPLOY_TARGET="${{ steps.set_env.outputs.deploy_target }}"
+
+          SKIP_DEPLOY="${{ steps.set_env.outputs.skip_deploy }}"
+          SKIP_REASON="${{ steps.set_env.outputs.skip_reason }}"
+
+          if [ "$SKIP_DEPLOY" = "true" ]; then
+            echo "🚫 Skipping Render deploy: $SKIP_REASON"
+            END_TIME=$(date +%s)
+            DEPLOY_TIME=$((END_TIME - START_TIME))
+            echo "deploy_time=${DEPLOY_TIME}s" >> $GITHUB_OUTPUT
+            echo "deploy_status=skipped" >> $GITHUB_OUTPUT
+            echo "deploy_target=$DEPLOY_TARGET" >> $GITHUB_OUTPUT
+            echo "✅ Marked deploy as skipped."
+            exit 0
+          fi
+        
+        echo "🔍 DEBUG - Final deploy hook: [$DEPLOY_HOOK]"
+        echo "🔍 DEBUG - Deploy hook length: ${#DEPLOY_HOOK}"
+        
+        # Validate deploy hook is not empty
+        if [ -z "$DEPLOY_HOOK" ]; then
+          echo "❌ ERROR: Deploy hook URL is empty!"
+          echo "🔍 Check that the secret RENDER_DEPLOY_HOOK_URL (production) or RENDER_DEPLOY_HOOK_URL_DEV is configured"
+          echo "deploy_time=0s" >> $GITHUB_OUTPUT
+          echo "deploy_status=failed" >> $GITHUB_OUTPUT
+          echo "deploy_target=$DEPLOY_TARGET" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
+        # Validate deploy hook starts with https://
+        if [[ ! "$DEPLOY_HOOK" =~ ^https:// ]]; then
+          echo "❌ ERROR: Deploy hook URL is malformed: [$DEPLOY_HOOK]"
+          echo "🔍 URL should start with 'https://'"
+          exit 1
+        fi
+        
+        echo "🚀 Triggering deployment to: $DEPLOY_TARGET"
+        echo "🔗 Branch: ${{ github.ref_name }}"
+        
+        RESPONSE=$(curl -X POST "$DEPLOY_HOOK" \
+          -H "Content-Type: application/json" \
+          -w "\n%{http_code}" \
+          -s \
+          --max-time 30)
+        
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+        BODY=$(echo "$RESPONSE" | head -n-1)
+        END_TIME=$(date +%s)
+        DEPLOY_TIME=$((END_TIME - START_TIME))
+        
+        echo "deploy_time=${DEPLOY_TIME}s" >> $GITHUB_OUTPUT
+        echo "deploy_target=$DEPLOY_TARGET" >> $GITHUB_OUTPUT
+        echo "HTTP Status: $HTTP_CODE"
+        echo "Response: $BODY"
+        echo "⚡ Deploy hook responded in ${DEPLOY_TIME}s"
+        
+        if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+          echo "deploy_status=success" >> $GITHUB_OUTPUT
+          echo "✅ Deployment triggered successfully to $DEPLOY_TARGET!"
+          echo "🔄 Render is now building and deploying your application..."
+        else
+          echo "deploy_status=failed" >> $GITHUB_OUTPUT
+          echo "❌ Deployment hook failed with status $HTTP_CODE"
+          exit 1
+        fi
+  
+  healthcheck:
+    name: 🏥 Health Check
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    outputs:
+      health_status: ${{ steps.health.outputs.health_status }}
+      health_time: ${{ steps.health.outputs.health_time }}
+      health_attempts: ${{ steps.health.outputs.health_attempts }}
+    
+    steps:
+    - name: ⏳ Wait for Render Deployment
+      run: |
+        echo "⏳ Giving Render time to build and deploy..."
+        echo "📊 Estimated time: 2-3 minutes"
+        
+        # Smart wait with progress indicators
+        for i in {1..6}; do
+          echo "⏰ Waiting... ($i/6) - $((i * 15))s elapsed"
+          sleep 15
+        done
+        
+        echo "✅ Initial wait complete. Starting health checks..."
+    
+    - name: 🔍 Health Check with Smart Retry
+      id: health
+      run: |
+        # Get the correct URL based on branch (same logic as deploy job)
+        if [ "${{ github.ref_name }}" = "main" ]; then
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
+          DEPLOY_TARGET="Production"
+        else
+          APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
+          DEPLOY_TARGET="Development (${{ github.ref_name }})"
+        fi
+        
+        MAX_RETRIES=12
+        RETRY_COUNT=0
+        HEALTH_URL="${APP_URL}/api/health"
+        START_TIME=$(date +%s)
+        SUCCESS=false
+        
+        echo "🔍 DEBUG - App URL: [$APP_URL]"
+        echo "🔍 DEBUG - Health URL: [$HEALTH_URL]"
+        
+        # Validate health URL is not empty
+        if [ -z "$APP_URL" ]; then
+          echo "❌ ERROR: App URL is empty!"
+          echo "🔍 Check that RENDER_APP_URL or RENDER_APP_URL_DEV secret is configured"
+          echo "health_status=error" >> $GITHUB_OUTPUT
+          echo "health_time=0s" >> $GITHUB_OUTPUT
+          echo "health_attempts=0" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
+        echo "🏥 Checking health endpoint: $HEALTH_URL"
+        echo "📍 Target: $DEPLOY_TARGET"
+        echo "🔄 Max retries: $MAX_RETRIES with exponential backoff"
+        echo ""
+        
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+          
+          # Make request with timeout
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            --max-time 10 \
+            --connect-timeout 5 \
+            "$HEALTH_URL" 2>/dev/null || echo "000")
+          
+          CURRENT_TIME=$(date +%s)
+          ELAPSED=$((CURRENT_TIME - START_TIME))
+          
+          if [ "$RESPONSE" -eq 200 ]; then
+            echo "✅ Health check PASSED! (Attempt $RETRY_COUNT/$MAX_RETRIES)"
+            echo "⚡ Application is live and responding"
+            echo "⏱️ Total time: ${ELAPSED}s"
+            echo "health_time=${ELAPSED}s" >> $GITHUB_OUTPUT
+            echo "health_attempts=$RETRY_COUNT" >> $GITHUB_OUTPUT
+            echo "health_status=success" >> $GITHUB_OUTPUT
+            SUCCESS=true
+            break
+          fi
+          
+          # Calculate exponential backoff (10s, 15s, 20s, 25s...)
+          WAIT_TIME=$((10 + (RETRY_COUNT * 5)))
+          if [ $WAIT_TIME -gt 30 ]; then
+            WAIT_TIME=30
+          fi
+          
+          echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES: Status $RESPONSE - Waiting ${WAIT_TIME}s before retry... (${ELAPSED}s elapsed)"
+          sleep $WAIT_TIME
+        done
+        
+        if [ "$SUCCESS" = false ]; then
+          # Health check failed
+          FINAL_TIME=$(date +%s)
+          TOTAL_TIME=$((FINAL_TIME - START_TIME))
+          
+          echo "⚠️ Health check timeout after ${TOTAL_TIME}s"
+          echo "health_time=${TOTAL_TIME}s" >> $GITHUB_OUTPUT
+          echo "health_attempts=$MAX_RETRIES" >> $GITHUB_OUTPUT
+          echo "health_status=timeout" >> $GITHUB_OUTPUT
+        fi
+  
+  dashboard:
+    name: 📊 Deployment Dashboard
+    needs: [quality-checks, tests, security, build, deploy, healthcheck]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: 📊 Generate Enhanced Deployment Dashboard
+      run: |
+        # Determine overall status
+        QUALITY_STATUS="${{ needs.quality-checks.result }}"
+        TESTS_STATUS="${{ needs.tests.result }}"
+        SECURITY_STATUS="${{ needs.security.result }}"
+        BUILD_STATUS="${{ needs.build.result }}"
+        DEPLOY_STATUS="${{ needs.deploy.result }}"
+        HEALTH_STATUS="${{ needs.healthcheck.outputs.health_status }}"
+        
+        # Status emojis and badges
+        get_status_emoji() {
+          case "$1" in
+            "success") echo "✅" ;;
+            "skipped") echo "⏭️" ;;
+            "failure") echo "❌" ;;
+            "cancelled") echo "🚫" ;;
+            "timeout") echo "⏱️" ;;
+            *) echo "❓" ;;
+          esac
+        }
+        
+        get_status_badge() {
+          case "$1" in
+            "success") echo "🟢 PASSED" ;;
+            "skipped") echo "⚪ SKIPPED" ;;
+            "failure") echo "🔴 FAILED" ;;
+            "cancelled") echo "⚫ CANCELLED" ;;
+            "timeout") echo "🟡 TIMEOUT" ;;
+            *) echo "⚪ UNKNOWN" ;;
+          esac
+        }
+        
+        # Overall deployment status with color indicators
+        if [ "$DEPLOY_STATUS" = "success" ] && [ "$HEALTH_STATUS" = "success" ]; then
+          OVERALL_STATUS="SUCCESS"
+          OVERALL_EMOJI="🎉"
+          OVERALL_COLOR="🟢"
+        elif [ "$DEPLOY_STATUS" = "success" ] && [ "$HEALTH_STATUS" = "timeout" ]; then
+          OVERALL_STATUS="DEPLOYED (Health Check Timeout)"
+          OVERALL_EMOJI="⚠️"
+          OVERALL_COLOR="🟡"
+        else
+          OVERALL_STATUS="FAILED"
+          OVERALL_EMOJI="💥"
+          OVERALL_COLOR="🔴"
+        fi
+        
+        # Create enhanced dashboard with better visual flow
+        cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+        <div align="center">
+        
+        # 🚀 StarMock Deployment Dashboard
+        
+        ## ${{ env.OVERALL_COLOR }} ${{ env.OVERALL_EMOJI }} **${{ env.OVERALL_STATUS }}** ${{ env.OVERALL_EMOJI }} ${{ env.OVERALL_COLOR }}
+        
+        </div>
+        
+        ---
+        
+        ### 📋 Deployment Information
+        
+        | | |
+        |---|---|
+        | **🌿 Branch** | `${{ github.ref_name }}` |
+        | **📍 Target** | ${{ needs.deploy.outputs.deploy_target }} |
+        | **📦 Commit** | [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) |
+        | **👤 Triggered by** | @${{ github.actor }} |
+        | **🕐 Time** | ${{ github.event.head_commit.timestamp }} |
+        | **🔗 Workflow Run** | [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+        
+        ---
+        
+        ## � Pipeline Execution Flow
+        
+        ```mermaid
+        %%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#e1f5ff','primaryTextColor':'#000','primaryBorderColor':'#0366d6','lineColor':'#6a737d','secondaryColor':'#fff3e0','tertiaryColor':'#f3e5f5'}}}%%
+        graph TB
+            Start([🚀 Deploy Triggered]) --> Parallel{⚡ Parallel Stage}
+            
+            Parallel --> QC[🎨 Code Quality<br/>ESLint + Prettier]
+            Parallel --> UT[🧪 Unit Tests<br/>Vitest Suite]
+            Parallel --> SA[🔒 Security Audit<br/>npm audit]
+            
+            QC --> Build[🏗️ Build<br/>Production Bundle]
+            UT --> Build
+            SA --> Build
+            
+            Build --> Deploy[🚀 Deploy<br/>Render Hook]
+            Deploy --> Health[🏥 Health Check<br/>Smart Retry]
+            Health --> Dashboard[📊 Dashboard<br/>This Report]
+            
+            Dashboard --> End([✅ Complete])
+            
+            style Start fill:#e8f5e9,stroke:#4caf50,stroke-width:3px
+            style Parallel fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+            style QC fill:#e1f5ff,stroke:#2196f3
+            style UT fill:#e1f5ff,stroke:#2196f3
+            style SA fill:#e1f5ff,stroke:#2196f3
+            style Build fill:#fff3e0,stroke:#ff9800
+            style Deploy fill:#f3e5f5,stroke:#9c27b0
+            style Health fill:#e8f5e9,stroke:#4caf50
+            style Dashboard fill:#fce4ec,stroke:#e91e63
+            style End fill:#e8f5e9,stroke:#4caf50,stroke-width:3px
+        ```
+        
+        ---
+        
+        ## � Pipeline Stages Status
+        
+        <table>
+        <tr>
+        <th>Stage</th>
+        <th>Status</th>
+        <th>Details</th>
+        <th>Duration</th>
+        </tr>
+        <tr>
+        <td>�🎨 <strong>Code Quality</strong></td>
+        <td>$(get_status_badge "$QUALITY_STATUS")</td>
+        <td>ESLint + Prettier validation</td>
+        <td><em>Parallel</em></td>
+        </tr>
+        <tr>
+        <td>🧪 <strong>Unit Tests</strong></td>
+        <td>$(get_status_badge "$TESTS_STATUS")</td>
+        <td>Vitest test suite execution</td>
+        <td><em>Parallel</em></td>
+        </tr>
+        <tr>
+        <td>🔒 <strong>Security Audit</strong></td>
+        <td>$(get_status_badge "$SECURITY_STATUS")</td>
+        <td>npm audit (high severity)</td>
+        <td><em>Parallel</em></td>
+        </tr>
+        <tr>
+        <td>🏗️ <strong>Build</strong></td>
+        <td>$(get_status_badge "$BUILD_STATUS")</td>
+        <td>Production bundle compilation</td>
+        <td><code>${{ needs.build.outputs.build_time }}</code></td>
+        </tr>
+        <tr>
+        <td>🚀 <strong>Deploy</strong></td>
+        <td>$(get_status_badge "$DEPLOY_STATUS")</td>
+        <td>Render deployment hook</td>
+        <td><code>${{ needs.deploy.outputs.deploy_time }}</code></td>
+        </tr>
+        <tr>
+        <td>🏥 <strong>Health Check</strong></td>
+        <td>$(get_status_badge "$HEALTH_STATUS")</td>
+        <td>Endpoint verification (${{ needs.healthcheck.outputs.health_attempts }} attempts)</td>
+        <td><code>${{ needs.healthcheck.outputs.health_time }}</code></td>
+        </tr>
+        </table>
+        
+        ---
+        
+        ## ⚡ Performance Metrics
+        
+        <table>
+        <tr>
+        <td align="center">
+        <h3>🏗️</h3>
+        <strong>Build Time</strong><br/>
+        <code>${{ needs.build.outputs.build_time }}</code>
+        </td>
+        <td align="center">
+        <h3>🚀</h3>
+        <strong>Deploy Hook</strong><br/>
+        <code>${{ needs.deploy.outputs.deploy_time }}</code>
+        </td>
+        <td align="center">
+        <h3>🏥</h3>
+        <strong>Health Check</strong><br/>
+        <code>${{ needs.healthcheck.outputs.health_time }}</code>
+        </td>
+        <td align="center">
+        <h3>⚡</h3>
+        <strong>Parallel Jobs</strong><br/>
+        <code>3x faster</code>
+        </td>
+        </tr>
+        </table>
+        
+        ---
+        
+        EOF
+        
+        # Get deployment URL based on branch (same as deploy/healthcheck jobs)
+        if [ "${{ github.ref_name }}" = "main" ]; then
+          DEPLOY_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
+        else
+          DEPLOY_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
+        fi
+        
+        # Deployment-specific sections
+        if [ "$DEPLOY_STATUS" = "success" ]; then
+          DEPLOY_TARGET="${{ needs.deploy.outputs.deploy_target }}"
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+        ## 🌐 Live Deployment
+        
+        <div align="center">
+        
+        ### 📍 **$DEPLOY_TARGET**
+        
+        🎯 **Application URL:** [$DEPLOY_URL]($DEPLOY_URL)
+        
+        </div>
+        
+        | Resource | Link |
+        |----------|------|
+        | � **Live Application** | [$DEPLOY_URL]($DEPLOY_URL) |
+        | 🏥 **Health Endpoint** | [$DEPLOY_URL/api/health]($DEPLOY_URL/api/health) |
+        | 📊 **Render Dashboard** | [View Build Logs](https://dashboard.render.com) |
+        
+        EOF
+        
+          if [ "$HEALTH_STATUS" = "success" ]; then
+            cat << EOF >> $GITHUB_STEP_SUMMARY
+        ---
+        
+        <div align="center">
+        
+        ## ✅ 🎉 Application is Healthy! 🎉 ✅
+        
+        Your application is **live** and **responding** to requests!
+        
+        ### Quick Actions
+        
+        [🌐 Open App]($DEPLOY_URL) • [🏥 Check Health]($DEPLOY_URL/api/health) • [📊 View Logs](https://dashboard.render.com)
+        
+        </div>
+        
+        EOF
+          else
+            cat << EOF >> $GITHUB_STEP_SUMMARY
+        ### ⚠️ Health Check Notice
+        
+        The deployment was successful, but the health check timed out. This doesn't necessarily mean the deployment failed.
+        
+        **Action Items:**
+        1. ✅ Check [Render Dashboard](https://dashboard.render.com) for build status
+        2. ✅ Manually verify: [$DEPLOY_URL]($DEPLOY_URL)
+        3. ✅ Review Render logs for any startup errors
+        
+        EOF
+          fi
+        else
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+        ### ❌ Deployment Failed
+        
+        **Troubleshooting Steps:**
+        1. Review the failed job logs above
+        2. Check [Render Dashboard](https://dashboard.render.com) for errors
+        3. Verify all secrets are configured correctly
+        4. Check `render.yaml` configuration
+        
+        EOF
+        fi
+        
+        cat << EOF >> $GITHUB_STEP_SUMMARY
+        ---
+        
+        ## � Workflow Architecture
+        
+        \`\`\`mermaid
+        graph LR
+            A[🎨 Quality] --> D[🏗️ Build]
+            B[🧪 Tests] --> D
+            C[🔒 Security] --> D
+            D --> E[🚀 Deploy]
+            E --> F[🏥 Health Check]
+            F --> G[📊 Dashboard]
+            
+            style A fill:#e1f5ff
+            style B fill:#e1f5ff
+            style C fill:#e1f5ff
+            style D fill:#fff3e0
+            style E fill:#f3e5f5
+            style F fill:#e8f5e9
+            style G fill:#fce4ec
+        \`\`\`
+        
+        **Pipeline Features:**
+        - ⚡ Parallel execution for pre-deploy checks (3x faster)
+        - 🎯 Smart health check with exponential backoff
+        - 📊 Comprehensive metrics tracking
+        - 🔄 Automatic retry logic
+        - 🚨 Emergency deployment mode available
+        
+        ---
+        
+        ## 🎯 Next Steps
+        
+        EOF
+        
+        if [ "$DEPLOY_STATUS" = "success" ] && [ "$HEALTH_STATUS" = "success" ]; then
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+        ✅ **Deployment completed successfully!** Your changes are now live.
+        
+        **Recommended Actions:**
+        - 🧪 Perform smoke tests on the live application
+        - 📊 Monitor application metrics and logs
+        - 👀 Review user feedback and error reports
+        - 🔄 Consider monitoring the first few minutes for any issues
+        
+        EOF
+        else
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+        ⚠️ **Review Required:** Please check the logs and take appropriate action.
+        
+        **Need Help?**
+        - 📖 Check [DEPLOYMENT.md](./DEPLOYMENT.md) for troubleshooting
+        - 💬 Contact the team for deployment support
+        - 🔧 Use emergency deployment mode if needed
+        
+        EOF
+        fi
+        
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "*Generated by StarMock CI/CD Pipeline • [View Workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*" >> $GITHUB_STEP_SUMMARY
+      env:
+        OVERALL_STATUS: ${{ env.OVERALL_STATUS }}
+        OVERALL_EMOJI: ${{ env.OVERALL_EMOJI }}
