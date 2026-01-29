@@ -53,3 +53,180 @@
   0% { transform: scale(1); opacity: 1; }
   75%, 100% { transform: scale(2); opacity: 0; }
 }
+
+/* ========================== */
+/* Interview Flow UI          */
+/* ========================== */
+
+/* Page shell */
+.interview-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Main content wrapper */
+.interview-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+}
+
+/* Question card */
+.interview-card {
+  background: var(--card-bg, rgba(24, 30, 41, 0.6));
+  backdrop-filter: blur(14px);
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 2rem;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Question text */
+.interview-question {
+  font-size: 1.25rem;
+  line-height: 1.6;
+  color: #e5e7eb;
+}
+
+/* Timer / status badge */
+.interview-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(0, 230, 207, 0.12);
+  border: 1px solid rgba(0, 230, 207, 0.25);
+  color: #00e6cf;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Recording panel */
+.record-panel {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: rgba(10, 14, 20, 0.75);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+/* Primary interview buttons */
+.interview-btn-primary {
+  background: #00e6cf;
+  color: #0a0c10;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 800;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.interview-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 25px rgba(0, 230, 207, 0.35);
+}
+
+/* Secondary buttons */
+.interview-btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e5e7eb;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+}
+
+/* Progress bar */
+.interview-progress {
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.interview-progress > div {
+  height: 100%;
+  background: linear-gradient(90deg, #00e6cf, #7c3aed);
+  transition: width 0.4s ease;
+}
+
+/* Feedback score pill */
+.score-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  background: rgba(0, 230, 207, 0.15);
+  border: 1px solid rgba(0, 230, 207, 0.35);
+  color: #00e6cf;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+/* Feedback section */
+.feedback-section {
+  margin-top: 3rem;
+}
+
+.feedback-section h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+/* History list item */
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: rgba(18, 23, 33, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.15s ease;
+}
+
+.history-item:hover {
+  background: rgba(18, 23, 33, 0.85);
+}
+
+/* ========================== */
+/* Neon Recording Animation   */
+/* ========================== */
+
+/* Recording container */
+.recording {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Recording emoji */
+.recording-emoji {
+  font-size: 1.5rem;
+  animation: bounce 1s infinite alternate;
+}
+
+/* Text pulse */
+.animate-recording {
+  font-weight: 700;
+  color: #ff4d4f;
+  animation: recordingPulse 1s infinite;
+}
+
+@keyframes bounce {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-5px); }
+}
+
+@keyframes recordingPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* Optional: remove text-shadow or box-shadow for clarity */

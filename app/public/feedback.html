@@ -1,173 +1,153 @@
 <!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Feedback Report - StarMock</title>
 
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Simplified Feedback Report</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script src="/components/auth-check.js" defer></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#25e2f4",
-                        "background-light": "#f5f8f8",
-                        "background-dark": "#102122",
-                    },
-                    fontFamily: {
-                        "display": ["Manrope", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
-<style>
-        body {
-            font-family: 'Manrope', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        .fill-icon {
-            font-variation-settings: 'FILL' 1;
-        }
-    </style>
-<style>
-    body {
-      min-height: max(884px, 100dvh);
-    }
-  </style>
-  </head>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+  <!-- Shared Tailwind Config -->
+  <script src="/components/tailwind-config.js"></script>
+
+  <!-- Global Styles -->
+  <link href="/styles/global.css" rel="stylesheet"/>
+
+  <!-- Material Icons -->
+   <link
+  href="https://fonts.googleapis.com/css2?family=Material+Icons+Round"  rel="stylesheet" />
+
+
+  <!-- Auth Check -->
+  <script src="/components/auth-check.js" defer></script>
+</head>
+
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col">
-<!-- Top Navigation Bar -->
-<header class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
-<div class="flex items-center p-4 justify-between max-w-md mx-auto w-full">
-<div class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-white/10 transition-colors cursor-pointer">
-<span class="material-symbols-outlined text-2xl">arrow_back_ios_new</span>
-</div>
-<h2 class="text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-10">Feedback Report</h2>
-</div>
-</header>
-<main class="flex-1 max-w-md mx-auto w-full px-4 pb-32">
-<!-- Session Info -->
-<div class="text-center mt-4">
-<p class="text-sm font-medium text-slate-500 dark:text-primary/70 uppercase tracking-widest">Mock Interview Session</p>
-<h1 class="text-xl font-bold mt-1 text-slate-800 dark:text-white">Product Manager Role</h1>
-</div>
-<!-- Overall Score Section -->
-<div class="flex flex-col items-center justify-center py-10">
-<div class="relative flex items-center justify-center">
-<!-- Circular Progress Background (Static placeholder) -->
-<svg class="size-48 -rotate-90">
-<circle class="text-slate-200 dark:text-white/5" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-width="8"></circle>
-<circle class="text-primary" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-dasharray="552" stroke-dashoffset="82" stroke-linecap="round" stroke-width="10"></circle>
-</svg>
-<div class="absolute inset-0 flex flex-col items-center justify-center">
-<span class="text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">85%</span>
-<p class="text-sm font-semibold text-slate-500 dark:text-primary/80 mt-1 uppercase">Overall Score</p>
-</div>
-</div>
-</div>
-<!-- Section Header -->
-<div class="flex items-center justify-between mb-4 px-1">
-<h3 class="text-lg font-bold leading-tight tracking-tight">STAR Method Breakdown</h3>
-<span class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase">Details</span>
-</div>
-<!-- STAR List -->
-<div class="space-y-4">
-<!-- Situation Item -->
-<div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
-<div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary shrink-0 size-12">
-<span class="material-symbols-outlined fill-icon">check_circle</span>
-</div>
-<div class="flex flex-col flex-1">
-<div class="flex justify-between items-center mb-1">
-<p class="text-base font-bold leading-none">Situation</p>
-<span class="text-[10px] font-bold text-primary uppercase">Strong</span>
-</div>
-<p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
-                        You effectively established a clear context by defining the project scope and stakeholders involved.
-                    </p>
-</div>
-</div>
-<!-- Task Item -->
-<div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
-<div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary shrink-0 size-12">
-<span class="material-symbols-outlined fill-icon">check_circle</span>
-</div>
-<div class="flex flex-col flex-1">
-<div class="flex justify-between items-center mb-1">
-<p class="text-base font-bold leading-none">Task</p>
-<span class="text-[10px] font-bold text-primary uppercase">Clear</span>
-</div>
-<p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
-                        The challenge was well-defined, and the objective was easy to follow for the interviewer.
-                    </p>
-</div>
-</div>
-<!-- Action Item -->
-<div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
-<div class="flex items-center justify-center rounded-lg bg-amber-500/20 text-amber-500 shrink-0 size-12">
-<span class="material-symbols-outlined">error</span>
-</div>
-<div class="flex flex-col flex-1">
-<div class="flex justify-between items-center mb-1">
-<p class="text-base font-bold leading-none">Action</p>
-<span class="text-[10px] font-bold text-amber-500 uppercase">Needs Focus</span>
-</div>
-<p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
-                        Try to use more "I" statements instead of "We". Be more specific about the technical steps you took.
-                    </p>
-</div>
-</div>
-<!-- Result Item -->
-<div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
-<div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary shrink-0 size-12">
-<span class="material-symbols-outlined fill-icon">check_circle</span>
-</div>
-<div class="flex flex-col flex-1">
-<div class="flex justify-between items-center mb-1">
-<p class="text-base font-bold leading-none">Result</p>
-<span class="text-[10px] font-bold text-primary uppercase">Excellent</span>
-</div>
-<p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
-                        Quantifying your impact (20% increase in efficiency) made the outcome very persuasive.
-                    </p>
-</div>
-</div>
-</div>
-<!-- Additional Tips -->
-<div class="mt-8 mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
-<div class="flex items-center gap-2 mb-2">
-<span class="material-symbols-outlined text-primary text-xl">lightbulb</span>
-<p class="text-sm font-bold text-primary">Pro Tip</p>
-</div>
-<p class="text-sm text-slate-600 dark:text-primary/70 italic">
-                Focus on slowing down your speech during the 'Action' phase to highlight your individual contributions more clearly.
+
+  <!-- Background Grid -->
+  <div class="fixed inset-0 grid-bg pointer-events-none opacity-40"></div>
+
+  <!-- Header Component -->
+  <div id="site-header"></div>
+
+  <main class="flex-1 max-w-6xl mx-auto w-full px-5 py-8 relative z-10">
+
+    <!-- Page Title -->
+    <div class="text-center mb-8">
+      <p class="text-sm font-medium text-slate-500 dark:text-primary/70 uppercase tracking-widest">Interview Session Feedback</p>
+      <h1 class="text-2xl font-bold mt-1 text-slate-900 dark:text-white">Ratings</h1>
+    </div>
+
+    <!-- Glass Panel Wrapper -->
+    <div class="glass-panel rounded-2xl border border-white/5 p-6 space-y-6">
+
+      <!-- Overall Score -->
+      <div class="flex flex-col items-center justify-center py-6">
+        <div class="relative flex items-center justify-center">
+          <svg class="w-48 h-48 -rotate-90">
+            <circle class="text-slate-200 dark:text-white/5" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-width="8"></circle>
+            <circle class="text-primary" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-dasharray="552" stroke-dashoffset="82" stroke-linecap="round" stroke-width="10"></circle>
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span class="text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">85%</span>
+            <p class="text-sm font-semibold text-slate-500 dark:text-primary/80 mt-1 uppercase">Overall Score</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAR Method Breakdown -->
+      <div class="flex items-center justify-between mb-4 px-1">
+        <h3 class="text-lg font-bold leading-tight tracking-tight">STAR Method Breakdown</h3>
+        <span class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase">Details</span>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Situation -->
+        <div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
+          <div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary shrink-0 w-12 h-12">
+            <span class="material-icons-round">check_circle</span>
+          </div>
+          <div class="flex flex-col flex-1">
+            <div class="flex justify-between items-center mb-1">
+              <p class="text-base font-bold leading-none">Situation</p>
+              <span class="text-[10px] font-bold text-primary uppercase">Strong</span>
+            </div>
+            <p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
+              You effectively established a clear context by defining the project scope and stakeholders involved.
             </p>
-</div>
-</main>
-<!-- Fixed Bottom Button -->
-<footer class="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background-light dark:from-background-dark via-background-light dark:via-background-dark to-transparent pt-10">
-<div class="max-w-md mx-auto w-full">
-<a href="./dashboard.html">
-    <button class="w-full bg-primary hover:bg-primary/90 text-background-dark font-extrabold text-base py-4 rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-[0.98]">
-        BACK TO DASHBOARD
-    </button>
-</a>
-<div class="h-6"></div> <!-- Safe area for home indicator -->
-</div>
-</footer>
-</body></html>
+          </div>
+        </div>
+
+        <!-- Task -->
+        <div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
+          <div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary shrink-0 w-12 h-12">
+            <span class="material-icons-round">check_circle</span>
+          </div>
+          <div class="flex flex-col flex-1">
+            <div class="flex justify-between items-center mb-1">
+              <p class="text-base font-bold leading-none">Task</p>
+              <span class="text-[10px] font-bold text-primary uppercase">Clear</span>
+            </div>
+            <p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
+              The challenge was well-defined, and the objective was easy to follow for the interviewer.
+            </p>
+          </div>
+        </div>
+
+        <!-- Action -->
+        <div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
+          <div class="flex items-center justify-center rounded-lg bg-amber-500/20 text-amber-500 shrink-0 w-12 h-12">
+            <span class="material-icons-round">error</span>
+          </div>
+          <div class="flex flex-col flex-1">
+            <div class="flex justify-between items-center mb-1">
+              <p class="text-base font-bold leading-none">Action</p>
+              <span class="text-[10px] font-bold text-amber-500 uppercase">Needs Focus</span>
+            </div>
+            <p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
+              Try to use more "I" statements instead of "We". Be more specific about the technical steps you took.
+            </p>
+          </div>
+        </div>
+
+        <!-- Result -->
+        <div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
+          <div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary shrink-0 w-12 h-12">
+            <span class="material-icons-round">check_circle</span>
+          </div>
+          <div class="flex flex-col flex-1">
+            <div class="flex justify-between items-center mb-1">
+              <p class="text-base font-bold leading-none">Result</p>
+              <span class="text-[10px] font-bold text-primary uppercase">Excellent</span>
+            </div>
+            <p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
+              Quantifying your impact (20% increase in efficiency) made the outcome very persuasive.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pro Tip -->
+      <div class="mt-8 mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="material-icons-round text-primary text-xl">lightbulb</span>
+          <p class="text-sm font-bold text-primary">Pro Tip</p>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-primary/70 italic">
+          Focus on slowing down your speech during the 'Action' phase to highlight your individual contributions more clearly.
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer Component -->
+  <div id="site-footer"></div>
+
+  <!-- Components -->
+  <script src="/components/header.js" defer></script>
+  <script src="/components/footer.js" defer></script>
+
+</body>
+</html>

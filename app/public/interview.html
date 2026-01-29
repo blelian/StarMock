@@ -1,184 +1,125 @@
 <!DOCTYPE html>
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>StarMock - Mission Control</title>
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-<script src="/components/auth-check.js" defer></script>
-<script>
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              primary: "#00F2C3",
-              "background-light": "#F8FAFC",
-              "background-dark": "#0B1119",
-              "surface-dark": "#161E28",
-              "card-dark": "#1C2632",
-              "border-dark": "#2D3748",
-            },
-            fontFamily: {
-              sans: ["Inter", "sans-serif"],
-              display: ["Inter", "sans-serif"],
-            },
-            borderRadius: {
-              DEFAULT: "12px",
-            },
-          },
-        },
-      };
-    </script>
-<style>
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .grid-bg {
-            background-size: 30px 30px;
-            background-image: 
-                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-        }
-    </style>
-<style>
-    body {
-      min-height: max(884px, 100dvh);
-    }
-  </style>
-  </head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
-<div class="fixed inset-0 grid-bg pointer-events-none opacity-40"></div>
-<div class="h-12 w-full bg-transparent"></div>
-<header class="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-<div class="px-5 py-4 flex items-center justify-between">
-<div class="flex items-center gap-2">
-<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-<span class="material-icons-round text-background-dark text-xl">auto_awesome</span>
-</div>
-<h1 class="font-extrabold text-xl tracking-tight">StarMock<span class="text-primary italic">.ai</span></h1>
-</div>
-<div class="flex items-center gap-3">
-<button class="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-<span class="material-icons-round text-[22px]">notifications</span>
-</button>
-<div class="w-9 h-9 rounded-full border-2 border-primary p-0.5">
-<img alt="User Avatar" class="w-full h-full rounded-full bg-slate-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8NaQUqXW_v5uybB3ZW6jg8NXR7mREwp_0QSHT3IJT_VUSvdTaSamjvTCljp_GsaKMo_jIzEP2kQ2P2O60JPSbFbtB41bqsrn7Su-TOXsffITQUKvFU0Mz1PhyXM0BBtZzj_lUlLI3m0e8LAywQgsdXy8loTC2qzqly-IGSMp8bGfBMhPhffjmZ-v5Nog7efBe3N4CiiQA1GRDtBuK8Y0lCMtMaQdqvxrqb2xMnDskZrJGL3iS1gJeLRN9nUQsF_iHeMld0GZoHvmo"/>
-</div>
-</div>
-</div>
-<div class="flex px-5 pb-1 gap-6">
-<a class="pb-3 border-b-2 border-primary text-primary font-semibold text-sm" href="./dashboard.html">Dashboard</a>
-<a class="pb-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 font-medium text-sm" href="./interview.html">Interview</a>
-<a class="pb-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 font-medium text-sm" href="./feedback.html">Feedback</a>
-<a class="pb-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 font-medium text-sm" href="#">History</a>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StarMock - Mission Control</title>
 
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
 
-</div>
-</header>
-<main class="flex-1 px-5 py-6 relative z-10">
-<section class="mb-8">
-<h2 class="text-2xl font-bold mb-1">Mission Control</h2>
-<p class="text-slate-500 dark:text-slate-400 text-sm">Ready to level up your interview performance?</p>
-</section>
-<section>
-<div class="flex items-center justify-between mb-5">
-<h3 class="text-lg font-bold flex items-center gap-2">
-                    Recommended <span class="text-primary text-xs bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider">For You</span>
-</h3>
-</div>
-<div class="space-y-4">
-<div class="bg-white dark:bg-card-dark rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-xl shadow-black/5">
-<div class="flex justify-between items-start mb-4">
-<span class="px-3 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-bold uppercase tracking-widest rounded-full">Difficulty: Hard</span>
-<div class="flex -space-x-2">
-<img alt="User A" class="w-6 h-6 rounded-full border-2 border-card-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0UKPwtmQTZour7XVmqk5fyLbt0aTk4uiATmRnXUcv1ugi4fiqVwIE_y12NfKXcKS9MtqnIxhSyF5bfcyhmKiMBFzDOSxNx2Hir0xtvkeJfJ3TCDs4BnbhPN4RxILnSQrGsGA5CrbL02xkipK315ztnwiGkZt7QKLDixJUrR9a-ojRPYE5MvcAbSXnL3_h0Yhxv4FKiJZNs73ix5diSwdo0v_ANBxPTkMSFwup9-idMQ80c479Ku-zDphEZzpOjhMvcVLmYCi2Pybk"/>
-<img alt="User B" class="w-6 h-6 rounded-full border-2 border-card-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4ObfQ8vmWhUJpIPy5wEZ8fyGFBLxd1AGTKgr6Myf2U3h1cB--5HRHPJGp3UusBr4k9WYXRUDE0hu9btYioK0EW1WkWarxYwpD0IxZ5xYTFze00PQGUlfuC8Ly75Divn9DAGFEUWS3lRQ2zBdH4nMfk6xTyXK_WlP0_pMAnB5UOSZErlG2hZQOxZv8GlokE4K9PgZ2wnaLGVDf5E1-ACekB0CB-dKqVEZHhRvX6unowrRVy0iUho-zrJDi3N6nzPxd_Kc8tU3CeeQt"/>
-<div class="w-6 h-6 rounded-full bg-slate-700 border-2 border-card-dark flex items-center justify-center text-[8px] font-bold">+12</div>
-</div>
-</div>
-<h4 class="text-lg font-semibold leading-snug mb-6 dark:text-slate-100">
-                        "Tell me about a time you led a team through a significant crisis or sudden change."
-                    </h4>
-<div class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400">
-<div class="flex items-center gap-1 text-xs">
-<span class="material-icons-round text-sm">schedule</span>
-                                4m 30s
-                            </div>
-</div>
-<button class="bg-primary hover:opacity-90 transition-opacity text-slate-900 px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2">
-                            Start <span class="material-icons-round text-base">play_arrow</span>
-</button>
-</div>
-</div>
-<div class="bg-white dark:bg-card-dark rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-xl shadow-black/5">
-<div class="flex justify-between items-start mb-4">
-<span class="px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase tracking-widest rounded-full">Difficulty: Medium</span>
-<div class="flex -space-x-2">
-<img alt="User C" class="w-6 h-6 rounded-full border-2 border-card-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyI51WKE1eTeo3lkmbwhb8SrVJ9_1UtbRKZ5c9-MWj0Hq94UkBUtsCU8s1hKWSJOb2KpOBE_7Zx64-bLVBngqCuSWHVo5c7vqkpKIT4nE7VIyyV9s2kc5YlYkYPJQv8086JsgIWR4JtATAyWv603Gniig_o2Gg09CzxYJRm-7cOwcZLb4FzQOpUzD4Ufpa10uKrZj0lQDFwGGxlVNZW7sHdPJYFkBekAqNAwpGCdjoZ8-gIOEjP3yjXOtsZ6O4q6PF6On8eaoSv4S8"/>
-<img alt="User D" class="w-6 h-6 rounded-full border-2 border-card-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3JBPEwyRQme3hx0BKQnDQhmAQGLALVTkzlm5U5WCrbHUoOWu4O_kz5eYEGXvG3WdHhmwbTraFrYS_Yd3oYTaR7gzuhvdPxDzQyrIy2Z7RlXXWudVCNidudddx0b4XGIZqj7E39PTXCPUlbxmelo36kPeoGxx1ELCNAvXa1YlXpgeVEVADTjwW65RdlonWvImi7v6-bw04o2lIc3tnvdDn8t-ia5PQbEUChVabeU_rH5f1ADbIkOJ3byX9Ce175qdk8OwMVe4ju7Ry"/>
-<div class="w-6 h-6 rounded-full bg-slate-700 border-2 border-card-dark flex items-center justify-center text-[8px] font-bold">+24</div>
-</div>
-</div>
-<h4 class="text-lg font-semibold leading-snug mb-6 dark:text-slate-100">
-                        "How do you handle competing deadlines and prioritize tasks under pressure?"
-                    </h4>
-<div class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400">
-<div class="flex items-center gap-1 text-xs">
-<span class="material-icons-round text-sm">schedule</span>
-                                3m 15s
-                            </div>
-</div>
-<button class="bg-primary hover:opacity-90 transition-opacity text-slate-900 px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2">
-                            Start <span class="material-icons-round text-base">play_arrow</span>
-</button>
-</div>
-</div>
-<div class="bg-white dark:bg-card-dark rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-xl shadow-black/5 opacity-80">
-<div class="flex justify-between items-start mb-4">
-<span class="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-widest rounded-full">Difficulty: Easy</span>
-</div>
-<h4 class="text-lg font-semibold leading-snug mb-6 dark:text-slate-100">
-                        "Describe a situation where you had to work with a difficult stakeholder."
-                    </h4>
-<div class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-<div class="flex items-center gap-3 text-slate-500 dark:text-slate-400">
-<div class="flex items-center gap-1 text-xs">
-<span class="material-icons-round text-sm">schedule</span>
-                                5m 00s
-                            </div>
-</div>
-<button class="bg-primary hover:opacity-90 transition-opacity text-slate-900 px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2">
-                            Start <span class="material-icons-round text-base">play_arrow</span>
-</button>
-</div>
-</div>
-</div>
-</section>
-<section class="mt-8 mb-24">
-<div class="grid grid-cols-2 gap-4">
-<div class="bg-slate-100 dark:bg-slate-800/50 rounded-2xl p-4">
-<p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Avg Score</p>
-<div class="flex items-baseline gap-2">
-<span class="text-2xl font-bold">82%</span>
-<span class="text-[10px] text-primary font-bold">+5%</span>
-</div>
-</div>
-<div class="bg-slate-100 dark:bg-slate-800/50 rounded-2xl p-4">
-<p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Time Spent</p>
-<div class="flex items-baseline gap-2">
-<span class="text-2xl font-bold">12.5h</span>
-<span class="text-[10px] text-primary font-bold">+2h</span>
-</div>
-</div>
-</div>
-</section>
-</main>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 
-</body></html>
+  <!-- Shared Tailwind Config -->
+  <script src="/components/tailwind-config.js"></script>
+
+  <!-- Global Styles -->
+  <link href="/styles/global.css" rel="stylesheet"/>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display">
+
+  <!-- Background Grid -->
+  <div class="fixed inset-0 grid-bg pointer-events-none opacity-40"></div>
+
+  <!-- Header -->
+  <div id="site-header"></div>
+
+  <!-- Spacer -->
+  <div class="h-12 w-full"></div>
+
+  <!-- Main Content -->
+  <main class="flex-1 px-5 py-6 relative z-10 max-w-6xl mx-auto w-full">
+
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-1">Mission Control</h2>
+      <p class="text-slate-500 dark:text-slate-400 text-sm">
+        Ready to level up your interview performance?
+      </p>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-lg font-bold flex items-center gap-2">
+          Recommended
+          <span class="text-primary text-xs bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+            For You
+          </span>
+        </h3>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Question Card -->
+        <div class="question-card bg-card-bg dark:bg-card-bg rounded-3xl p-6 border border-slate-800 shadow-xl shadow-black/5">
+          <div class="flex justify-between items-start mb-4">
+            <span class="px-3 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-bold uppercase tracking-widest rounded-full">
+              Difficulty: Hard
+            </span>
+          </div>
+
+          <h4 class="text-lg font-semibold leading-snug mb-6">
+            “Tell me about a time you led a team through a significant crisis or sudden change.”
+          </h4>
+
+          <!-- Start Button -->
+          <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+            <button class="start-btn bg-primary hover:opacity-90 transition-opacity text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2">
+              Start <span class="material-icons-round text-base">play_arrow</span>
+            </button>
+          </div>
+
+          <!-- Recording Indicator -->
+          <div class="recording mt-4 flex items-center gap-3">
+            <span class="recording-emoji text-xl hidden">🎤</span>
+            <p class="recording-text text-sm font-semibold text-red-500">
+              Record
+            </p>
+          </div>
+
+          <!-- Answer Input -->
+          <textarea class="answer-input hidden mt-4 w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-100"
+            placeholder="Type your answer here..."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-8 mb-24">
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-slate-800/50 rounded-2xl p-4">
+          <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">
+            Avg Score
+          </p>
+          <div class="flex items-baseline gap-2">
+            <span class="text-2xl font-bold">82%</span>
+            <span class="text-[10px] text-primary font-bold">+5%</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-800/50 rounded-2xl p-4">
+          <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">
+            Time Spent
+          </p>
+          <div class="flex items-baseline gap-2">
+            <span class="text-2xl font-bold">12.5h</span>
+            <span class="text-[10px] text-primary font-bold">+2h</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <div id="site-footer"></div>
+
+  <!-- JS Components -->
+  <script src="/components/header.js" defer></script>
+  <script src="/components/footer.js" defer></script>
+  <script src="/components/interview-redirect.js" defer></script>
+
+</body>
+</html>
