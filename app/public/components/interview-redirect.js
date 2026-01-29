@@ -1,4 +1,5 @@
 // interview-redirect.js
+/* global renderHeader, renderFooter */
 document.addEventListener("DOMContentLoaded", () => {
   // Inject header/footer
   if (typeof renderHeader === "function") renderHeader("#site-header");
