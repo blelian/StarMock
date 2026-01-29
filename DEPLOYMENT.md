@@ -116,6 +116,10 @@ Ask your team member for:**Workflow:** `.github/workflows/deploy.yml`
 
 4. Add both secrets:**Trigger Methods:**
 
+> Note: Production deployments (the `main` branch) are performed only from the canonical repository (`olwalgeorge/StarMock`) where the production secrets (`RENDER_DEPLOY_HOOK_URL`, `RENDER_APP_URL`) are stored. When workflows run from forks or contributor repositories those production secrets are not available for security reasons. Contributors can add development secrets (`RENDER_DEPLOY_HOOK_URL_DEV`, `RENDER_APP_URL_DEV`) to their forks for testing, or ask a maintainer to trigger a production deploy from the canonical repository (for example via `workflow_dispatch` or `repository_dispatch`).
+
+Additional detail: Production deploys are triggered automatically when code reaches `main` — either via a direct push to `main` in the canonical repository or when a Pull Request is merged into `main`. This workflow is intentionally constrained so that production secrets are never exposed to forks or contributor repositories.
+
 
 
 ```**Automated Workflows:**- **Automatic**: Push to `main` branch
