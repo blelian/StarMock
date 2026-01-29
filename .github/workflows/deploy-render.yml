@@ -267,7 +267,8 @@ jobs:
             echo "EOF" >> "$GITHUB_OUTPUT"
             
             echo "📍 Skipping deployment: Dev secrets not configured in upstream repository"
-          fi        # Use GitHub Actions format with proper delimiter for multiline/special chars
+          fi
+        fi
         echo "deploy_hook<<EOF" >> "$GITHUB_OUTPUT"
         echo "$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
         echo "EOF" >> "$GITHUB_OUTPUT"
