@@ -6,7 +6,7 @@
 
 A modern, interactive web application for celestial navigation and astronomical calculations, built with React and Vite.
 
-<!-- Test deployment trigger -->
+<!-- Test main branch deployment feedback -->
 
 [![CI](https://github.com/olwalgeorge/StarMock/actions/workflows/ci.yml/badge.svg)](https://github.com/olwalgeorge/StarMock/actions/workflows/ci.yml)
 [![Test Coverage](https://github.com/olwalgeorge/StarMock/actions/workflows/coverage.yml/badge.svg)](https://github.com/olwalgeorge/StarMock/actions/workflows/coverage.yml)
