@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StarMock AI — Interview History</title>
+
+    <!-- Tailwind + App Theme -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+
+    <!-- Fonts + Icons -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined"
+      rel="stylesheet"
+    />
+
+    <!-- Global styles -->
+    <link rel="stylesheet" href="/styles/global.css" />
+
+    <!--Material Icons-->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Icons+Round" rel="stylesheet"
+    />
+
+    <!-- Auth guard -->
+    <script src="/components/auth-check.js" defer></script>
+
+    <!-- Layout components -->
+    <script src="/components/header.js" defer></script>
+    <script src="/components/footer.js" defer></script>
+  </head>
+
+  <body class="bg-background-dark text-white min-h-screen flex flex-col font-display">
+    <!-- Header injected -->
+    <div id="site-header"></div>
+
+    <!-- MAIN -->
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 py-8">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold">Interview History</h1>
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
+          Latest first
+        </span>
+      </div>
+
+      <!-- History list -->
+      <div class="grid gap-4">
+        <!-- Item -->
+        <div class="history-item">
+          <div>
+            <span
+              class="inline-block mb-2 bg-primary/20 text-primary text-[10px] font-bold tracking-widest uppercase px-2 py-1 rounded"
+            >
+              Behavioral
+            </span>
+            <h3 class="text-lg font-bold text-white">Conflict resolution with a difficult teammate</h3>
+            <p class="text-sm text-slate-400 mt-1">Completed • Jan 28, 2026</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="text-center">
+              <p class="text-xs uppercase tracking-wider text-slate-400">Score</p>
+              <p class="text-xl font-bold text-primary">82%</p>
+            </div>
+            <a
+              href="/feedback.html"
+              class="interview-btn-primary"
+            >
+              View Feedback
+            </a>
+          </div>
+        </div>
+
+        <!-- Item -->
+        <div class="history-item">
+          <div>
+            <span
+              class="inline-block mb-2 bg-purple-500/20 text-purple-400 text-[10px] font-bold tracking-widest uppercase px-2 py-1 rounded"
+            >
+              Technical
+            </span>
+            <h3 class="text-lg font-bold text-white">Optimizing a slow database query</h3>
+            <p class="text-sm text-slate-400 mt-1">Completed • Jan 25, 2026</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="text-center">
+              <p class="text-xs uppercase tracking-wider text-slate-400">Score</p>
+              <p class="text-xl font-bold text-primary">74%</p>
+            </div>
+            <a
+              href="/feedback.html"
+              class="interview-btn-primary"
+            >
+              View Feedback
+            </a>
+          </div>
+        </div>
+
+        <!-- Add more history items here -->
+      </div>
+    </main>
+
+    <!-- Footer injected -->
+    <div id="site-footer"></div>
+    <!-- JS Components -->
+    <script src="/components/header.js" defer></script>
+    <script src="/components/footer.js" defer></script>
+  </body>
+</html>
