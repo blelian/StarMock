@@ -270,4 +270,4 @@ Maintained with ❤️ by the StarMock team.
 **Note**: This project requires Node.js 20.x or higher due to Vite 7 dependencies.
 Contributors: Blessing Mpofu
               George Olwal
-            
+              Kehinde John Omottosso
