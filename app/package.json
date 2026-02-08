@@ -15,7 +15,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "prepare": "husky"
+    // "prepare": "husky"
   },
   "dependencies": {
     "express": "^4.19.2",
