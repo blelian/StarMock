@@ -129,6 +129,7 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, _next) => {
   console.error("Error:", err);
   res.status(err.status || 500).json({

@@ -126,8 +126,6 @@ async function testCompleteUserJourney() {
   assert(profileResult.ok, 'Profile retrieval successful');
   assert(profileResult.data?.user?.email === testEmail, 'Profile email matches');
 
-  const userId = profileResult.data?.user?.id;
-
   // Test 4: Logout
   await testEndpoint('User Logout', `${BASE_URL}/auth/logout`, { method: 'POST' });
   

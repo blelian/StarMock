@@ -20,10 +20,6 @@ const requiredEnvVars = {
   ],
 };
 
-const optionalEnvVars = [
-  'JWT_SECRET', // Fallback for SESSION_SECRET
-];
-
 /**
  * Validate environment variables
  */

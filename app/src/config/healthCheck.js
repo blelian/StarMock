@@ -190,7 +190,7 @@ export async function healthCheck() {
       await mongoose.connection.db.admin().ping();
       status.database = 'connected';
     }
-  } catch (error) {
+  } catch {
     status.database = 'error';
     status.status = 'degraded';
   }

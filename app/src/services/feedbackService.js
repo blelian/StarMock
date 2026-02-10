@@ -222,10 +222,9 @@ function generateStrengths(scores, structure) {
 /**
  * Evaluate an interview response using STAR methodology
  * @param {string} responseText - The user's response
- * @param {object} question - The interview question object
  * @returns {object} Evaluation results with scores and feedback
  */
-export function evaluateResponse(responseText, question) {
+export function evaluateResponse(responseText) {
   // Analyze structure
   const structure = analyzeStructure(responseText);
 

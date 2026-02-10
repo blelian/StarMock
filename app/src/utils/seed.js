@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import connectDB from '../config/database.js';
 import { InterviewQuestion } from '../models/index.js';
