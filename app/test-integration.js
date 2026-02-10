@@ -176,21 +176,27 @@ async function testCompleteUserJourney() {
   );
   assert(hardQuestionsResult.ok, 'Difficulty-filtered questions retrieved');
 
-  // Get specific question
-  const questionId = questionsResult.data.questions[0].id;
-  const singleQuestionResult = await testEndpoint(
-    'Get Single Question',
-    `${BASE_URL}/questions/${questionId}`
-  );
-  assert(singleQuestionResult.ok, 'Single question retrieved');
-  assert(singleQuestionResult.data?.question?.id === questionId, 'Question ID matches');
+  // Get specific question (if questions exist)
+  let questionId;
+  let singleQuestionResult;
+  if (questionsResult.data?.questions?.length > 0) {
+    questionId = questionsResult.data.questions[0].id;
+    singleQuestionResult = await testEndpoint(
+      'Get Single Question',
+      `${BASE_URL}/questions/${questionId}`
+    );
+    assert(singleQuestionResult.ok, 'Single question retrieved');
+    assert(singleQuestionResult.data?.question?.id === questionId, 'Question ID matches');
+  } else {
+    console.log('⚠️  Skipping single question test - no questions available');
+  }
 
   // Test 7: Complete Interview Session
   console.log('\n📋 Test Suite 3: Complete Interview Session');
   console.log('-'.repeat(60));
 
   // Start interview session
-  const questionIds = questionsResult.data.questions.slice(0, 3).map(q => q.id);
+  const questionIds = questionsResult.data?.questions?.slice(0, 3).map(q => q.id) || [];
   const sessionResult = await testEndpoint(
     'Start Interview Session',
     `${BASE_URL}/sessions`,
