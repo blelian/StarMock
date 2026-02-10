@@ -3,7 +3,7 @@ services:
     name: starmock
     runtime: node
     rootDir: app
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --omit=dev
     startCommand: npm start
     envVars:
       - key: NODE_ENV
