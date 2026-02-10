@@ -1,8 +1,11 @@
 import mongoose from 'mongoose';
 import { InterviewResponse } from './src/models/index.js';
 import { evaluateResponse } from './src/services/feedbackService.js';
+import dotenv from 'dotenv';
 
-const MONGODB_URI = 'mongodb+srv://olwalgeorge:Elixier2007@cluster0.wncfx.mongodb.net/starmock?retryWrites=true&w=majority&appName=Cluster0';
+dotenv.config();
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/starmock';
 
 async function testDirectFeedback() {
   try {

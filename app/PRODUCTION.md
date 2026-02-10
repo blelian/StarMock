@@ -37,7 +37,7 @@ Configure the following environment variables in Render dashboard:
 |----------|-------------|---------|
 | `NODE_ENV` | Environment mode | `production` |
 | `PORT` | Server port (auto-set by Render) | `10000` |
-| `MONGODB_URI` | MongoDB Atlas connection string | `mongodb+srv://user:pass@cluster.mongodb.net/starmock` |
+| `MONGODB_URI` | MongoDB Atlas connection string | `mongodb+srv://<username>:<password>@<cluster>.mongodb.net/starmock` |
 | `SESSION_SECRET` | Session encryption key (32+ chars) | Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `FRONTEND_URL` | Frontend origin for CORS | `https://yourdomain.com` |
 
