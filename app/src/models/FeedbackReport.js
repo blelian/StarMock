@@ -1,0 +1,132 @@
+import mongoose from 'mongoose';
+
+const feedbackReportSchema = new mongoose.Schema(
+  {
+    sessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'InterviewSession',
+      required: true,
+      unique: true,
+      index: true,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
+    questionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'InterviewQuestion',
+      required: true,
+    },
+    responseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'InterviewResponse',
+      required: true,
+    },
+    scores: {
+      situation: {
+        score: {
+          type: Number,
+          min: 0,
+          max: 100,
+          required: true,
+        },
+        feedback: String,
+      },
+      task: {
+        score: {
+          type: Number,
+          min: 0,
+          max: 100,
+          required: true,
+        },
+        feedback: String,
+      },
+      action: {
+        score: {
+          type: Number,
+          min: 0,
+          max: 100,
+          required: true,
+        },
+        feedback: String,
+      },
+      result: {
+        score: {
+          type: Number,
+          min: 0,
+          max: 100,
+          required: true,
+        },
+        feedback: String,
+      },
+      overall: {
+        type: Number,
+        min: 0,
+        max: 100,
+        required: true,
+      },
+    },
+    strengths: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    improvements: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    tips: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    rating: {
+      type: String,
+      enum: ['excellent', 'good', 'fair', 'needs_improvement'],
+    },
+    evaluatorType: {
+      type: String,
+      enum: ['rule_based', 'ai_model', 'hybrid'],
+      default: 'rule_based',
+    },
+    generatedAt: {
+      type: Date,
+      default: Date.now,
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Indexes for faster queries
+feedbackReportSchema.index({ userId: 1, createdAt: -1 });
+feedbackReportSchema.index({ sessionId: 1 });
+
+// Calculate overall rating based on overall score
+feedbackReportSchema.pre('save', function () {
+  if (this.scores && this.scores.overall !== undefined) {
+    const score = this.scores.overall;
+    if (score >= 85) {
+      this.rating = 'excellent';
+    } else if (score >= 70) {
+      this.rating = 'good';
+    } else if (score >= 50) {
+      this.rating = 'fair';
+    } else {
+      this.rating = 'needs_improvement';
+    }
+  }
+});
+
+const FeedbackReport = mongoose.model('FeedbackReport', feedbackReportSchema);
+
+export default FeedbackReport;

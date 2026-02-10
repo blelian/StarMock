@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "start": "node server.js",
+    "seed": "node src/utils/seed.js",
+    "test:db": "node test-connection.js",
+    "validate:db": "node validate-connection.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
@@ -18,7 +21,14 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "connect-mongo": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.4",
     "express": "^4.19.2",
+    "express-session": "^1.19.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
