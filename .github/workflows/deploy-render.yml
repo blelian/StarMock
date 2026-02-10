@@ -178,6 +178,16 @@ jobs:
           sleep 2
         done
     
+    - name: 🌱 Seed Database
+      working-directory: ./app
+      env:
+        MONGODB_URI: mongodb://testuser:testpass@localhost:27017/starmock_test?authSource=admin
+        NODE_ENV: test
+      run: |
+        echo "::group::Seeding test database"
+        npm run seed
+        echo "::endgroup::"
+    
     - name: 🔗 Run Integration Tests
       working-directory: ./app
       env:

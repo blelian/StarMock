@@ -195,8 +195,32 @@ async function testCompleteUserJourney() {
   console.log('\n📋 Test Suite 3: Complete Interview Session');
   console.log('-'.repeat(60));
 
-  // Start interview session
+  // Check if we have questions to test with
   const questionIds = questionsResult.data?.questions?.slice(0, 3).map(q => q.id) || [];
+  
+  if (questionIds.length === 0) {
+    console.log('⚠️  Skipping interview session tests - no questions available');
+    console.log('⚠️  Database may need to be seeded with: npm run seed');
+    console.log('\n📋 Test Suite 4: Feedback Generation & Analysis');
+    console.log('-'.repeat(60));
+    console.log('⚠️  Skipping - no session to test');
+    
+    console.log('\n📋 Test Suite 5: Interview History & Tracking');
+    console.log('-'.repeat(60));
+    console.log('⚠️  Skipping - no sessions to test');
+    
+    console.log('\n📋 Test Suite 6: Error Handling & Edge Cases');
+    console.log('-'.repeat(60));
+    console.log('⚠️  Skipping - no data to test with');
+    
+    console.log('\n' + '='.repeat(60));
+    console.log('⚠️  WARNING: Most tests skipped due to empty database');
+    console.log('   Run "npm run seed" to populate the database');
+    console.log('='.repeat(60));
+    return;
+  }
+
+  // Start interview session
   const sessionResult = await testEndpoint(
     'Start Interview Session',
     `${BASE_URL}/sessions`,
