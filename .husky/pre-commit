@@ -15,6 +15,14 @@ fi
 # Change to app directory and run checks
 cd "$REPO_ROOT/app"
 
+# Check for secrets first (fail fast)
+echo "🔒 Scanning for secrets..."
+npm run check:secrets
+if [ $? -ne 0 ]; then
+  echo "❌ Secret scan failed. Commit blocked."
+  exit 1
+fi
+
 # Auto-fix linting and formatting issues on staged files only
 echo "🎨 Auto-fixing linting and formatting issues..."
 npx lint-staged
