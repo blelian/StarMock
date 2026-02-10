@@ -3,8 +3,10 @@ import {
   InterviewQuestion,
   InterviewSession,
   InterviewResponse,
+  FeedbackReport,
 } from '../models/index.js';
 import { requireAuth } from '../middleware/auth.js';
+import { evaluateResponse } from '../services/feedbackService.js';
 
 const router = express.Router();
 
@@ -441,6 +443,135 @@ router.get('/history', requireAuth, async (req, res) => {
       error: {
         message: 'Failed to fetch history',
         code: 'FETCH_ERROR',
+      },
+    });
+  }
+});
+
+/**
+ * @route   GET /api/sessions/:id/feedback
+ * @desc    Get AI-generated feedback for a completed session
+ * @access  Private
+ */
+router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
+  try {
+    const sessionId = req.params.id;
+
+    // Verify session exists and belongs to user
+    const session = await InterviewSession.findOne({
+      _id: sessionId,
+      userId: req.userId,
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        error: {
+          message: 'Session not found',
+          code: 'NOT_FOUND',
+        },
+      });
+    }
+
+    // Check if session is completed
+    if (session.status !== 'completed') {
+      return res.status(400).json({
+        error: {
+          message: 'Feedback only available for completed sessions',
+          code: 'SESSION_NOT_COMPLETED',
+        },
+      });
+    }
+
+    // Check if feedback already exists
+    let existingFeedback = await FeedbackReport.find({
+      sessionId: sessionId,
+      userId: req.userId,
+    }).populate('responseId');
+
+    if (existingFeedback.length > 0) {
+      // Return existing feedback
+      return res.json({
+        feedback: existingFeedback.map(f => ({
+          id: f._id,
+          responseId: f.responseId._id,
+          questionText: f.responseId.questionId?.questionText || 'Question not found',
+          scores: f.scores,
+          rating: f.rating,
+          strengths: f.strengths,
+          suggestions: f.suggestions,
+          createdAt: f.createdAt,
+        })),
+        count: existingFeedback.length,
+      });
+    }
+
+    // Get all responses for the session
+    const responses = await InterviewResponse.find({
+      sessionId: sessionId,
+      userId: req.userId,
+    }).populate('questionId');
+
+    if (responses.length === 0) {
+      return res.status(400).json({
+        error: {
+          message: 'No responses found for this session',
+          code: 'NO_RESPONSES',
+        },
+      });
+    }
+
+    // Generate feedback for each response
+    const feedbackReports = [];
+
+    for (const response of responses) {
+      try {
+        // Evaluate the response using the feedback service
+        const evaluation = evaluateResponse(response.responseText, response.questionId);
+
+        // Create and save feedback report
+        const feedback = new FeedbackReport({
+          sessionId: sessionId,
+          userId: req.userId,
+          responseId: response._id,
+          scores: evaluation.scores,
+          rating: evaluation.rating,
+          strengths: evaluation.strengths,
+          suggestions: evaluation.suggestions,
+          analysis: evaluation.analysis,
+        });
+
+        await feedback.save();
+
+        feedbackReports.push({
+          id: feedback._id,
+          responseId: response._id,
+          questionText: response.questionId.questionText,
+          scores: feedback.scores,
+          rating: feedback.rating,
+          strengths: feedback.strengths,
+          suggestions: feedback.suggestions,
+          analysis: feedback.analysis,
+          createdAt: feedback.createdAt,
+        });
+      } catch (responseError) {
+        console.error(`Error generating feedback for response ${response._id}:`, responseError.message);
+        throw responseError;
+      }
+    }
+
+    res.json({
+      message: 'Feedback generated successfully',
+      feedback: feedbackReports,
+      count: feedbackReports.length,
+    });
+  } catch (error) {
+    console.error('Get feedback error:', error.message);
+    console.error('Stack:', error.stack);
+    res.status(500).json({
+      error: {
+        message: 'Failed to generate feedback',
+        code: 'FEEDBACK_ERROR',
+        details: error.message,
       },
     });
   }

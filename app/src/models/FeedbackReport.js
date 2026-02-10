@@ -6,7 +6,6 @@ const feedbackReportSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'InterviewSession',
       required: true,
-      unique: true,
       index: true,
     },
     userId: {
@@ -15,52 +14,41 @@ const feedbackReportSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    questionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'InterviewQuestion',
-      required: true,
-    },
     responseId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'InterviewResponse',
       required: true,
+      unique: true,
     },
     scores: {
       situation: {
-        score: {
-          type: Number,
-          min: 0,
-          max: 100,
-          required: true,
-        },
-        feedback: String,
+        type: Number,
+        min: 0,
+        max: 100,
+        required: true,
       },
       task: {
-        score: {
-          type: Number,
-          min: 0,
-          max: 100,
-          required: true,
-        },
-        feedback: String,
+        type: Number,
+        min: 0,
+        max: 100,
+        required: true,
       },
       action: {
-        score: {
-          type: Number,
-          min: 0,
-          max: 100,
-          required: true,
-        },
-        feedback: String,
+        type: Number,
+        min: 0,
+        max: 100,
+        required: true,
       },
       result: {
-        score: {
-          type: Number,
-          min: 0,
-          max: 100,
-          required: true,
-        },
-        feedback: String,
+        type: Number,
+        min: 0,
+        max: 100,
+        required: true,
+      },
+      detail: {
+        type: Number,
+        min: 0,
+        max: 100,
       },
       overall: {
         type: Number,
@@ -75,13 +63,7 @@ const feedbackReportSchema = new mongoose.Schema(
         trim: true,
       },
     ],
-    improvements: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    tips: [
+    suggestions: [
       {
         type: String,
         trim: true,
@@ -90,6 +72,9 @@ const feedbackReportSchema = new mongoose.Schema(
     rating: {
       type: String,
       enum: ['excellent', 'good', 'fair', 'needs_improvement'],
+    },
+    analysis: {
+      type: mongoose.Schema.Types.Mixed,
     },
     evaluatorType: {
       type: String,
