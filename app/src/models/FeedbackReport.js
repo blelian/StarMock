@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from 'mongoose'
 
 const feedbackReportSchema = new mongoose.Schema(
   {
@@ -90,28 +90,28 @@ const feedbackReportSchema = new mongoose.Schema(
   {
     timestamps: true,
   }
-);
+)
 
 // Indexes for faster queries
-feedbackReportSchema.index({ userId: 1, createdAt: -1 });
-feedbackReportSchema.index({ sessionId: 1 });
+feedbackReportSchema.index({ userId: 1, createdAt: -1 })
+feedbackReportSchema.index({ sessionId: 1 })
 
 // Calculate overall rating based on overall score
 feedbackReportSchema.pre('save', function () {
   if (this.scores && this.scores.overall !== undefined) {
-    const score = this.scores.overall;
+    const score = this.scores.overall
     if (score >= 85) {
-      this.rating = 'excellent';
+      this.rating = 'excellent'
     } else if (score >= 70) {
-      this.rating = 'good';
+      this.rating = 'good'
     } else if (score >= 50) {
-      this.rating = 'fair';
+      this.rating = 'fair'
     } else {
-      this.rating = 'needs_improvement';
+      this.rating = 'needs_improvement'
     }
   }
-});
+})
 
-const FeedbackReport = mongoose.model('FeedbackReport', feedbackReportSchema);
+const FeedbackReport = mongoose.model('FeedbackReport', feedbackReportSchema)
 
-export default FeedbackReport;
+export default FeedbackReport

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from 'mongoose'
 
 const interviewQuestionSchema = new mongoose.Schema(
   {
@@ -49,7 +49,8 @@ const interviewQuestionSchema = new mongoose.Schema(
       },
       task: {
         type: String,
-        default: 'Explain your responsibility and what needed to be accomplished',
+        default:
+          'Explain your responsibility and what needed to be accomplished',
       },
       action: {
         type: String,
@@ -68,13 +69,16 @@ const interviewQuestionSchema = new mongoose.Schema(
   {
     timestamps: true,
   }
-);
+)
 
 // Indexes for faster queries
-interviewQuestionSchema.index({ type: 1, difficulty: 1 });
-interviewQuestionSchema.index({ category: 1 });
-interviewQuestionSchema.index({ isActive: 1 });
+interviewQuestionSchema.index({ type: 1, difficulty: 1 })
+interviewQuestionSchema.index({ category: 1 })
+interviewQuestionSchema.index({ isActive: 1 })
 
-const InterviewQuestion = mongoose.model('InterviewQuestion', interviewQuestionSchema);
+const InterviewQuestion = mongoose.model(
+  'InterviewQuestion',
+  interviewQuestionSchema
+)
 
-export default InterviewQuestion;
+export default InterviewQuestion

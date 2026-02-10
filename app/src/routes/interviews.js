@@ -1,14 +1,14 @@
-import express from 'express';
+import express from 'express'
 import {
   InterviewQuestion,
   InterviewSession,
   InterviewResponse,
   FeedbackReport,
-} from '../models/index.js';
-import { requireAuth } from '../middleware/auth.js';
-import { evaluateResponse } from '../services/feedbackService.js';
+} from '../models/index.js'
+import { requireAuth } from '../middleware/auth.js'
+import { evaluateResponse } from '../services/feedbackService.js'
 
-const router = express.Router();
+const router = express.Router()
 
 /**
  * @route   GET /api/questions
@@ -20,18 +20,18 @@ const router = express.Router();
  */
 router.get('/questions', requireAuth, async (req, res) => {
   try {
-    const { type, difficulty, limit = 5 } = req.query;
+    const { type, difficulty, limit = 5 } = req.query
 
     // Build query filter
-    const filter = {};
-    if (type) filter.type = type;
-    if (difficulty) filter.difficulty = difficulty;
+    const filter = {}
+    if (type) filter.type = type
+    if (difficulty) filter.difficulty = difficulty
 
     // Get random questions
     const questions = await InterviewQuestion.aggregate([
       { $match: filter },
       { $sample: { size: parseInt(limit) } },
-    ]);
+    ])
 
     res.json({
       questions: questions.map((q) => ({
@@ -43,17 +43,17 @@ router.get('/questions', requireAuth, async (req, res) => {
         starGuidelines: q.starGuidelines,
       })),
       count: questions.length,
-    });
+    })
   } catch (error) {
-    console.error('Get questions error:', error);
+    console.error('Get questions error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to fetch questions',
         code: 'FETCH_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   GET /api/questions/:id
@@ -62,7 +62,7 @@ router.get('/questions', requireAuth, async (req, res) => {
  */
 router.get('/questions/:id', requireAuth, async (req, res) => {
   try {
-    const question = await InterviewQuestion.findById(req.params.id);
+    const question = await InterviewQuestion.findById(req.params.id)
 
     if (!question) {
       return res.status(404).json({
@@ -70,7 +70,7 @@ router.get('/questions/:id', requireAuth, async (req, res) => {
           message: 'Question not found',
           code: 'NOT_FOUND',
         },
-      });
+      })
     }
 
     res.json({
@@ -82,17 +82,17 @@ router.get('/questions/:id', requireAuth, async (req, res) => {
         questionText: question.questionText,
         starGuidelines: question.starGuidelines,
       },
-    });
+    })
   } catch (error) {
-    console.error('Get question error:', error);
+    console.error('Get question error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to fetch question',
         code: 'FETCH_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   POST /api/sessions
@@ -102,22 +102,26 @@ router.get('/questions/:id', requireAuth, async (req, res) => {
  */
 router.post('/sessions', requireAuth, async (req, res) => {
   try {
-    const { questionIds } = req.body;
+    const { questionIds } = req.body
 
     // Validate input
-    if (!questionIds || !Array.isArray(questionIds) || questionIds.length === 0) {
+    if (
+      !questionIds ||
+      !Array.isArray(questionIds) ||
+      questionIds.length === 0
+    ) {
       return res.status(400).json({
         error: {
           message: 'Question IDs are required',
           code: 'MISSING_QUESTIONS',
         },
-      });
+      })
     }
 
     // Verify all questions exist
     const questions = await InterviewQuestion.find({
       _id: { $in: questionIds },
-    });
+    })
 
     if (questions.length !== questionIds.length) {
       return res.status(400).json({
@@ -125,7 +129,7 @@ router.post('/sessions', requireAuth, async (req, res) => {
           message: 'One or more invalid question IDs',
           code: 'INVALID_QUESTIONS',
         },
-      });
+      })
     }
 
     // Create interview session
@@ -134,9 +138,9 @@ router.post('/sessions', requireAuth, async (req, res) => {
       questions: questionIds,
       status: 'in_progress',
       startedAt: new Date(),
-    });
+    })
 
-    await session.save();
+    await session.save()
 
     res.status(201).json({
       message: 'Interview session started',
@@ -146,17 +150,17 @@ router.post('/sessions', requireAuth, async (req, res) => {
         questionCount: session.questions.length,
         startedAt: session.startedAt,
       },
-    });
+    })
   } catch (error) {
-    console.error('Create session error:', error);
+    console.error('Create session error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to create session',
         code: 'SESSION_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   GET /api/sessions/:id
@@ -168,7 +172,7 @@ router.get('/sessions/:id', requireAuth, async (req, res) => {
     const session = await InterviewSession.findOne({
       _id: req.params.id,
       userId: req.userId,
-    }).populate('questions');
+    }).populate('questions')
 
     if (!session) {
       return res.status(404).json({
@@ -176,7 +180,7 @@ router.get('/sessions/:id', requireAuth, async (req, res) => {
           message: 'Session not found',
           code: 'NOT_FOUND',
         },
-      });
+      })
     }
 
     res.json({
@@ -188,17 +192,17 @@ router.get('/sessions/:id', requireAuth, async (req, res) => {
         completedAt: session.completedAt,
         duration: session.duration,
       },
-    });
+    })
   } catch (error) {
-    console.error('Get session error:', error);
+    console.error('Get session error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to fetch session',
         code: 'FETCH_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   POST /api/sessions/:id/responses
@@ -209,7 +213,7 @@ router.get('/sessions/:id', requireAuth, async (req, res) => {
  */
 router.post('/sessions/:id/responses', requireAuth, async (req, res) => {
   try {
-    const { questionId, responseText } = req.body;
+    const { questionId, responseText } = req.body
 
     // Validate input
     if (!questionId || !responseText || responseText.trim().length === 0) {
@@ -218,14 +222,14 @@ router.post('/sessions/:id/responses', requireAuth, async (req, res) => {
           message: 'Question ID and response text are required',
           code: 'MISSING_FIELDS',
         },
-      });
+      })
     }
 
     // Verify session exists and belongs to user
     const session = await InterviewSession.findOne({
       _id: req.params.id,
       userId: req.userId,
-    });
+    })
 
     if (!session) {
       return res.status(404).json({
@@ -233,7 +237,7 @@ router.post('/sessions/:id/responses', requireAuth, async (req, res) => {
           message: 'Session not found',
           code: 'NOT_FOUND',
         },
-      });
+      })
     }
 
     // Verify session is still active
@@ -243,7 +247,7 @@ router.post('/sessions/:id/responses', requireAuth, async (req, res) => {
           message: 'Session is not active',
           code: 'SESSION_CLOSED',
         },
-      });
+      })
     }
 
     // Verify question is part of session
@@ -253,7 +257,7 @@ router.post('/sessions/:id/responses', requireAuth, async (req, res) => {
           message: 'Question not part of this session',
           code: 'INVALID_QUESTION',
         },
-      });
+      })
     }
 
     // Create response
@@ -262,9 +266,9 @@ router.post('/sessions/:id/responses', requireAuth, async (req, res) => {
       userId: req.userId,
       questionId,
       responseText: responseText.trim(),
-    });
+    })
 
-    await response.save();
+    await response.save()
 
     res.status(201).json({
       message: 'Response submitted successfully',
@@ -274,17 +278,17 @@ router.post('/sessions/:id/responses', requireAuth, async (req, res) => {
         wordCount: response.wordCount,
         submittedAt: response.createdAt,
       },
-    });
+    })
   } catch (error) {
-    console.error('Submit response error:', error);
+    console.error('Submit response error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to submit response',
         code: 'SUBMIT_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   POST /api/sessions/:id/complete
@@ -297,7 +301,7 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
     const session = await InterviewSession.findOne({
       _id: req.params.id,
       userId: req.userId,
-    });
+    })
 
     if (!session) {
       return res.status(404).json({
@@ -305,7 +309,7 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
           message: 'Session not found',
           code: 'NOT_FOUND',
         },
-      });
+      })
     }
 
     // Check if already completed
@@ -315,13 +319,13 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
           message: 'Session already completed',
           code: 'ALREADY_COMPLETED',
         },
-      });
+      })
     }
 
     // Update session status
-    session.status = 'completed';
-    session.completedAt = new Date();
-    await session.save();
+    session.status = 'completed'
+    session.completedAt = new Date()
+    await session.save()
 
     res.json({
       message: 'Session completed successfully',
@@ -331,17 +335,17 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
         completedAt: session.completedAt,
         duration: session.duration,
       },
-    });
+    })
   } catch (error) {
-    console.error('Complete session error:', error);
+    console.error('Complete session error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to complete session',
         code: 'COMPLETE_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   GET /api/sessions/:id/responses
@@ -354,7 +358,7 @@ router.get('/sessions/:id/responses', requireAuth, async (req, res) => {
     const session = await InterviewSession.findOne({
       _id: req.params.id,
       userId: req.userId,
-    });
+    })
 
     if (!session) {
       return res.status(404).json({
@@ -362,14 +366,14 @@ router.get('/sessions/:id/responses', requireAuth, async (req, res) => {
           message: 'Session not found',
           code: 'NOT_FOUND',
         },
-      });
+      })
     }
 
     // Get all responses for the session
     const responses = await InterviewResponse.find({
       sessionId: req.params.id,
       userId: req.userId,
-    }).populate('questionId');
+    }).populate('questionId')
 
     res.json({
       responses: responses.map((r) => ({
@@ -380,17 +384,17 @@ router.get('/sessions/:id/responses', requireAuth, async (req, res) => {
         submittedAt: r.createdAt,
       })),
       count: responses.length,
-    });
+    })
   } catch (error) {
-    console.error('Get responses error:', error);
+    console.error('Get responses error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to fetch responses',
         code: 'FETCH_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   GET /api/history
@@ -402,24 +406,24 @@ router.get('/sessions/:id/responses', requireAuth, async (req, res) => {
  */
 router.get('/history', requireAuth, async (req, res) => {
   try {
-    const { status, limit = 10, page = 1 } = req.query;
+    const { status, limit = 10, page = 1 } = req.query
 
     // Build query filter
-    const filter = { userId: req.userId };
-    if (status) filter.status = status;
+    const filter = { userId: req.userId }
+    if (status) filter.status = status
 
     // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (parseInt(page) - 1) * parseInt(limit)
 
     // Get sessions with pagination
     const sessions = await InterviewSession.find(filter)
       .populate('questions')
       .sort({ startedAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
 
     // Get total count for pagination
-    const totalCount = await InterviewSession.countDocuments(filter);
+    const totalCount = await InterviewSession.countDocuments(filter)
 
     res.json({
       sessions: sessions.map((s) => ({
@@ -436,17 +440,17 @@ router.get('/history', requireAuth, async (req, res) => {
         totalSessions: totalCount,
         hasMore: skip + sessions.length < totalCount,
       },
-    });
+    })
   } catch (error) {
-    console.error('Get history error:', error);
+    console.error('Get history error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to fetch history',
         code: 'FETCH_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   GET /api/sessions/:id/feedback
@@ -455,13 +459,13 @@ router.get('/history', requireAuth, async (req, res) => {
  */
 router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
   try {
-    const sessionId = req.params.id;
+    const sessionId = req.params.id
 
     // Verify session exists and belongs to user
     const session = await InterviewSession.findOne({
       _id: sessionId,
       userId: req.userId,
-    });
+    })
 
     if (!session) {
       return res.status(404).json({
@@ -469,7 +473,7 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
           message: 'Session not found',
           code: 'NOT_FOUND',
         },
-      });
+      })
     }
 
     // Check if session is completed
@@ -479,22 +483,23 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
           message: 'Feedback only available for completed sessions',
           code: 'SESSION_NOT_COMPLETED',
         },
-      });
+      })
     }
 
     // Check if feedback already exists
     let existingFeedback = await FeedbackReport.find({
       sessionId: sessionId,
       userId: req.userId,
-    }).populate('responseId');
+    }).populate('responseId')
 
     if (existingFeedback.length > 0) {
       // Return existing feedback
       return res.json({
-        feedback: existingFeedback.map(f => ({
+        feedback: existingFeedback.map((f) => ({
           id: f._id,
           responseId: f.responseId._id,
-          questionText: f.responseId.questionId?.questionText || 'Question not found',
+          questionText:
+            f.responseId.questionId?.questionText || 'Question not found',
           scores: f.scores,
           rating: f.rating,
           strengths: f.strengths,
@@ -502,14 +507,14 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
           createdAt: f.createdAt,
         })),
         count: existingFeedback.length,
-      });
+      })
     }
 
     // Get all responses for the session
     const responses = await InterviewResponse.find({
       sessionId: sessionId,
       userId: req.userId,
-    }).populate('questionId');
+    }).populate('questionId')
 
     if (responses.length === 0) {
       return res.status(400).json({
@@ -517,16 +522,19 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
           message: 'No responses found for this session',
           code: 'NO_RESPONSES',
         },
-      });
+      })
     }
 
     // Generate feedback for each response
-    const feedbackReports = [];
+    const feedbackReports = []
 
     for (const response of responses) {
       try {
         // Evaluate the response using the feedback service
-        const evaluation = evaluateResponse(response.responseText, response.questionId);
+        const evaluation = evaluateResponse(
+          response.responseText,
+          response.questionId
+        )
 
         // Create and save feedback report
         const feedback = new FeedbackReport({
@@ -538,9 +546,9 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
           strengths: evaluation.strengths,
           suggestions: evaluation.suggestions,
           analysis: evaluation.analysis,
-        });
+        })
 
-        await feedback.save();
+        await feedback.save()
 
         feedbackReports.push({
           id: feedback._id,
@@ -552,10 +560,13 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
           suggestions: feedback.suggestions,
           analysis: feedback.analysis,
           createdAt: feedback.createdAt,
-        });
+        })
       } catch (responseError) {
-        console.error(`Error generating feedback for response ${response._id}:`, responseError.message);
-        throw responseError;
+        console.error(
+          `Error generating feedback for response ${response._id}:`,
+          responseError.message
+        )
+        throw responseError
       }
     }
 
@@ -563,18 +574,18 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
       message: 'Feedback generated successfully',
       feedback: feedbackReports,
       count: feedbackReports.length,
-    });
+    })
   } catch (error) {
-    console.error('Get feedback error:', error.message);
-    console.error('Stack:', error.stack);
+    console.error('Get feedback error:', error.message)
+    console.error('Stack:', error.stack)
     res.status(500).json({
       error: {
         message: 'Failed to generate feedback',
         code: 'FEEDBACK_ERROR',
         details: error.message,
       },
-    });
+    })
   }
-});
+})
 
-export default router;
+export default router

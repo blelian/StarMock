@@ -1,14 +1,14 @@
-import dotenv from 'dotenv';
-import connectDB from '../config/database.js';
-import { InterviewQuestion } from '../models/index.js';
+import dotenv from 'dotenv'
+import connectDB from '../config/database.js'
+import { InterviewQuestion } from '../models/index.js'
 
-dotenv.config();
+dotenv.config()
 
 const seedQuestions = [
   {
     title: 'Tell me about a time you worked on a challenging team project',
     description:
-      'Describe a situation where you had to collaborate with a diverse team to achieve a common goal. Focus on your specific role, the challenges faced, and how you contributed to the team\'s success.',
+      "Describe a situation where you had to collaborate with a diverse team to achieve a common goal. Focus on your specific role, the challenges faced, and how you contributed to the team's success.",
     type: 'behavioral',
     difficulty: 'medium',
     category: 'teamwork',
@@ -16,7 +16,8 @@ const seedQuestions = [
     starGuidelines: {
       situation: 'Set the context: What was the project? Who was on the team?',
       task: 'What was your specific responsibility or goal in this project?',
-      action: 'What steps did you take to contribute? How did you handle challenges?',
+      action:
+        'What steps did you take to contribute? How did you handle challenges?',
       result: 'What was the outcome? What did you learn about teamwork?',
     },
   },
@@ -81,7 +82,8 @@ const seedQuestions = [
     },
   },
   {
-    title: 'Tell me about a time you had to resolve a conflict with a colleague',
+    title:
+      'Tell me about a time you had to resolve a conflict with a colleague',
     description:
       'Describe a professional disagreement or conflict you experienced and how you worked to resolve it. Focus on communication, empathy, and finding common ground.',
     type: 'behavioral',
@@ -125,24 +127,26 @@ const seedQuestions = [
       result: 'Were you able to apply what you learned successfully?',
     },
   },
-];
+]
 
 async function seedDatabase() {
   try {
     // Connect to database
-    await connectDB();
-    console.log('🌱 Starting database seed...');
+    await connectDB()
+    console.log('🌱 Starting database seed...')
 
     // Clear existing questions
-    await InterviewQuestion.deleteMany({});
-    console.log('🗑️  Cleared existing interview questions');
+    await InterviewQuestion.deleteMany({})
+    console.log('🗑️  Cleared existing interview questions')
 
     // Insert seed questions
-    const insertedQuestions = await InterviewQuestion.insertMany(seedQuestions);
-    console.log(`✅ Successfully seeded ${insertedQuestions.length} interview questions`);
+    const insertedQuestions = await InterviewQuestion.insertMany(seedQuestions)
+    console.log(
+      `✅ Successfully seeded ${insertedQuestions.length} interview questions`
+    )
 
     // Display summary
-    console.log('\n📊 Seeded Questions Summary:');
+    console.log('\n📊 Seeded Questions Summary:')
     const summary = await InterviewQuestion.aggregate([
       {
         $group: {
@@ -156,21 +160,21 @@ async function seedDatabase() {
       {
         $sort: { '_id.type': 1, '_id.difficulty': 1 },
       },
-    ]);
+    ])
 
     summary.forEach((item) => {
       console.log(
         `  - ${item._id.type} (${item._id.difficulty}): ${item.count} question(s)`
-      );
-    });
+      )
+    })
 
-    console.log('\n✅ Database seeding completed successfully!');
-    process.exit(0);
+    console.log('\n✅ Database seeding completed successfully!')
+    process.exit(0)
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
-    process.exit(1);
+    console.error('❌ Error seeding database:', error)
+    process.exit(1)
   }
 }
 
 // Run the seed function
-seedDatabase();
+seedDatabase()

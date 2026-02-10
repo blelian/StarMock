@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from 'mongoose'
 
 const interviewResponseSchema = new mongoose.Schema(
   {
@@ -44,19 +44,22 @@ const interviewResponseSchema = new mongoose.Schema(
   {
     timestamps: true,
   }
-);
+)
 
 // Indexes for faster queries
-interviewResponseSchema.index({ sessionId: 1 });
-interviewResponseSchema.index({ userId: 1 });
+interviewResponseSchema.index({ sessionId: 1 })
+interviewResponseSchema.index({ userId: 1 })
 
 // Calculate word count before saving
 interviewResponseSchema.pre('save', function () {
   if (this.responseText) {
-    this.wordCount = this.responseText.trim().split(/\s+/).length;
+    this.wordCount = this.responseText.trim().split(/\s+/).length
   }
-});
+})
 
-const InterviewResponse = mongoose.model('InterviewResponse', interviewResponseSchema);
+const InterviewResponse = mongoose.model(
+  'InterviewResponse',
+  interviewResponseSchema
+)
 
-export default InterviewResponse;
+export default InterviewResponse

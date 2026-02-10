@@ -1,15 +1,17 @@
-import session from 'express-session';
-import MongoStore from 'connect-mongo';
-import dotenv from 'dotenv';
+import session from 'express-session'
+import MongoStore from 'connect-mongo'
+import dotenv from 'dotenv'
 
-dotenv.config();
+dotenv.config()
 
-const MONGODB_URI = process.env.MONGODB_URI;
-const SESSION_SECRET = process.env.SESSION_SECRET || process.env.JWT_SECRET;
-const NODE_ENV = process.env.NODE_ENV || 'development';
+const MONGODB_URI = process.env.MONGODB_URI
+const SESSION_SECRET = process.env.SESSION_SECRET || process.env.JWT_SECRET
+const NODE_ENV = process.env.NODE_ENV || 'development'
 
 if (!SESSION_SECRET) {
-  throw new Error('SESSION_SECRET or JWT_SECRET must be defined in environment variables');
+  throw new Error(
+    'SESSION_SECRET or JWT_SECRET must be defined in environment variables'
+  )
 }
 
 /**
@@ -21,7 +23,7 @@ const sessionConfig = {
   resave: false, // Don't save session if unmodified
   saveUninitialized: false, // Don't create session until something stored
   name: 'starmock.sid', // Custom session cookie name
-  
+
   store: MongoStore.create({
     mongoUrl: MONGODB_URI,
     dbName: 'starmock',
@@ -34,7 +36,7 @@ const sessionConfig = {
     autoRemoveInterval: 10, // Check for expired sessions every 10 minutes
     stringify: false, // Store sessions as native MongoDB documents (better performance)
   }),
-  
+
   cookie: {
     httpOnly: true, // Prevent client-side JS from reading the cookie
     secure: NODE_ENV === 'production', // Only send cookie over HTTPS in production
@@ -42,12 +44,12 @@ const sessionConfig = {
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days in milliseconds
     path: '/',
   },
-};
+}
 
 /**
  * Create and export session middleware
  */
-export const sessionMiddleware = session(sessionConfig);
+export const sessionMiddleware = session(sessionConfig)
 
 /**
  * Session helper utilities
@@ -57,29 +59,29 @@ export const sessionHelpers = {
    * Check if user is authenticated
    */
   isAuthenticated: (req) => {
-    return req.session && req.session.userId;
+    return req.session && req.session.userId
   },
 
   /**
    * Get user ID from session
    */
   getUserId: (req) => {
-    return req.session?.userId || null;
+    return req.session?.userId || null
   },
 
   /**
    * Set user session after login
    */
   setUserSession: (req, userId, userData = {}) => {
-    req.session.userId = userId;
+    req.session.userId = userId
     req.session.user = {
       id: userId,
       email: userData.email,
       firstName: userData.firstName,
       lastName: userData.lastName,
       role: userData.role,
-    };
-    req.session.loginTime = new Date().toISOString();
+    }
+    req.session.loginTime = new Date().toISOString()
   },
 
   /**
@@ -89,12 +91,12 @@ export const sessionHelpers = {
     return new Promise((resolve, reject) => {
       req.session.destroy((err) => {
         if (err) {
-          reject(err);
+          reject(err)
         } else {
-          resolve();
+          resolve()
         }
-      });
-    });
+      })
+    })
   },
 
   /**
@@ -104,12 +106,12 @@ export const sessionHelpers = {
     return new Promise((resolve, reject) => {
       req.session.regenerate((err) => {
         if (err) {
-          reject(err);
+          reject(err)
         } else {
-          resolve();
+          resolve()
         }
-      });
-    });
+      })
+    })
   },
 
   /**
@@ -117,7 +119,7 @@ export const sessionHelpers = {
    */
   touchSession: (req) => {
     if (req.session) {
-      req.session.touch();
+      req.session.touch()
     }
   },
 
@@ -135,8 +137,8 @@ export const sessionHelpers = {
         httpOnly: req.session?.cookie.httpOnly,
         secure: req.session?.cookie.secure,
       },
-    };
+    }
   },
-};
+}
 
-export default sessionMiddleware;
+export default sessionMiddleware

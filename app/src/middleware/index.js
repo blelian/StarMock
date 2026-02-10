@@ -5,4 +5,4 @@ export {
   requireAdmin,
   optionalAuth,
   refreshSession,
-} from './auth.js';
+} from './auth.js'

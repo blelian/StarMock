@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose'
+import bcrypt from 'bcryptjs'
 
 const userSchema = new mongoose.Schema(
   {
@@ -44,34 +44,34 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
     toJSON: {
       transform: function (doc, ret) {
-        delete ret.password;
-        return ret;
+        delete ret.password
+        return ret
       },
     },
   }
-);
+)
 
 // Index for faster queries
-userSchema.index({ email: 1 });
+userSchema.index({ email: 1 })
 
 // Hash password before saving
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
+  if (!this.isModified('password')) return
 
-  const salt = await bcrypt.genSalt(12);
-  this.password = await bcrypt.hash(this.password, salt);
-});
+  const salt = await bcrypt.genSalt(12)
+  this.password = await bcrypt.hash(this.password, salt)
+})
 
 // Method to compare passwords
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
-};
+  return await bcrypt.compare(candidatePassword, this.password)
+}
 
 // Method to get full name
 userSchema.methods.getFullName = function () {
-  return `${this.firstName} ${this.lastName}`;
-};
+  return `${this.firstName} ${this.lastName}`
+}
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema)
 
-export default User;
+export default User

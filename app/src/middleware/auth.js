@@ -1,4 +1,4 @@
-import { sessionHelpers } from '../config/session.js';
+import { sessionHelpers } from '../config/session.js'
 
 /**
  * Middleware to protect routes that require authentication
@@ -11,13 +11,13 @@ export const requireAuth = (req, res, next) => {
         message: 'Authentication required',
         code: 'UNAUTHORIZED',
       },
-    });
+    })
   }
-  
+
   // Attach userId to request for easy access in routes
-  req.userId = sessionHelpers.getUserId(req);
-  next();
-};
+  req.userId = sessionHelpers.getUserId(req)
+  next()
+}
 
 /**
  * Middleware to check if user is already authenticated
@@ -30,10 +30,10 @@ export const requireGuest = (req, res, next) => {
         message: 'Already authenticated',
         code: 'ALREADY_AUTHENTICATED',
       },
-    });
+    })
   }
-  next();
-};
+  next()
+}
 
 /**
  * Middleware to check if user has admin role
@@ -45,7 +45,7 @@ export const requireAdmin = (req, res, next) => {
         message: 'Authentication required',
         code: 'UNAUTHORIZED',
       },
-    });
+    })
   }
 
   if (req.session.user?.role !== 'admin') {
@@ -54,12 +54,12 @@ export const requireAdmin = (req, res, next) => {
         message: 'Admin access required',
         code: 'FORBIDDEN',
       },
-    });
+    })
   }
 
-  req.userId = sessionHelpers.getUserId(req);
-  next();
-};
+  req.userId = sessionHelpers.getUserId(req)
+  next()
+}
 
 /**
  * Optional authentication middleware
@@ -67,11 +67,11 @@ export const requireAdmin = (req, res, next) => {
  */
 export const optionalAuth = (req, res, next) => {
   if (sessionHelpers.isAuthenticated(req)) {
-    req.userId = sessionHelpers.getUserId(req);
-    req.user = req.session.user;
+    req.userId = sessionHelpers.getUserId(req)
+    req.user = req.session.user
   }
-  next();
-};
+  next()
+}
 
 /**
  * Middleware to refresh session activity
@@ -79,7 +79,7 @@ export const optionalAuth = (req, res, next) => {
  */
 export const refreshSession = (req, res, next) => {
   if (sessionHelpers.isAuthenticated(req)) {
-    sessionHelpers.touchSession(req);
+    sessionHelpers.touchSession(req)
   }
-  next();
-};
+  next()
+}

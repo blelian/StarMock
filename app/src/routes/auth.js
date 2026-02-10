@@ -1,9 +1,9 @@
-import express from 'express';
-import { User } from '../models/index.js';
-import { sessionHelpers } from '../config/session.js';
-import { requireAuth, requireGuest } from '../middleware/auth.js';
+import express from 'express'
+import { User } from '../models/index.js'
+import { sessionHelpers } from '../config/session.js'
+import { requireAuth, requireGuest } from '../middleware/auth.js'
 
-const router = express.Router();
+const router = express.Router()
 
 /**
  * @route   POST /api/auth/signup
@@ -12,7 +12,7 @@ const router = express.Router();
  */
 router.post('/signup', requireGuest, async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName } = req.body
 
     // Validate required fields
     if (!email || !password || !firstName || !lastName) {
@@ -22,18 +22,18 @@ router.post('/signup', requireGuest, async (req, res) => {
           code: 'MISSING_FIELDS',
           fields: { email, password, firstName, lastName },
         },
-      });
+      })
     }
 
     // Validate email format
-    const emailRegex = /^\S+@\S+\.\S+$/;
+    const emailRegex = /^\S+@\S+\.\S+$/
     if (!emailRegex.test(email)) {
       return res.status(400).json({
         error: {
           message: 'Invalid email format',
           code: 'INVALID_EMAIL',
         },
-      });
+      })
     }
 
     // Validate password strength
@@ -43,18 +43,18 @@ router.post('/signup', requireGuest, async (req, res) => {
           message: 'Password must be at least 8 characters long',
           code: 'WEAK_PASSWORD',
         },
-      });
+      })
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email: email.toLowerCase() })
     if (existingUser) {
       return res.status(409).json({
         error: {
           message: 'User with this email already exists',
           code: 'USER_EXISTS',
         },
-      });
+      })
     }
 
     // Create new user
@@ -63,12 +63,12 @@ router.post('/signup', requireGuest, async (req, res) => {
       password,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-    });
+    })
 
-    await user.save();
+    await user.save()
 
     // Regenerate session ID for security
-    await sessionHelpers.regenerateSession(req);
+    await sessionHelpers.regenerateSession(req)
 
     // Set user session
     sessionHelpers.setUserSession(req, user._id, {
@@ -76,11 +76,11 @@ router.post('/signup', requireGuest, async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
-    });
+    })
 
     // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    user.lastLogin = new Date()
+    await user.save()
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -91,9 +91,9 @@ router.post('/signup', requireGuest, async (req, res) => {
         lastName: user.lastName,
         role: user.role,
       },
-    });
+    })
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error('Signup error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to create user',
@@ -102,9 +102,9 @@ router.post('/signup', requireGuest, async (req, res) => {
           details: error.message,
         }),
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   POST /api/auth/login
@@ -113,7 +113,7 @@ router.post('/signup', requireGuest, async (req, res) => {
  */
 router.post('/login', requireGuest, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body
 
     // Validate required fields
     if (!email || !password) {
@@ -122,19 +122,21 @@ router.post('/login', requireGuest, async (req, res) => {
           message: 'Email and password are required',
           code: 'MISSING_CREDENTIALS',
         },
-      });
+      })
     }
 
     // Find user by email (include password for comparison)
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    
+    const user = await User.findOne({ email: email.toLowerCase() }).select(
+      '+password'
+    )
+
     if (!user) {
       return res.status(401).json({
         error: {
           message: 'Invalid email or password',
           code: 'INVALID_CREDENTIALS',
         },
-      });
+      })
     }
 
     // Check if user account is active
@@ -144,22 +146,22 @@ router.post('/login', requireGuest, async (req, res) => {
           message: 'Account is deactivated',
           code: 'ACCOUNT_INACTIVE',
         },
-      });
+      })
     }
 
     // Verify password
-    const isPasswordValid = await user.comparePassword(password);
+    const isPasswordValid = await user.comparePassword(password)
     if (!isPasswordValid) {
       return res.status(401).json({
         error: {
           message: 'Invalid email or password',
           code: 'INVALID_CREDENTIALS',
         },
-      });
+      })
     }
 
     // Regenerate session ID for security (prevent session fixation)
-    await sessionHelpers.regenerateSession(req);
+    await sessionHelpers.regenerateSession(req)
 
     // Set user session
     sessionHelpers.setUserSession(req, user._id, {
@@ -167,11 +169,11 @@ router.post('/login', requireGuest, async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
-    });
+    })
 
     // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    user.lastLogin = new Date()
+    await user.save()
 
     res.json({
       message: 'Login successful',
@@ -183,17 +185,17 @@ router.post('/login', requireGuest, async (req, res) => {
         role: user.role,
         fullName: user.getFullName(),
       },
-    });
+    })
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to login',
         code: 'LOGIN_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   POST /api/auth/logout
@@ -202,21 +204,21 @@ router.post('/login', requireGuest, async (req, res) => {
  */
 router.post('/logout', requireAuth, async (req, res) => {
   try {
-    await sessionHelpers.clearUserSession(req);
-    
+    await sessionHelpers.clearUserSession(req)
+
     res.json({
       message: 'Logout successful',
-    });
+    })
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error('Logout error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to logout',
         code: 'LOGOUT_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   GET /api/auth/me
@@ -225,7 +227,7 @@ router.post('/logout', requireAuth, async (req, res) => {
  */
 router.get('/me', requireAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.userId)
 
     if (!user) {
       return res.status(404).json({
@@ -233,7 +235,7 @@ router.get('/me', requireAuth, async (req, res) => {
           message: 'User not found',
           code: 'USER_NOT_FOUND',
         },
-      });
+      })
     }
 
     res.json({
@@ -248,17 +250,17 @@ router.get('/me', requireAuth, async (req, res) => {
         lastLogin: user.lastLogin,
         createdAt: user.createdAt,
       },
-    });
+    })
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error('Get user error:', error)
     res.status(500).json({
       error: {
         message: 'Failed to get user',
         code: 'GET_USER_ERROR',
       },
-    });
+    })
   }
-});
+})
 
 /**
  * @route   GET /api/auth/status
@@ -266,12 +268,12 @@ router.get('/me', requireAuth, async (req, res) => {
  * @access  Public
  */
 router.get('/status', (req, res) => {
-  const isAuthenticated = sessionHelpers.isAuthenticated(req);
-  
+  const isAuthenticated = sessionHelpers.isAuthenticated(req)
+
   res.json({
     isAuthenticated,
     user: isAuthenticated ? req.session.user : null,
-  });
-});
+  })
+})
 
-export default router;
+export default router
