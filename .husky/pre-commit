@@ -15,13 +15,9 @@ fi
 # Change to app directory and run checks
 cd "$REPO_ROOT/app"
 
-# Run linting
-echo "🎨 Running ESLint..."
-npm run lint
-
-# Run formatting check
-echo "💅 Checking Prettier formatting..."
-npm run format:check
+# Auto-fix linting and formatting issues on staged files only
+echo "🎨 Auto-fixing linting and formatting issues..."
+npx lint-staged
 
 # Run tests (optional - skip if SKIP_TESTS=true)
 if [ "$SKIP_TESTS" = "true" ]; then
