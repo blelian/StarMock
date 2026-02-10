@@ -102,6 +102,96 @@ jobs:
         npm test -- --run --reporter=verbose
         echo "::endgroup::"
   
+  integration-tests:
+    name: 🔗 Integration Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_tests != true }}
+    
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_ROOT_USERNAME: testuser
+          MONGO_INITDB_ROOT_PASSWORD: testpass
+          MONGO_INITDB_DATABASE: starmock_test
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: ⚙️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: 📦 Install dependencies
+      working-directory: ./app
+      run: npm ci --prefer-offline --no-audit
+    
+    - name: 🗄️ Wait for MongoDB
+      run: |
+        echo "Waiting for MongoDB to be ready..."
+        for i in {1..30}; do
+          if mongosh --host localhost:27017 --username testuser --password testpass --authenticationDatabase admin --eval "db.adminCommand('ping')" > /dev/null 2>&1; then
+            echo "✅ MongoDB is ready!"
+            break
+          fi
+          echo "⏳ Waiting for MongoDB... ($i/30)"
+          sleep 2
+        done
+    
+    - name: 🚀 Start Backend Server
+      working-directory: ./app
+      env:
+        MONGODB_URI: mongodb://testuser:testpass@localhost:27017/starmock_test?authSource=admin
+        SESSION_SECRET: test_secret_key_for_ci_only_not_production
+        PORT: 3000
+        NODE_ENV: test
+      run: |
+        echo "Starting backend server..."
+        node server.js &
+        SERVER_PID=$!
+        echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+        
+        # Wait for server to start
+        for i in {1..30}; do
+          if curl -s http://localhost:3000/api/health > /dev/null 2>&1; then
+            echo "✅ Server is ready!"
+            break
+          fi
+          echo "⏳ Waiting for server... ($i/30)"
+          sleep 2
+        done
+    
+    - name: 🔗 Run Integration Tests
+      working-directory: ./app
+      env:
+        MONGODB_URI: mongodb://testuser:testpass@localhost:27017/starmock_test?authSource=admin
+        SESSION_SECRET: test_secret_key_for_ci_only_not_production
+        PORT: 3000
+        NODE_ENV: test
+      run: |
+        echo "::group::Running integration tests"
+        node test-integration.js
+        echo "::endgroup::"
+    
+    - name: 🧹 Cleanup
+      if: always()
+      run: |
+        if [ ! -z "$SERVER_PID" ]; then
+          echo "Stopping server (PID: $SERVER_PID)..."
+          kill $SERVER_PID || true
+        fi
+  
   security:
     name: 🔒 Security Audit
     runs-on: ubuntu-latest
@@ -132,8 +222,8 @@ jobs:
   build:
     name: 🏗️ Build
     runs-on: ubuntu-latest
-    needs: [quality-checks, tests, security]
-    if: always() && (needs.quality-checks.result == 'success' || needs.quality-checks.result == 'skipped') && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && (needs.security.result == 'success' || needs.security.result == 'skipped')
+    needs: [quality-checks, tests, integration-tests, security]
+    if: always() && (needs.quality-checks.result == 'success' || needs.quality-checks.result == 'skipped') && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') && (needs.security.result == 'success' || needs.security.result == 'skipped')
     outputs:
       build_time: ${{ steps.timing.outputs.build_time }}
       
