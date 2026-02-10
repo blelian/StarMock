@@ -402,11 +402,11 @@ Result: Response times improved by 60%, customer satisfaction increased, and I w
   );
   assert(!doubleCompleteResult.ok, 'Prevents double completion');
 
-  // Test unauthenticated access
+  // Test unauthenticated access (use GET /history which requires auth)
   clearCookies();
   const unauthResult = await testEndpoint(
     'Access Protected Route Without Auth',
-    `${BASE_URL}/sessions`
+    `${BASE_URL}/history`
   );
   assert(!unauthResult.ok && unauthResult.status === 401, 'Blocks unauthenticated access');
 
