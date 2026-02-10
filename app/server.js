@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import connectDB from "./src/config/database.js";
 import { sessionMiddleware } from "./src/config/session.js";
-import { authRoutes } from "./src/routes/index.js";
+import { authRoutes, interviewRoutes } from "./src/routes/index.js";
 
 dotenv.config();
 
@@ -71,6 +71,7 @@ if (NODE_ENV === "development") {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api', interviewRoutes);
 
 // serve frontend
 app.use(express.static(path.join(__dirname, "dist")));

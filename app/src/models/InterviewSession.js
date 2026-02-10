@@ -8,11 +8,11 @@ const interviewSessionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    questionId: {
+    questions: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'InterviewQuestion',
       required: true,
-    },
+    }],
     status: {
       type: String,
       enum: ['in_progress', 'completed', 'abandoned'],
