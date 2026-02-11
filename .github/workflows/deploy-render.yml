@@ -246,25 +246,11 @@ jobs:
       working-directory: ./app
       run: npx playwright install --with-deps
     
-    - name: 🌱 Seed Database
-      working-directory: ./app
-      env:
-        MONGODB_URI: mongodb://testuser:testpass@localhost:27017/starmock_test?authSource=admin
-        NODE_ENV: test
-      run: |
-        echo "::group::Seeding test database"
-        npm run seed
-        echo "::endgroup::"
-    
     - name: 🌐 Run E2E Tests
       working-directory: ./app
       env:
-        MONGODB_URI: mongodb://testuser:testpass@localhost:27017/starmock_test?authSource=admin
-        SESSION_SECRET: test_secret_key_for_ci_only_not_production
-        PORT: 3000
-        NODE_ENV: test
-        PLAYWRIGHT_BASE_URL: http://localhost:3000
-        PLAYWRIGHT_WEB_SERVER_COMMAND: npm start
+        PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+        PLAYWRIGHT_WEB_SERVER_COMMAND: npm run dev -- --host 127.0.0.1 --port 4173
       run: |
         echo "::group::Running E2E tests"
         npx playwright test
