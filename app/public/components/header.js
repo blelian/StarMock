@@ -20,10 +20,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   const signUpBtn = document.getElementById('signup-btn');
   const logoutBtn = document.getElementById('logout-btn');
 
+  const bindLogout = () => {
+    logoutBtn?.addEventListener('click', () => {
+      localStorage.removeItem('user');
+      window.location.href = '/index.html';
+    });
+  };
+
   if (isPublicPage) {
-    // Public pages: show only Sign In / Sign Up
-    signInBtn?.classList.remove('hidden');
-    signUpBtn?.classList.remove('hidden');
+    // Public pages: hide auth links for logged-in users.
+    if (isAuthenticated) {
+      signInBtn?.classList.add('hidden');
+      signUpBtn?.classList.add('hidden');
+      logoutBtn?.classList.remove('hidden');
+      bindLogout();
+    } else {
+      signInBtn?.classList.remove('hidden');
+      signUpBtn?.classList.remove('hidden');
+    }
     return; // skip further logic
   }
 
@@ -38,9 +52,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.href = '/login.html';
   }
 
-  // Logout handler
-  logoutBtn?.addEventListener('click', () => {
-    localStorage.removeItem('user');
-    window.location.href = '/index.html';
-  });
+  bindLogout();
 });
