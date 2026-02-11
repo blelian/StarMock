@@ -20,6 +20,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   const signUpBtn = document.getElementById('signup-btn');
   const logoutBtn = document.getElementById('logout-btn');
 
+  const setPublicAuthButtonsHidden = (hidden) => {
+    [signInBtn, signUpBtn].forEach((button) => {
+      if (!button) return;
+
+      if (hidden) {
+        // Force-hide regardless of responsive Tailwind display classes.
+        button.style.display = 'none';
+        button.classList.add('hidden');
+        button.classList.remove('sm:block');
+      } else {
+        // Default public behavior: hidden on mobile, visible from sm and up.
+        button.style.removeProperty('display');
+        button.classList.add('hidden');
+        button.classList.add('sm:block');
+      }
+    });
+  };
+
   const bindLogout = () => {
     logoutBtn?.addEventListener('click', () => {
       localStorage.removeItem('user');
@@ -30,13 +48,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (isPublicPage) {
     // Public pages: hide auth links for logged-in users.
     if (isAuthenticated) {
-      signInBtn?.classList.add('hidden');
-      signUpBtn?.classList.add('hidden');
+      setPublicAuthButtonsHidden(true);
       logoutBtn?.classList.remove('hidden');
       bindLogout();
     } else {
-      signInBtn?.classList.remove('hidden');
-      signUpBtn?.classList.remove('hidden');
+      setPublicAuthButtonsHidden(false);
+      logoutBtn?.classList.add('hidden');
     }
     return; // skip further logic
   }
@@ -45,8 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (isAuthenticated) {
     appNav?.classList.remove('hidden');
     logoutBtn?.classList.remove('hidden');
-    signInBtn?.classList.add('hidden');
-    signUpBtn?.classList.add('hidden');
+    setPublicAuthButtonsHidden(true);
   } else {
     // Redirect to login if not logged in
     window.location.href = '/login.html';
