@@ -75,6 +75,13 @@ if (NODE_ENV === "development") {
 }
 
 app.use((req, res, next) => {
+  const shouldLogHealthChecks = process.env.LOG_HEALTH_CHECKS === "true";
+  const isHealthProbe = req.path === "/api/health" || req.path === "/api/ready";
+
+  if (isHealthProbe && !shouldLogHealthChecks) {
+    return next();
+  }
+
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] ${req.method} ${req.path}`);
   next();

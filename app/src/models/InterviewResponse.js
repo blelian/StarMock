@@ -47,7 +47,6 @@ const interviewResponseSchema = new mongoose.Schema(
 )
 
 // Indexes for faster queries
-interviewResponseSchema.index({ sessionId: 1 })
 interviewResponseSchema.index({ userId: 1 })
 
 // Calculate word count before saving

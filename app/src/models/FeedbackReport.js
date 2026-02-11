@@ -94,7 +94,6 @@ const feedbackReportSchema = new mongoose.Schema(
 
 // Indexes for faster queries
 feedbackReportSchema.index({ userId: 1, createdAt: -1 })
-feedbackReportSchema.index({ sessionId: 1 })
 
 // Calculate overall rating based on overall score
 feedbackReportSchema.pre('save', function () {
