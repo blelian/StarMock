@@ -56,33 +56,53 @@
         <!-- Question Card -->
         <div class="question-card bg-card-bg dark:bg-card-bg rounded-3xl p-6 border border-slate-800 shadow-xl shadow-black/5">
           <div class="flex justify-between items-start mb-4">
-            <span class="px-3 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-bold uppercase tracking-widest rounded-full">
-              Difficulty: Hard
+            <span
+              id="question-meta"
+              class="px-3 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-bold uppercase tracking-widest rounded-full"
+            >
+              Loading Question
             </span>
           </div>
 
-          <h4 class="text-lg font-semibold leading-snug mb-6">
-            “Tell me about a time you led a team through a significant crisis or sudden change.”
+          <h4 id="question-prompt" class="text-lg font-semibold leading-snug mb-6">
+            Loading interview prompt...
           </h4>
 
           <!-- Start Button -->
           <div class="flex items-center justify-between pt-4 border-t border-slate-800">
-            <button class="start-btn bg-primary hover:opacity-90 transition-opacity text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2">
+            <button
+              id="start-interview-btn"
+              class="start-btn bg-primary hover:opacity-90 transition-opacity text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2"
+              disabled
+            >
               Start <span class="material-icons-round text-base">play_arrow</span>
             </button>
           </div>
 
           <!-- Recording Indicator -->
           <div class="recording mt-4 flex items-center gap-3">
-            <span class="recording-emoji text-xl hidden">🎤</span>
-            <p class="recording-text text-sm font-semibold text-red-500">
-              Record
+            <span id="recording-emoji" class="recording-emoji text-xl hidden">🎤</span>
+            <p id="recording-text" class="recording-text text-sm font-semibold text-red-500">
+              Awaiting start
             </p>
           </div>
 
           <!-- Answer Input -->
-          <textarea class="answer-input hidden mt-4 w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-100"
-            placeholder="Type your answer here..."></textarea>
+          <textarea
+            id="response-input"
+            class="answer-input hidden mt-4 w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-100"
+            placeholder="Type your STAR answer here..."
+          ></textarea>
+          <div class="mt-4 flex items-center gap-3">
+            <button
+              id="submit-response-btn"
+              class="submit-btn hidden bg-primary hover:bg-primary/90 text-background-dark px-5 py-2 rounded-xl font-bold"
+              disabled
+            >
+              Submit Answer
+            </button>
+            <p id="interview-message" class="text-sm text-slate-400"></p>
+          </div>
         </div>
       </div>
     </section>
@@ -117,6 +137,7 @@
   <div id="site-footer"></div>
 
   <!-- JS Components -->
+  <script src="/components/auth-check.js" defer></script>
   <script src="/components/header.js" defer></script>
   <script src="/components/footer.js" defer></script>
   <script src="/components/interview-redirect.js" defer></script>

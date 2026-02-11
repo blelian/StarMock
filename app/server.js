@@ -3,6 +3,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import connectDB from "./src/config/database.js";
 import { sessionMiddleware } from "./src/config/session.js";
 import { authRoutes, interviewRoutes } from "./src/routes/index.js";
@@ -31,6 +33,22 @@ console.log("");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || "development";
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+
+const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 25,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => !["/login", "/signup"].includes(req.path),
+  message: {
+    error: {
+      message: "Too many authentication attempts. Please try again later.",
+      code: "RATE_LIMITED",
+    },
+  },
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +74,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(sessionMiddleware);
+app.use(
+  helmet({
+    // Keep CSP off for now because current pages depend on inline scripts + CDN assets.
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 if (NODE_ENV === "development") {
   app.use((req, res, next) => {
@@ -126,7 +151,7 @@ if (NODE_ENV === "development") {
 }
 
 // API routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api', interviewRoutes);
 
 // serve frontend

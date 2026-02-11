@@ -33,112 +33,73 @@
 
   <main class="flex-1 max-w-6xl mx-auto w-full px-5 py-8 relative z-10">
 
-    <!-- Page Title -->
     <div class="text-center mb-8">
-      <p class="text-sm font-medium text-slate-500 dark:text-primary/70 uppercase tracking-widest">Interview Session Feedback</p>
+      <p class="text-sm font-medium text-slate-500 dark:text-primary/70 uppercase tracking-widest">
+        Interview Session Feedback
+      </p>
       <h1 class="text-2xl font-bold mt-1 text-slate-900 dark:text-white">Ratings</h1>
+      <p id="feedback-message" class="text-sm text-slate-500 dark:text-slate-400 mt-3">
+        Loading feedback...
+      </p>
     </div>
 
-    <!-- Glass Panel Wrapper -->
     <div class="glass-panel rounded-2xl border border-white/5 p-6 space-y-6">
-
-      <!-- Overall Score -->
       <div class="flex flex-col items-center justify-center py-6">
         <div class="relative flex items-center justify-center">
           <svg class="w-48 h-48 -rotate-90">
-            <circle class="text-slate-200 dark:text-white/5" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-width="8"></circle>
-            <circle class="text-primary" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-dasharray="552" stroke-dashoffset="82" stroke-linecap="round" stroke-width="10"></circle>
+            <circle
+              class="text-slate-200 dark:text-white/5"
+              cx="96"
+              cy="96"
+              fill="transparent"
+              r="88"
+              stroke="currentColor"
+              stroke-width="8"
+            ></circle>
+            <circle
+              id="overall-score-ring"
+              class="text-primary"
+              cx="96"
+              cy="96"
+              fill="transparent"
+              r="88"
+              stroke="currentColor"
+              stroke-dasharray="552"
+              stroke-dashoffset="552"
+              stroke-linecap="round"
+              stroke-width="10"
+            ></circle>
           </svg>
           <div class="absolute inset-0 flex flex-col items-center justify-center">
-            <span class="text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">85%</span>
-            <p class="text-sm font-semibold text-slate-500 dark:text-primary/80 mt-1 uppercase">Overall Score</p>
+            <span
+              id="overall-score-value"
+              class="text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight"
+            >
+              --%
+            </span>
+            <p class="text-sm font-semibold text-slate-500 dark:text-primary/80 mt-1 uppercase">
+              Overall Score
+            </p>
           </div>
         </div>
       </div>
 
-      <!-- STAR Method Breakdown -->
       <div class="flex items-center justify-between mb-4 px-1">
         <h3 class="text-lg font-bold leading-tight tracking-tight">STAR Method Breakdown</h3>
-        <span class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase">Details</span>
+        <span class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase">
+          Details
+        </span>
       </div>
 
-      <div class="space-y-4">
-        <!-- Situation -->
-        <div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
-          <div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary shrink-0 w-12 h-12">
-            <span class="material-icons-round">check_circle</span>
-          </div>
-          <div class="flex flex-col flex-1">
-            <div class="flex justify-between items-center mb-1">
-              <p class="text-base font-bold leading-none">Situation</p>
-              <span class="text-[10px] font-bold text-primary uppercase">Strong</span>
-            </div>
-            <p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
-              You effectively established a clear context by defining the project scope and stakeholders involved.
-            </p>
-          </div>
-        </div>
+      <div id="star-breakdown" class="space-y-4"></div>
 
-        <!-- Task -->
-        <div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
-          <div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary shrink-0 w-12 h-12">
-            <span class="material-icons-round">check_circle</span>
-          </div>
-          <div class="flex flex-col flex-1">
-            <div class="flex justify-between items-center mb-1">
-              <p class="text-base font-bold leading-none">Task</p>
-              <span class="text-[10px] font-bold text-primary uppercase">Clear</span>
-            </div>
-            <p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
-              The challenge was well-defined, and the objective was easy to follow for the interviewer.
-            </p>
-          </div>
-        </div>
-
-        <!-- Action -->
-        <div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
-          <div class="flex items-center justify-center rounded-lg bg-amber-500/20 text-amber-500 shrink-0 w-12 h-12">
-            <span class="material-icons-round">error</span>
-          </div>
-          <div class="flex flex-col flex-1">
-            <div class="flex justify-between items-center mb-1">
-              <p class="text-base font-bold leading-none">Action</p>
-              <span class="text-[10px] font-bold text-amber-500 uppercase">Needs Focus</span>
-            </div>
-            <p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
-              Try to use more "I" statements instead of "We". Be more specific about the technical steps you took.
-            </p>
-          </div>
-        </div>
-
-        <!-- Result -->
-        <div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
-          <div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary shrink-0 w-12 h-12">
-            <span class="material-icons-round">check_circle</span>
-          </div>
-          <div class="flex flex-col flex-1">
-            <div class="flex justify-between items-center mb-1">
-              <p class="text-base font-bold leading-none">Result</p>
-              <span class="text-[10px] font-bold text-primary uppercase">Excellent</span>
-            </div>
-            <p class="text-slate-600 dark:text-primary/60 text-sm font-normal leading-snug">
-              Quantifying your impact (20% increase in efficiency) made the outcome very persuasive.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pro Tip -->
       <div class="mt-8 mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
         <div class="flex items-center gap-2 mb-2">
           <span class="material-icons-round text-primary text-xl">lightbulb</span>
-          <p class="text-sm font-bold text-primary">Pro Tip</p>
+          <p class="text-sm font-bold text-primary">Suggestions</p>
         </div>
-        <p class="text-sm text-slate-600 dark:text-primary/70 italic">
-          Focus on slowing down your speech during the 'Action' phase to highlight your individual contributions more clearly.
-        </p>
+        <ul id="feedback-suggestions" class="text-sm text-slate-600 dark:text-primary/70 italic space-y-2"></ul>
       </div>
-
     </div>
   </main>
 
@@ -148,6 +109,7 @@
   <!-- Components -->
   <script src="/components/header.js" defer></script>
   <script src="/components/footer.js" defer></script>
+  <script src="/components/feedback.js" defer></script>
 
 </body>
 </html>

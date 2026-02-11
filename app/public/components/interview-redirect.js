@@ -1,50 +1,189 @@
-// interview-redirect.js
-/* global renderHeader, renderFooter */
-document.addEventListener("DOMContentLoaded", () => {
-  // Inject header/footer
-  if (typeof renderHeader === "function") renderHeader("#site-header");
-  if (typeof renderFooter === "function") renderFooter("#site-footer");
+document.addEventListener('DOMContentLoaded', async () => {
+  const startBtn = document.getElementById('start-interview-btn');
+  const submitBtn = document.getElementById('submit-response-btn');
+  const responseInput = document.getElementById('response-input');
+  const recordingEmoji = document.getElementById('recording-emoji');
+  const recordingText = document.getElementById('recording-text');
+  const messageEl = document.getElementById('interview-message');
+  const questionMeta = document.getElementById('question-meta');
+  const questionPrompt = document.getElementById('question-prompt');
 
-  // Elements
-  const startBtn = document.querySelector(".start-btn");
-  const answerInput = document.querySelector(".answer-input");
-  const recordingEmoji = document.querySelector(".recording-emoji");
-  const recordingText = document.querySelector(".recording-text");
+  if (
+    !startBtn ||
+    !submitBtn ||
+    !responseInput ||
+    !recordingEmoji ||
+    !recordingText ||
+    !messageEl ||
+    !questionMeta ||
+    !questionPrompt
+  ) {
+    return;
+  }
 
-  // Step 1: Start the interview
-  startBtn.addEventListener("click", () => {
-    answerInput.classList.remove("hidden");
+  let currentQuestion = null;
+  let sessionId = null;
+
+  const setMessage = (message, isError = false) => {
+    messageEl.textContent = message;
+    messageEl.classList.remove('text-red-400', 'text-slate-400');
+    messageEl.classList.add(isError ? 'text-red-400' : 'text-slate-400');
+  };
+
+  const setPrompt = (question) => {
+    const type = question.type || 'general';
+    const difficulty = question.difficulty || 'unknown';
+    const category = question.category || type;
+    const questionText =
+      question.questionText || question.description || question.title || '';
+
+    questionMeta.textContent = `${type} • ${difficulty} • ${category}`;
+    questionPrompt.textContent = questionText || 'Question unavailable.';
+  };
+
+  const apiRequest = async (url, options = {}) => {
+    const response = await fetch(url, {
+      credentials: 'include',
+      ...options,
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    return { ok: response.ok, status: response.status, payload };
+  };
+
+  const loadQuestion = async () => {
+    setMessage('Fetching a practice question...');
+    const questionResult = await apiRequest('/api/questions?limit=1');
+
+    if (!questionResult.ok || !questionResult.payload?.questions?.length) {
+      setMessage(
+        questionResult.payload?.error?.message ||
+          'Unable to load interview question.',
+        true
+      );
+      questionMeta.textContent = 'Unavailable';
+      questionPrompt.textContent =
+        'No question could be loaded right now. Please try again.';
+      return;
+    }
+
+    currentQuestion = questionResult.payload.questions[0];
+    setPrompt(currentQuestion);
+    startBtn.disabled = false;
+    setMessage('Question ready. Press Start to begin your session.');
+  };
+
+  startBtn.addEventListener('click', async () => {
+    if (!currentQuestion?.id) {
+      setMessage('Question is not ready yet. Please wait a moment.', true);
+      return;
+    }
+
     startBtn.disabled = true;
-    startBtn.textContent = "Recording...";
-    recordingEmoji.classList.remove("hidden");
+    setMessage('Creating interview session...');
+
+    const createResult = await apiRequest('/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionIds: [currentQuestion.id] }),
+    });
+
+    if (!createResult.ok || !createResult.payload?.session?.id) {
+      startBtn.disabled = false;
+      setMessage(
+        createResult.payload?.error?.message || 'Unable to start session.',
+        true
+      );
+      return;
+    }
+
+    sessionId = createResult.payload.session.id;
+    recordingEmoji.classList.remove('hidden');
+    recordingText.textContent = 'Recording...';
+    responseInput.classList.remove('hidden');
+    submitBtn.classList.remove('hidden');
+    submitBtn.disabled = true;
+    responseInput.disabled = false;
+    responseInput.focus();
+    setMessage('Session started. Write your response and submit.');
   });
 
-  // Step 2: Detect when user "submits" answer
-  answerInput.addEventListener("input", () => {
-    const finished = answerInput.value.trim().length > 0;
-    const submitExists = document.querySelector(".submit-btn");
-
-    if (finished && !submitExists) {
-      // Add a Finish button dynamically
-      const finishBtn = document.createElement("button");
-      finishBtn.textContent = "Finish";
-      finishBtn.className = "submit-btn bg-primary hover:bg-primary/90 text-background-dark px-5 py-2 rounded-xl font-bold mt-4";
-      answerInput.insertAdjacentElement("afterend", finishBtn);
-
-      finishBtn.addEventListener("click", () => {
-        // Hide recording indicator
-        recordingEmoji.classList.add("hidden");
-        recordingText.textContent = "Completed";
-
-        // Optional: disable input
-        answerInput.disabled = true;
-        finishBtn.disabled = true;
-
-        // Redirect after 1 second to show completed status
-        setTimeout(() => {
-          window.location.href = "/feedback.html";
-        }, 1000);
-      });
+  responseInput.addEventListener('input', () => {
+    const minLength = 50;
+    const textLength = responseInput.value.trim().length;
+    submitBtn.disabled = textLength < minLength;
+    if (textLength > 0 && textLength < minLength) {
+      setMessage(`Keep going. Minimum ${minLength} characters required.`);
+    } else if (textLength >= minLength) {
+      setMessage('Response length looks good. You can submit now.');
     }
   });
+
+  submitBtn.addEventListener('click', async () => {
+    if (!sessionId || !currentQuestion?.id) {
+      setMessage('Session has not started correctly. Please retry.', true);
+      return;
+    }
+
+    const responseText = responseInput.value.trim();
+    if (responseText.length < 50) {
+      setMessage('Response is too short. Please provide more detail.', true);
+      return;
+    }
+
+    submitBtn.disabled = true;
+    responseInput.disabled = true;
+    setMessage('Submitting your response...');
+
+    const submitResponseResult = await apiRequest(
+      `/api/sessions/${sessionId}/responses`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: currentQuestion.id,
+          responseText,
+        }),
+      }
+    );
+
+    if (!submitResponseResult.ok) {
+      responseInput.disabled = false;
+      submitBtn.disabled = false;
+      setMessage(
+        submitResponseResult.payload?.error?.message ||
+          'Failed to submit response.',
+        true
+      );
+      return;
+    }
+
+    setMessage('Completing session...');
+    const completeResult = await apiRequest(`/api/sessions/${sessionId}/complete`, {
+      method: 'POST',
+    });
+
+    if (!completeResult.ok) {
+      responseInput.disabled = false;
+      submitBtn.disabled = false;
+      setMessage(
+        completeResult.payload?.error?.message || 'Failed to complete session.',
+        true
+      );
+      return;
+    }
+
+    recordingText.textContent = 'Completed';
+    const nextUrl = `/feedback.html?sessionId=${encodeURIComponent(sessionId)}`;
+    setMessage('Session completed. Redirecting to feedback...');
+    window.location.href = nextUrl;
+  });
+
+  await loadQuestion();
 });

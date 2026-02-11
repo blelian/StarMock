@@ -30,9 +30,6 @@
     <!-- Auth guard -->
     <script src="/components/auth-check.js" defer></script>
 
-    <!-- Layout components -->
-    <script src="/components/header.js" defer></script>
-    <script src="/components/footer.js" defer></script>
   </head>
 
   <body class="bg-background-dark text-white min-h-screen flex flex-col font-display">
@@ -48,60 +45,8 @@
         </span>
       </div>
 
-      <!-- History list -->
-      <div class="grid gap-4">
-        <!-- Item -->
-        <div class="history-item">
-          <div>
-            <span
-              class="inline-block mb-2 bg-primary/20 text-primary text-[10px] font-bold tracking-widest uppercase px-2 py-1 rounded"
-            >
-              Behavioral
-            </span>
-            <h3 class="text-lg font-bold text-white">Conflict resolution with a difficult teammate</h3>
-            <p class="text-sm text-slate-400 mt-1">Completed • Jan 28, 2026</p>
-          </div>
-          <div class="flex items-center gap-4">
-            <div class="text-center">
-              <p class="text-xs uppercase tracking-wider text-slate-400">Score</p>
-              <p class="text-xl font-bold text-primary">82%</p>
-            </div>
-            <a
-              href="/feedback.html"
-              class="interview-btn-primary"
-            >
-              View Feedback
-            </a>
-          </div>
-        </div>
-
-        <!-- Item -->
-        <div class="history-item">
-          <div>
-            <span
-              class="inline-block mb-2 bg-purple-500/20 text-purple-400 text-[10px] font-bold tracking-widest uppercase px-2 py-1 rounded"
-            >
-              Technical
-            </span>
-            <h3 class="text-lg font-bold text-white">Optimizing a slow database query</h3>
-            <p class="text-sm text-slate-400 mt-1">Completed • Jan 25, 2026</p>
-          </div>
-          <div class="flex items-center gap-4">
-            <div class="text-center">
-              <p class="text-xs uppercase tracking-wider text-slate-400">Score</p>
-              <p class="text-xl font-bold text-primary">74%</p>
-            </div>
-            <a
-              href="/feedback.html"
-              class="interview-btn-primary"
-            >
-              View Feedback
-            </a>
-          </div>
-        </div>
-
-        <!-- Add more history items here -->
-      </div>
+      <div id="history-message" class="text-sm text-slate-400 mb-4">Loading history...</div>
+      <div id="history-list" class="grid gap-4"></div>
     </main>
 
     <!-- Footer injected -->
@@ -109,5 +54,6 @@
     <!-- JS Components -->
     <script src="/components/header.js" defer></script>
     <script src="/components/footer.js" defer></script>
+    <script src="/components/history.js" defer></script>
   </body>
 </html>

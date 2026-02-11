@@ -1,138 +1,125 @@
-# StarMock Backend Implementation Plan
+# StarMock Backend Plan Finalization Status
 
-## Objective
-Build a production-ready backend that supports authentication, interview sessions, scoring/feedback, and user history for the existing StarMock frontend flows.
+Last verified: February 11, 2026
+Status: Not finalized
 
-## Current State (as of February 9, 2026)
-- Backend exists but minimal: `app/server.js` only serves static files and `GET /api/health`.
-- Frontend interview/auth/history pages are mostly static prototypes in `app/public/`.
-- Auth is client-side localStorage and must be replaced by secure server-side auth.
+## Finalization Verdict
+The backend is significantly implemented, but the plan is not finalized yet.
 
-## MVP Scope
-- User authentication (signup/login/logout/me)
-- Interview question retrieval
-- Interview session lifecycle (start, answer, complete)
-- Feedback generation (initial rules-based STAR scoring)
-- Interview history retrieval
-- Secure protected API routes
+Primary reason:
+- The original plan assumes PostgreSQL + Prisma + JWT cookie auth, but the implemented backend uses MongoDB + Mongoose + `express-session`.
 
-## Proposed Stack
-- Runtime/API: Node.js + Express
-- Database: PostgreSQL (Render managed)
-- ORM: Prisma
-- Auth: JWT in `httpOnly` cookies + bcrypt password hashing
-- Validation: Zod
-- Testing: Vitest + Supertest
+## Verified Implementation Baseline
+- Runtime/API: Node.js + Express (`app/server.js`)
+- Database/ODM: MongoDB + Mongoose (`app/src/config/database.js`, `app/src/models/`)
+- Auth: session-based auth with `express-session` + `connect-mongo` (`app/src/config/session.js`)
+- Password security: bcrypt hashing (`app/src/models/User.js`)
+- Feedback engine: rules-based STAR scoring (`app/src/services/feedbackService.js`)
+- API routes: auth + interview/session/history endpoints (`app/src/routes/auth.js`, `app/src/routes/interviews.js`)
 
-## Milestones
+## Phase-by-Phase Status
 
-### Phase 1: Backend Foundation (Day 1-2)
-- Refactor backend into modules (app/config/routes/middleware/services).
-- Add middleware: JSON parsing, CORS, Helmet, rate limiting, request logging.
-- Keep and expand `GET /api/health` with timestamp/version metadata.
-- Add centralized error handling and request validation pattern.
+### Phase 1: Backend Foundation
+Status: Complete for current architecture
 
-### Phase 2: Data Layer (Day 2-3)
-- Set up Prisma + PostgreSQL connection.
-- Create initial schema:
-  - `User`
-  - `InterviewQuestion`
-  - `InterviewSession`
-  - `InterviewResponse`
-  - `FeedbackReport`
-- Add migrations and seed script with starter interview questions.
+Completed:
+- Backend is modularized into config/routes/middleware/services/models.
+- Request parsing, cookie parser, session middleware, request logging are in place.
+- Health/readiness endpoints exist: `/api/health`, `/api/ready`.
+- Central error handler exists.
+- `helmet` security headers are implemented.
+- Auth route rate limiting is implemented.
+- Centralized request validation middleware is implemented and applied to key auth/session endpoints.
 
-### Phase 3: Authentication (Day 3-4)
-- Implement:
-  - `POST /api/auth/signup`
-  - `POST /api/auth/login`
-  - `POST /api/auth/logout`
-  - `GET /api/auth/me`
-- Use bcrypt for password storage.
-- Issue JWT in secure `httpOnly` cookie.
-- Add auth middleware for protected endpoints.
+### Phase 2: Data Layer
+Status: Complete for the current MongoDB architecture
 
-### Phase 4: Interview APIs (Day 4-6)
-- Implement:
-  - `GET /api/questions`
-  - `POST /api/sessions`
-  - `POST /api/sessions/:id/responses`
-  - `POST /api/sessions/:id/complete`
-  - `GET /api/sessions/:id/feedback`
-  - `GET /api/history`
-- Connect existing frontend pages to these endpoints.
+Completed:
+- Database connection and model layer are implemented.
+- Core models exist: `User`, `InterviewQuestion`, `InterviewSession`, `InterviewResponse`, `FeedbackReport`.
+- Seed script exists for interview questions (`app/src/utils/seed.js`).
 
-### Phase 5: Feedback Engine MVP (Day 6-7)
-- Add rules-based STAR evaluator:
-  - Situation, Task, Action, Result sub-scores
-  - overall score
-  - strengths/improvements/tips
-- Persist generated feedback per completed session.
-- Keep evaluator behind an interface for future AI model integration.
+Note:
+- This diverges from the original PostgreSQL/Prisma plan and should be formally accepted in this document.
 
-### Phase 6: Testing and Quality (Day 7-8)
-- Add integration tests for auth/session/history flows.
-- Add validation and unauthorized-access tests.
-- Ensure lint, format, tests, and build pass local + CI.
+### Phase 3: Authentication
+Status: Partially complete against the original plan, complete for current architecture
 
-### Phase 7: Deployment Hardening (Day 9-10)
-- Add/validate production env vars in Render.
-- Add startup env checks and structured logs.
-- Verify deployed E2E flow:
-  - login -> start interview -> submit answer -> feedback -> history.
-
-## API Contract (MVP)
-
-### Auth
+Completed:
 - `POST /api/auth/signup`
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- Auth middleware for protected endpoints.
+- Password hashing with bcrypt.
 
-### Interview
-- `GET /api/questions?type=&difficulty=`
+Gap vs original plan:
+- JWT-in-cookie auth is not implemented; session cookie auth is used instead.
+
+### Phase 4: Interview APIs
+Status: Implemented end-to-end in app code
+
+Completed (API):
+- `GET /api/questions`
 - `POST /api/sessions`
 - `POST /api/sessions/:id/responses`
 - `POST /api/sessions/:id/complete`
 - `GET /api/sessions/:id/feedback`
 - `GET /api/history`
 
-## Data Model (MVP)
+Gap:
+- End-to-end flow is wired in app code but still needs final runtime verification in a fully passing local/CI environment.
 
-### User
-- `id`, `name`, `email` (unique), `passwordHash`, `createdAt`, `updatedAt`
+### Phase 5: Feedback Engine MVP
+Status: Mostly complete
 
-### InterviewQuestion
-- `id`, `type`, `difficulty`, `prompt`, `tags`, `createdAt`
+Completed:
+- Rules-based STAR evaluator exists with sub-scores and overall score.
+- Strengths/suggestions generation is implemented.
+- Feedback is persisted in `FeedbackReport` and returned per completed session.
 
-### InterviewSession
-- `id`, `userId`, `questionId`, `status`, `startedAt`, `completedAt`
+Gap:
+- The evaluator is not wrapped behind a clearly defined provider interface for future AI model swapping.
 
-### InterviewResponse
-- `id`, `sessionId`, `responseText`, `createdAt`
+### Phase 6: Testing and Quality
+Status: Partially complete
 
-### FeedbackReport
-- `id`, `sessionId`, `overallScore`
-- `situationScore`, `taskScore`, `actionScore`, `resultScore`
-- `strengths` (JSON/text), `improvements` (JSON/text), `tips` (JSON/text)
-- `createdAt`
+Completed:
+- Unit test setup exists (`vitest`).
+- Integration workflow/script exists (`app/test-integration.js`).
+- CI includes lint/format/test/coverage jobs.
 
-## Security and Reliability Requirements
-- Store auth token only in `httpOnly`, `secure` (prod), `sameSite` cookies.
-- Hash passwords with bcrypt (never store plaintext).
-- Rate-limit auth routes.
-- Validate all request payloads with explicit schemas.
-- Return consistent error payloads with safe messages.
+Gaps:
+- Current test stack differs from original plan (`Supertest` not used).
+- Local verification in this environment is still blocked by Vitest worker startup timeouts (even after mitigating native rolldown binding issues).
 
-## Definition of Done
-- Protected pages use backend auth, not localStorage checks.
-- End-to-end MVP user flow works with persisted data.
-- CI passes all quality gates.
-- Production health endpoint is green and monitored.
+### Phase 7: Deployment Hardening
+Status: Mostly complete
 
-## Immediate Next Build Step
-Implement Phase 1 + Phase 2 first:
-1. backend module structure
-2. prisma schema + migration
-3. base middleware/error system
-4. keep `GET /api/health` stable
+Completed:
+- Environment validation on startup.
+- Startup health checks and readiness checks.
+- Graceful shutdown handlers.
+- Render deployment + post-deploy healthcheck workflow.
+- Production guide documentation.
+
+Gap:
+- Finalized evidence of deployed end-to-end user flow should be captured explicitly.
+
+## Definition of Done Check
+
+- Protected pages use backend auth, not localStorage checks: Met.
+- End-to-end MVP user flow works with persisted data: Implemented, pending full runtime verification.
+- CI passes all quality gates: Not fully verified from this environment.
+- Production health endpoint is green and monitored: Implemented, but final sign-off should include a successful live check record.
+
+## Required Work to Finalize
+
+1. Finalize architecture decision in writing:
+   - Option A: accept MongoDB/session architecture and update plan permanently.
+   - Option B: migrate implementation back to PostgreSQL/Prisma/JWT plan.
+2. Resolve local/CI test runtime issues and capture a passing quality-gate run.
+3. Capture and link a successful deployed E2E run (login -> session -> feedback -> history).
+
+## Finalization Criteria
+Mark this plan as finalized only after all items in "Required Work to Finalize" are complete and verified.

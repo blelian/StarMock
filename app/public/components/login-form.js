@@ -1,9 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
   const AUTH_MODE_LOGIN = "Login";
   const AUTH_MODE_SIGNUP = "Sign Up";
-  const APP_REDIRECT_PATH = "/interview.html";
-  const urlMode =
-    new URLSearchParams(window.location.search).get("mode")?.toLowerCase() || "";
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlMode = urlParams.get("mode")?.toLowerCase() || "";
+  const requestedNextPath = urlParams.get("next") || "";
+  const APP_REDIRECT_PATH =
+    requestedNextPath.startsWith("/") &&
+    requestedNextPath !== "/login.html" &&
+    requestedNextPath !== "/signup.html"
+      ? requestedNextPath
+      : "/interview.html";
 
   const formHTML = `
     <div class="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 relative">
@@ -230,6 +236,13 @@ document.addEventListener("DOMContentLoaded", () => {
     return { ok: response.ok, status: response.status, payload };
   };
 
+  (async () => {
+    const statusResult = await apiRequest("/api/auth/status");
+    if (statusResult.ok && statusResult.payload?.isAuthenticated) {
+      window.location.href = APP_REDIRECT_PATH;
+    }
+  })();
+
   modeInputs.forEach((modeInput) => {
     modeInput.addEventListener("change", () => {
       applyModeState(modeInput.value);
@@ -281,13 +294,6 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        const signedUpUser =
-          signupResult.payload?.user ||
-          (await apiRequest("/api/auth/me")).payload?.user;
-        if (signedUpUser && typeof signedUpUser === "object") {
-          localStorage.setItem("user", JSON.stringify(signedUpUser));
-        }
-
         window.location.href = APP_REDIRECT_PATH;
         return;
       }
@@ -299,12 +305,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       if (loginResult.ok) {
-        const loggedInUser =
-          loginResult.payload?.user ||
-          (await apiRequest("/api/auth/me")).payload?.user;
-        if (loggedInUser && typeof loggedInUser === "object") {
-          localStorage.setItem("user", JSON.stringify(loggedInUser));
-        }
         window.location.href = APP_REDIRECT_PATH;
         return;
       }
@@ -313,7 +313,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (loginResult.payload?.error?.code === "ALREADY_AUTHENTICATED") {
         const meResult = await apiRequest("/api/auth/me");
         if (meResult.ok) {
-          localStorage.setItem("user", JSON.stringify(meResult.payload?.user));
           window.location.href = APP_REDIRECT_PATH;
           return;
         }

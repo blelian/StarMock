@@ -6,3 +6,4 @@ export {
   optionalAuth,
   refreshSession,
 } from './auth.js'
+export { validateRequest } from './validate.js'

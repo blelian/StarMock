@@ -6,9 +6,24 @@ import {
   FeedbackReport,
 } from '../models/index.js'
 import { requireAuth } from '../middleware/auth.js'
+import { validateRequest } from '../middleware/validate.js'
 import { evaluateResponse } from '../services/feedbackService.js'
+import {
+  validateCreateSessionRequest,
+  validateSubmitResponseRequest,
+} from '../validators/api.js'
 
 const router = express.Router()
+
+function getQuestionText(question) {
+  if (!question) return 'Question not found'
+  return (
+    question.questionText ||
+    question.description ||
+    question.title ||
+    'Question not found'
+  )
+}
 
 /**
  * @route   GET /api/questions
@@ -39,7 +54,9 @@ router.get('/questions', requireAuth, async (req, res) => {
         type: q.type,
         difficulty: q.difficulty,
         category: q.category,
-        questionText: q.questionText,
+        title: q.title,
+        description: q.description,
+        questionText: getQuestionText(q),
         starGuidelines: q.starGuidelines,
       })),
       count: questions.length,
@@ -79,7 +96,9 @@ router.get('/questions/:id', requireAuth, async (req, res) => {
         type: question.type,
         difficulty: question.difficulty,
         category: question.category,
-        questionText: question.questionText,
+        title: question.title,
+        description: question.description,
+        questionText: getQuestionText(question),
         starGuidelines: question.starGuidelines,
       },
     })
@@ -100,67 +119,58 @@ router.get('/questions/:id', requireAuth, async (req, res) => {
  * @access  Private
  * @body    {array} questionIds - Array of question IDs for the session
  */
-router.post('/sessions', requireAuth, async (req, res) => {
-  try {
-    const { questionIds } = req.body
+router.post(
+  '/sessions',
+  requireAuth,
+  validateRequest(validateCreateSessionRequest),
+  async (req, res) => {
+    try {
+      const { questionIds } = req.body
 
-    // Validate input
-    if (
-      !questionIds ||
-      !Array.isArray(questionIds) ||
-      questionIds.length === 0
-    ) {
-      return res.status(400).json({
+      // Verify all questions exist
+      const questions = await InterviewQuestion.find({
+        _id: { $in: questionIds },
+      })
+
+      if (questions.length !== questionIds.length) {
+        return res.status(400).json({
+          error: {
+            message: 'One or more invalid question IDs',
+            code: 'INVALID_QUESTIONS',
+          },
+        })
+      }
+
+      // Create interview session
+      const session = new InterviewSession({
+        userId: req.userId,
+        questions: questionIds,
+        status: 'in_progress',
+        startedAt: new Date(),
+      })
+
+      await session.save()
+
+      res.status(201).json({
+        message: 'Interview session started',
+        session: {
+          id: session._id,
+          status: session.status,
+          questionCount: session.questions.length,
+          startedAt: session.startedAt,
+        },
+      })
+    } catch (error) {
+      console.error('Create session error:', error)
+      res.status(500).json({
         error: {
-          message: 'Question IDs are required',
-          code: 'MISSING_QUESTIONS',
+          message: 'Failed to create session',
+          code: 'SESSION_ERROR',
         },
       })
     }
-
-    // Verify all questions exist
-    const questions = await InterviewQuestion.find({
-      _id: { $in: questionIds },
-    })
-
-    if (questions.length !== questionIds.length) {
-      return res.status(400).json({
-        error: {
-          message: 'One or more invalid question IDs',
-          code: 'INVALID_QUESTIONS',
-        },
-      })
-    }
-
-    // Create interview session
-    const session = new InterviewSession({
-      userId: req.userId,
-      questions: questionIds,
-      status: 'in_progress',
-      startedAt: new Date(),
-    })
-
-    await session.save()
-
-    res.status(201).json({
-      message: 'Interview session started',
-      session: {
-        id: session._id,
-        status: session.status,
-        questionCount: session.questions.length,
-        startedAt: session.startedAt,
-      },
-    })
-  } catch (error) {
-    console.error('Create session error:', error)
-    res.status(500).json({
-      error: {
-        message: 'Failed to create session',
-        code: 'SESSION_ERROR',
-      },
-    })
   }
-})
+)
 
 /**
  * @route   GET /api/sessions/:id
@@ -211,84 +221,79 @@ router.get('/sessions/:id', requireAuth, async (req, res) => {
  * @body    {string} questionId - Question being answered
  * @body    {string} responseText - User's response
  */
-router.post('/sessions/:id/responses', requireAuth, async (req, res) => {
-  try {
-    const { questionId, responseText } = req.body
+router.post(
+  '/sessions/:id/responses',
+  requireAuth,
+  validateRequest(validateSubmitResponseRequest),
+  async (req, res) => {
+    try {
+      const { questionId, responseText } = req.body
 
-    // Validate input
-    if (!questionId || !responseText || responseText.trim().length === 0) {
-      return res.status(400).json({
+      // Verify session exists and belongs to user
+      const session = await InterviewSession.findOne({
+        _id: req.params.id,
+        userId: req.userId,
+      })
+
+      if (!session) {
+        return res.status(404).json({
+          error: {
+            message: 'Session not found',
+            code: 'NOT_FOUND',
+          },
+        })
+      }
+
+      // Verify session is still active
+      if (session.status !== 'in_progress') {
+        return res.status(400).json({
+          error: {
+            message: 'Session is not active',
+            code: 'SESSION_CLOSED',
+          },
+        })
+      }
+
+      // Verify question is part of session
+      if (!session.questions.some((qId) => qId.toString() === questionId)) {
+        return res.status(400).json({
+          error: {
+            message: 'Question not part of this session',
+            code: 'INVALID_QUESTION',
+          },
+        })
+      }
+
+      // Create response
+      const response = new InterviewResponse({
+        sessionId: req.params.id,
+        userId: req.userId,
+        questionId,
+        responseText: responseText.trim(),
+      })
+
+      await response.save()
+
+      res.status(201).json({
+        message: 'Response submitted successfully',
+        response: {
+          id: response._id,
+          questionId: response.questionId,
+          wordCount: response.wordCount,
+          submittedAt: response.createdAt,
+        },
+      })
+    } catch (error) {
+      console.error('Submit response error:', error)
+      res.status(500).json({
         error: {
-          message: 'Question ID and response text are required',
-          code: 'MISSING_FIELDS',
+          message: 'Failed to submit response',
+          code: 'SUBMIT_ERROR',
         },
       })
     }
-
-    // Verify session exists and belongs to user
-    const session = await InterviewSession.findOne({
-      _id: req.params.id,
-      userId: req.userId,
-    })
-
-    if (!session) {
-      return res.status(404).json({
-        error: {
-          message: 'Session not found',
-          code: 'NOT_FOUND',
-        },
-      })
-    }
-
-    // Verify session is still active
-    if (session.status !== 'in_progress') {
-      return res.status(400).json({
-        error: {
-          message: 'Session is not active',
-          code: 'SESSION_CLOSED',
-        },
-      })
-    }
-
-    // Verify question is part of session
-    if (!session.questions.some((qId) => qId.toString() === questionId)) {
-      return res.status(400).json({
-        error: {
-          message: 'Question not part of this session',
-          code: 'INVALID_QUESTION',
-        },
-      })
-    }
-
-    // Create response
-    const response = new InterviewResponse({
-      sessionId: req.params.id,
-      userId: req.userId,
-      questionId,
-      responseText: responseText.trim(),
-    })
-
-    await response.save()
-
-    res.status(201).json({
-      message: 'Response submitted successfully',
-      response: {
-        id: response._id,
-        questionId: response.questionId,
-        wordCount: response.wordCount,
-        submittedAt: response.createdAt,
-      },
-    })
-  } catch (error) {
-    console.error('Submit response error:', error)
-    res.status(500).json({
-      error: {
-        message: 'Failed to submit response',
-        code: 'SUBMIT_ERROR',
-      },
-    })
   }
-})
+)
 
 /**
  * @route   POST /api/sessions/:id/complete
@@ -430,6 +435,8 @@ router.get('/history', requireAuth, async (req, res) => {
         id: s._id,
         status: s.status,
         questionCount: s.questions.length,
+        questionTypes: s.questions.map((q) => q.type).filter(Boolean),
+        previewQuestion: getQuestionText(s.questions[0]),
         startedAt: s.startedAt,
         completedAt: s.completedAt,
         duration: s.duration,
@@ -490,16 +497,21 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
     let existingFeedback = await FeedbackReport.find({
       sessionId: sessionId,
       userId: req.userId,
-    }).populate('responseId')
+    }).populate({
+      path: 'responseId',
+      populate: {
+        path: 'questionId',
+        select: 'questionText description title',
+      },
+    })
 
     if (existingFeedback.length > 0) {
       // Return existing feedback
       return res.json({
         feedback: existingFeedback.map((f) => ({
           id: f._id,
-          responseId: f.responseId._id,
-          questionText:
-            f.responseId.questionId?.questionText || 'Question not found',
+          responseId: f.responseId?._id || null,
+          questionText: getQuestionText(f.responseId?.questionId),
           scores: f.scores,
           rating: f.rating,
           strengths: f.strengths,
@@ -553,7 +565,7 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
         feedbackReports.push({
           id: feedback._id,
           responseId: response._id,
-          questionText: response.questionId.questionText,
+          questionText: getQuestionText(response.questionId),
           scores: feedback.scores,
           rating: feedback.rating,
           strengths: feedback.strengths,

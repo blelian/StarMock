@@ -2,6 +2,11 @@ import express from 'express'
 import { User } from '../models/index.js'
 import { sessionHelpers } from '../config/session.js'
 import { requireAuth, requireGuest } from '../middleware/auth.js'
+import { validateRequest } from '../middleware/validate.js'
+import {
+  validateSignupRequest,
+  validateLoginRequest,
+} from '../validators/api.js'
 
 const router = express.Router()
 
@@ -10,192 +15,160 @@ const router = express.Router()
  * @desc    Register a new user
  * @access  Public (guest only)
  */
-router.post('/signup', requireGuest, async (req, res) => {
-  try {
-    const { email, password, firstName, lastName } = req.body
+router.post(
+  '/signup',
+  requireGuest,
+  validateRequest(validateSignupRequest),
+  async (req, res) => {
+    try {
+      const { email, password, firstName, lastName } = req.body
 
-    // Validate required fields
-    if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({
-        error: {
-          message: 'All fields are required',
-          code: 'MISSING_FIELDS',
-          fields: { email, password, firstName, lastName },
-        },
+      // Check if user already exists
+      const existingUser = await User.findOne({ email: email.toLowerCase() })
+      if (existingUser) {
+        return res.status(409).json({
+          error: {
+            message: 'User with this email already exists',
+            code: 'USER_EXISTS',
+          },
+        })
+      }
+
+      // Create new user
+      const user = new User({
+        email: email.toLowerCase(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
       })
-    }
 
-    // Validate email format
-    const emailRegex = /^\S+@\S+\.\S+$/
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        error: {
-          message: 'Invalid email format',
-          code: 'INVALID_EMAIL',
-        },
-      })
-    }
+      await user.save()
 
-    // Validate password strength
-    if (password.length < 8) {
-      return res.status(400).json({
-        error: {
-          message: 'Password must be at least 8 characters long',
-          code: 'WEAK_PASSWORD',
-        },
-      })
-    }
+      // Regenerate session ID for security
+      await sessionHelpers.regenerateSession(req)
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() })
-    if (existingUser) {
-      return res.status(409).json({
-        error: {
-          message: 'User with this email already exists',
-          code: 'USER_EXISTS',
-        },
-      })
-    }
-
-    // Create new user
-    const user = new User({
-      email: email.toLowerCase(),
-      password,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-    })
-
-    await user.save()
-
-    // Regenerate session ID for security
-    await sessionHelpers.regenerateSession(req)
-
-    // Set user session
-    sessionHelpers.setUserSession(req, user._id, {
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-    })
-
-    // Update last login
-    user.lastLogin = new Date()
-    await user.save()
-
-    res.status(201).json({
-      message: 'User registered successfully',
-      user: {
-        id: user._id,
+      // Set user session
+      sessionHelpers.setUserSession(req, user._id, {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-      },
-    })
-  } catch (error) {
-    console.error('Signup error:', error)
-    res.status(500).json({
-      error: {
-        message: 'Failed to create user',
-        code: 'SIGNUP_ERROR',
-        ...(process.env.NODE_ENV === 'development' && {
-          details: error.message,
-        }),
-      },
-    })
+      })
+
+      // Update last login
+      user.lastLogin = new Date()
+      await user.save()
+
+      res.status(201).json({
+        message: 'User registered successfully',
+        user: {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+        },
+      })
+    } catch (error) {
+      console.error('Signup error:', error)
+      res.status(500).json({
+        error: {
+          message: 'Failed to create user',
+          code: 'SIGNUP_ERROR',
+          ...(process.env.NODE_ENV === 'development' && {
+            details: error.message,
+          }),
+        },
+      })
+    }
   }
-})
+)
 
 /**
  * @route   POST /api/auth/login
  * @desc    Login user
  * @access  Public (guest only)
  */
-router.post('/login', requireGuest, async (req, res) => {
-  try {
-    const { email, password } = req.body
+router.post(
+  '/login',
+  requireGuest,
+  validateRequest(validateLoginRequest),
+  async (req, res) => {
+    try {
+      const { email, password } = req.body
 
-    // Validate required fields
-    if (!email || !password) {
-      return res.status(400).json({
-        error: {
-          message: 'Email and password are required',
-          code: 'MISSING_CREDENTIALS',
-        },
-      })
-    }
+      // Find user by email (include password for comparison)
+      const user = await User.findOne({ email: email.toLowerCase() }).select(
+        '+password'
+      )
 
-    // Find user by email (include password for comparison)
-    const user = await User.findOne({ email: email.toLowerCase() }).select(
-      '+password'
-    )
+      if (!user) {
+        return res.status(401).json({
+          error: {
+            message: 'Invalid email or password',
+            code: 'INVALID_CREDENTIALS',
+          },
+        })
+      }
 
-    if (!user) {
-      return res.status(401).json({
-        error: {
-          message: 'Invalid email or password',
-          code: 'INVALID_CREDENTIALS',
-        },
-      })
-    }
+      // Check if user account is active
+      if (!user.isActive) {
+        return res.status(403).json({
+          error: {
+            message: 'Account is deactivated',
+            code: 'ACCOUNT_INACTIVE',
+          },
+        })
+      }
 
-    // Check if user account is active
-    if (!user.isActive) {
-      return res.status(403).json({
-        error: {
-          message: 'Account is deactivated',
-          code: 'ACCOUNT_INACTIVE',
-        },
-      })
-    }
+      // Verify password
+      const isPasswordValid = await user.comparePassword(password)
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          error: {
+            message: 'Invalid email or password',
+            code: 'INVALID_CREDENTIALS',
+          },
+        })
+      }
 
-    // Verify password
-    const isPasswordValid = await user.comparePassword(password)
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        error: {
-          message: 'Invalid email or password',
-          code: 'INVALID_CREDENTIALS',
-        },
-      })
-    }
+      // Regenerate session ID for security (prevent session fixation)
+      await sessionHelpers.regenerateSession(req)
 
-    // Regenerate session ID for security (prevent session fixation)
-    await sessionHelpers.regenerateSession(req)
-
-    // Set user session
-    sessionHelpers.setUserSession(req, user._id, {
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-    })
-
-    // Update last login
-    user.lastLogin = new Date()
-    await user.save()
-
-    res.json({
-      message: 'Login successful',
-      user: {
-        id: user._id,
+      // Set user session
+      sessionHelpers.setUserSession(req, user._id, {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-        fullName: user.getFullName(),
-      },
-    })
-  } catch (error) {
-    console.error('Login error:', error)
-    res.status(500).json({
-      error: {
-        message: 'Failed to login',
-        code: 'LOGIN_ERROR',
-      },
-    })
+      })
+
+      // Update last login
+      user.lastLogin = new Date()
+      await user.save()
+
+      res.json({
+        message: 'Login successful',
+        user: {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          fullName: user.getFullName(),
+        },
+      })
+    } catch (error) {
+      console.error('Login error:', error)
+      res.status(500).json({
+        error: {
+          message: 'Failed to login',
+          code: 'LOGIN_ERROR',
+        },
+      })
+    }
   }
-})
+)
 
 /**
  * @route   POST /api/auth/logout
