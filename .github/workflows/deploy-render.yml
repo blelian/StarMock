@@ -217,6 +217,59 @@ jobs:
           kill $SERVER_PID || true
         fi
   
+  e2e-tests:
+    name: 🌐 E2E Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_tests != true }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: 🔧 Configure Git line endings
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+    
+    - name: ⚙️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+    
+    - name: 📦 Install dependencies
+      working-directory: ./app
+      run: npm ci --prefer-offline --no-audit
+    
+    - name: 🎭 Install Playwright Browsers
+      working-directory: ./app
+      run: npx playwright install --with-deps
+    
+    - name: 🌱 Seed Database
+      working-directory: ./app
+      env:
+        MONGODB_URI: mongodb://testuser:testpass@localhost:27017/starmock_test?authSource=admin
+        NODE_ENV: test
+      run: |
+        echo "::group::Seeding test database"
+        npm run seed
+        echo "::endgroup::"
+    
+    - name: 🌐 Run E2E Tests
+      working-directory: ./app
+      env:
+        MONGODB_URI: mongodb://testuser:testpass@localhost:27017/starmock_test?authSource=admin
+        SESSION_SECRET: test_secret_key_for_ci_only_not_production
+        PORT: 3000
+        NODE_ENV: test
+        PLAYWRIGHT_BASE_URL: http://localhost:3000
+        PLAYWRIGHT_WEB_SERVER_COMMAND: npm start
+      run: |
+        echo "::group::Running E2E tests"
+        npx playwright test
+        echo "::endgroup::"
+  
   security:
     name: 🔒 Security Audit
     runs-on: ubuntu-latest
@@ -252,8 +305,8 @@ jobs:
   build:
     name: 🏗️ Build
     runs-on: ubuntu-latest
-    needs: [quality-checks, tests, integration-tests, security]
-    if: always() && (needs.quality-checks.result == 'success' || needs.quality-checks.result == 'skipped') && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') && (needs.security.result == 'success' || needs.security.result == 'skipped')
+    needs: [quality-checks, tests, integration-tests, e2e-tests, security]
+    if: always() && (needs.quality-checks.result == 'success' || needs.quality-checks.result == 'skipped') && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') && (needs.e2e-tests.result == 'success' || needs.e2e-tests.result == 'skipped') && (needs.security.result == 'success' || needs.security.result == 'skipped')
     outputs:
       build_time: ${{ steps.timing.outputs.build_time }}
       
@@ -301,6 +354,8 @@ jobs:
       deploy_time: ${{ steps.deploy_timing.outputs.deploy_time }}
       deploy_status: ${{ steps.deploy_timing.outputs.deploy_status }}
       deploy_target: ${{ steps.deploy_timing.outputs.deploy_target }}
+      skip_deploy: ${{ steps.set_env.outputs.skip_deploy }}
+      skip_reason: ${{ steps.set_env.outputs.skip_reason }}
     
     steps:
     - name: 🎯 Set Deployment Target
@@ -531,7 +586,7 @@ jobs:
   healthcheck:
     name: 🏥 Health Check
     needs: [build, deploy]
-    if: ${{ needs.deploy.outputs.deploy_status == 'success' || needs.deploy.outputs.deploy_status == 'skipped' || needs.deploy.outputs.skip_deploy == 'true' }}
+    if: ${{ needs.deploy.outputs.deploy_status == 'success' || needs.deploy.outputs.deploy_status == 'skipped' }}
     runs-on: ubuntu-latest
     outputs:
       health_status: ${{ steps.health.outputs.health_status }}
@@ -555,11 +610,10 @@ jobs:
     - name: 🔍 Health Check with Smart Retry
       id: health
       run: |
-        # Check if deployment was skipped due to missing secrets
-        if [ "${{ needs.deploy.outputs.skip_deploy }}" = "true" ]; then
-          echo "❌ ERROR: Deployment was skipped due to missing secrets"
-          echo "🔍 Reason: ${{ needs.deploy.outputs.skip_reason }}"
-          echo "🔍 Healthcheck cannot run without a deployment URL"
+        # If deploy job marked this run as skipped, fail healthcheck with a clear message.
+        if [ "${{ needs.deploy.outputs.deploy_status }}" = "skipped" ]; then
+          echo "❌ ERROR: Deployment was skipped."
+          echo "🔍 Healthcheck cannot run without a successful deployment."
           echo "health_status=failed" >> $GITHUB_OUTPUT
           echo "health_time=0s" >> $GITHUB_OUTPUT
           echo "health_attempts=0" >> $GITHUB_OUTPUT
@@ -738,9 +792,12 @@ jobs:
         <div align="center">
         
         # 🚀 StarMock Deployment Dashboard
-        
-        ## ${{ env.OVERALL_COLOR }} ${{ env.OVERALL_EMOJI }} **${{ env.OVERALL_STATUS }}** ${{ env.OVERALL_EMOJI }} ${{ env.OVERALL_COLOR }}
-        
+
+        EOF
+
+        echo "## $OVERALL_COLOR $OVERALL_EMOJI **$OVERALL_STATUS** $OVERALL_EMOJI $OVERALL_COLOR" >> $GITHUB_STEP_SUMMARY
+
+        cat << 'EOF' >> $GITHUB_STEP_SUMMARY
         </div>
         
         ---
@@ -1007,6 +1064,3 @@ jobs:
         echo "---" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "*Generated by StarMock CI/CD Pipeline • [View Workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*" >> $GITHUB_STEP_SUMMARY
-      env:
-        OVERALL_STATUS: ${{ env.OVERALL_STATUS }}
-        OVERALL_EMOJI: ${{ env.OVERALL_EMOJI }}
