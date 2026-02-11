@@ -13,6 +13,10 @@ dist
 dist-ssr
 .vite/
 *.local
+playwright-report/
+test-results/
+blob-report/
+.playwright-libs/
 
 # TypeScript cache
 *.tsbuildinfo
