@@ -1,40 +1,51 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import AuthPage from './pages/AuthPage';
+import InterviewPage from './pages/InterviewPage';
+import './App.css';
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-bg-dark">
+      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!user) return <Navigate to="/auth" />;
+
+  return <>{children}</>;
+};
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/auth" element={<AuthPage />} />
+          <Route
+            path="/interview"
+            element={
+              <ProtectedRoute>
+                <InterviewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/interview" />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
 }
 
+<<<<<<< HEAD
 export default App
 // Test comments for pre-commit hook
 // Another test comment
 // Final test comment
 // Test final hook
 // Test skip tests
+=======
+export default App;
+>>>>>>> df18ae2 (feat: implement secure auth system, JWT, and Gemini-powered AI interview assistant with speech recognition)
