@@ -96,3 +96,58 @@ declare module '../validators/api.js' {
   export function validateCreateSessionRequest(req: unknown): ValidationResult
   export function validateSubmitResponseRequest(req: unknown): ValidationResult
 }
+
+declare module '../models/FeedbackJob.js' {
+  import type { Model, Document, Types } from 'mongoose'
+
+  export interface IFeedbackJobLastError {
+    message?: string
+    code?: string
+    stack?: string
+    occurredAt?: Date
+  }
+
+  export interface IFeedbackJobMetadata {
+    provider?: string
+    responseCount?: number
+    correlationId?: string
+  }
+
+  export interface IFeedbackJob extends Document {
+    _id: Types.ObjectId
+    sessionId: Types.ObjectId
+    userId: Types.ObjectId
+    status: 'queued' | 'processing' | 'completed' | 'failed'
+    attempts: number
+    maxAttempts: number
+    idempotencyKey: string
+    lastError?: IFeedbackJobLastError
+    startedAt?: Date
+    completedAt?: Date
+    metadata?: IFeedbackJobMetadata
+    createdAt: Date
+    updatedAt: Date
+    duration: number | null
+    markProcessing(): Promise<boolean>
+    markCompleted(): Promise<void>
+    markFailed(error: Error): Promise<{ retrying: boolean }>
+    canRetry(): boolean
+  }
+
+  export interface IFeedbackJobModel extends Model<IFeedbackJob> {
+    generateIdempotencyKey(sessionId: string): string
+    findOrCreateForSession(
+      sessionId: string,
+      userId: string,
+      metadata?: IFeedbackJobMetadata
+    ): Promise<{ job: IFeedbackJob; created: boolean }>
+    getQueuedJobs(limit?: number): Promise<IFeedbackJob[]>
+    getStaleProcessingJobs(staleMinutes?: number): Promise<IFeedbackJob[]>
+  }
+
+  export const JOB_STATUSES: readonly ['queued', 'processing', 'completed', 'failed']
+  export const MAX_ATTEMPTS: 3
+
+  const FeedbackJob: IFeedbackJobModel
+  export default FeedbackJob
+}

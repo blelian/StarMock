@@ -12,6 +12,7 @@ export default defineConfig({
       include: [
         'src/config/session.js',
         'src/middleware/auth.js',
+        'src/models/FeedbackJob.js',
         'src/routes/auth.js',
         'src/routes/interviews.js',
         'src/services/feedback/**/*.js',
