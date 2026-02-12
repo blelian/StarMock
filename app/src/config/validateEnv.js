@@ -81,6 +81,24 @@ export function validateEnvironment() {
     validationErrors.push('FRONTEND_URL must be a valid URL')
   }
 
+  // OpenAI API key required when using OpenAI provider
+  if (
+    process.env.FEEDBACK_PROVIDER === 'openai' &&
+    !process.env.OPENAI_API_KEY
+  ) {
+    validationErrors.push(
+      'OPENAI_API_KEY is required when FEEDBACK_PROVIDER is set to "openai"'
+    )
+  }
+
+  // Validate OpenAI API key format (should start with sk-)
+  if (
+    process.env.OPENAI_API_KEY &&
+    !process.env.OPENAI_API_KEY.startsWith('sk-')
+  ) {
+    validationErrors.push('OPENAI_API_KEY should start with "sk-"')
+  }
+
   if (validationErrors.length > 0) {
     console.error('\n⚠️  Environment validation errors:')
     validationErrors.forEach((error) => console.error(`   - ${error}`))
@@ -133,6 +151,8 @@ export function getEnvironmentSummary() {
     frontendUrl: process.env.FRONTEND_URL || 'not set',
     sessionSecret: process.env.SESSION_SECRET ? '***' : 'not set',
     jwtSecret: process.env.JWT_SECRET ? '***' : 'not set',
+    feedbackProvider: process.env.FEEDBACK_PROVIDER || 'rule_based',
+    openaiApiKey: process.env.OPENAI_API_KEY ? '***' : 'not set',
   }
 }
 

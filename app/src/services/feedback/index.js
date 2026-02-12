@@ -1,13 +1,21 @@
 import ruleBasedFeedbackProvider from './providers/ruleBasedProvider.js'
+import openAIFeedbackProvider from './providers/openAIProvider.js'
 
 const DEFAULT_PROVIDER_ID = 'rule_based'
 const providerAliases = new Map([
   ['rule_based', 'rule_based'],
   ['rule-based', 'rule_based'],
   ['rules', 'rule_based'],
+  ['ai_model', 'ai_model'],
+  ['ai-model', 'ai_model'],
+  ['openai', 'ai_model'],
+  ['llm', 'ai_model'],
 ])
 
-const providers = new Map([[ruleBasedFeedbackProvider.id, ruleBasedFeedbackProvider]])
+const providers = new Map([
+  [ruleBasedFeedbackProvider.id, ruleBasedFeedbackProvider],
+  [openAIFeedbackProvider.id, openAIFeedbackProvider],
+])
 
 function normalizeProviderId(providerId) {
   const normalized = (providerId || DEFAULT_PROVIDER_ID).trim().toLowerCase()
@@ -35,11 +43,28 @@ export async function evaluateResponseWithProvider(
   providerId
 ) {
   const provider = getFeedbackProvider(providerId)
-  const evaluation = await provider.evaluate({ responseText, question })
+  try {
+    const evaluation = await provider.evaluate({ responseText, question })
 
-  return {
-    evaluation,
-    evaluatorType: provider.id,
+    return {
+      evaluation,
+      evaluatorType: provider.id,
+    }
+  } catch (error) {
+    if (provider.id === DEFAULT_PROVIDER_ID) {
+      throw error
+    }
+
+    console.warn(
+      `[feedback] Provider "${provider.id}" failed (${error.message}). Falling back to "${DEFAULT_PROVIDER_ID}".`
+    )
+
+    const fallbackProvider = providers.get(DEFAULT_PROVIDER_ID)
+    const evaluation = await fallbackProvider.evaluate({ responseText, question })
+    return {
+      evaluation,
+      evaluatorType: fallbackProvider.id,
+    }
   }
 }
 

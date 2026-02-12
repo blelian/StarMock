@@ -10,6 +10,10 @@ import { createSessionMiddleware } from "./src/config/session.js";
 import { authRoutes, interviewRoutes } from "./src/routes/index.js";
 import { validateEnvironment, getEnvironmentSummary } from "./src/config/validateEnv.js";
 import { runStartupChecks, healthCheck, readinessCheck } from "./src/config/healthCheck.js";
+import {
+  startFeedbackJobWorker,
+  stopFeedbackJobWorker,
+} from "./src/services/feedback/jobWorker.js";
 
 dotenv.config();
 
@@ -166,6 +170,8 @@ async function startServer() {
     throw new Error("Startup health checks failed in production");
   }
 
+  startFeedbackJobWorker();
+
   server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📦 Environment: ${NODE_ENV}`);
@@ -189,6 +195,7 @@ async function gracefulShutdown(signal) {
   
   isShuttingDown = true;
   console.log(`\n⚠️  ${signal} received. Starting graceful shutdown...`);
+  stopFeedbackJobWorker();
   
   const closeDatabase = async () => {
     try {

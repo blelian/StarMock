@@ -1,11 +1,16 @@
 // @vitest-environment node
 
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   evaluateResponseWithProvider,
   getAvailableFeedbackProviders,
   getFeedbackProvider,
 } from '../services/feedback/index.js'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  delete process.env.OPENAI_API_KEY
+})
 
 describe('feedback provider abstraction', () => {
   it('exposes the default rule-based provider', () => {
@@ -13,6 +18,12 @@ describe('feedback provider abstraction', () => {
 
     expect(provider.id).toBe('rule_based')
     expect(getAvailableFeedbackProviders()).toContain('rule_based')
+  })
+
+  it('resolves openai alias to ai_model provider', () => {
+    const provider = getFeedbackProvider('openai') as { id: string }
+    expect(provider.id).toBe('ai_model')
+    expect(getAvailableFeedbackProviders()).toContain('ai_model')
   })
 
   it('falls back to default provider when unknown id is supplied', () => {
@@ -40,5 +51,24 @@ describe('feedback provider abstraction', () => {
     expect(evaluatorType).toBe('rule_based')
     expect(evaluation.scores.overall).toBeGreaterThan(0)
     expect(evaluation.analysis).toBeDefined()
+  })
+
+  it('falls back to rule_based when ai_model provider fails', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { evaluatorType, evaluation } = (await evaluateResponseWithProvider(
+      'Situation: We had release risk. Task: align work. Action: I created a mitigation plan and coordinated rollout. Result: we shipped on time and reduced incidents by 30%.',
+      { id: 'question-1' },
+      'openai'
+    )) as {
+      evaluatorType: string
+      evaluation: {
+        scores: { overall: number }
+      }
+    }
+
+    expect(evaluatorType).toBe('rule_based')
+    expect(evaluation.scores.overall).toBeGreaterThan(0)
+    expect(warnSpy).toHaveBeenCalledTimes(1)
   })
 })

@@ -4,10 +4,10 @@ import {
   InterviewSession,
   InterviewResponse,
   FeedbackReport,
+  FeedbackJob,
 } from '../models/index.js'
 import { requireAuth } from '../middleware/auth.js'
 import { validateRequest } from '../middleware/validate.js'
-import { evaluateResponseWithProvider } from '../services/feedback/index.js'
 import {
   validateCreateSessionRequest,
   validateSubmitResponseRequest,
@@ -45,6 +45,40 @@ function parsePositiveInteger(value, fallback) {
     return fallback
   }
   return parsed
+}
+
+function serializeFeedbackReports(feedbackReports) {
+  return feedbackReports.map((f) => ({
+    id: f._id,
+    responseId: f.responseId?._id || null,
+    questionText: getQuestionText(f.responseId?.questionId),
+    scores: f.scores,
+    rating: f.rating,
+    evaluatorType: f.evaluatorType,
+    strengths: f.strengths,
+    suggestions: f.suggestions,
+    createdAt: f.createdAt,
+  }))
+}
+
+function serializeFeedbackJob(job) {
+  if (!job) return null
+  return {
+    id: job._id,
+    status: job.status,
+    attempts: job.attempts,
+    maxAttempts: job.maxAttempts,
+    lastError: job.lastError
+      ? {
+          message: job.lastError.message,
+          code: job.lastError.code,
+          occurredAt: job.lastError.occurredAt,
+        }
+      : null,
+    createdAt: job.createdAt,
+    startedAt: job.startedAt,
+    completedAt: job.completedAt,
+  }
 }
 
 /**
@@ -396,28 +430,48 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
       })
     }
 
-    // Check if already completed
-    if (session.status === 'completed') {
-      return res.status(400).json({
-        error: {
-          message: 'Session already completed',
-          code: 'ALREADY_COMPLETED',
-        },
-      })
+    const isAlreadyCompleted = session.status === 'completed'
+
+    // Update session status when first completed.
+    if (!isAlreadyCompleted) {
+      session.status = 'completed'
+      session.completedAt = new Date()
+      await session.save()
     }
 
-    // Update session status
-    session.status = 'completed'
-    session.completedAt = new Date()
-    await session.save()
+    const responseCount = await InterviewResponse.countDocuments({
+      sessionId: req.params.id,
+      userId: req.userId,
+    })
+
+    const { job, created } = await FeedbackJob.findOrCreateForSession(
+      session._id.toString(),
+      req.userId.toString(),
+      {
+        provider: process.env.FEEDBACK_PROVIDER || 'rule_based',
+        responseCount,
+      }
+    )
+
+    if (!job) {
+      throw new Error('Failed to create or fetch feedback job')
+    }
 
     res.json({
-      message: 'Session completed successfully',
+      message: isAlreadyCompleted
+        ? 'Session already completed; feedback job confirmed'
+        : 'Session completed successfully; feedback job queued',
       session: {
         id: session._id,
         status: session.status,
         completedAt: session.completedAt,
         duration: session.duration,
+      },
+      feedbackJob: {
+        id: job._id,
+        status: job.status,
+        attempts: job.attempts,
+        created,
       },
     })
   } catch (error) {
@@ -560,6 +614,60 @@ router.get('/history', requireAuth, async (req, res) => {
 })
 
 /**
+ * @route   GET /api/sessions/:id/feedback-status
+ * @desc    Get async feedback generation status for a session
+ * @access  Private
+ */
+router.get('/sessions/:id/feedback-status', requireAuth, async (req, res) => {
+  try {
+    const sessionId = req.params.id
+    const session = await InterviewSession.findOne({
+      _id: sessionId,
+      userId: req.userId,
+    })
+
+    if (!session) {
+      return res.status(404).json({
+        error: {
+          message: 'Session not found',
+          code: 'NOT_FOUND',
+        },
+      })
+    }
+
+    const feedbackJob = await FeedbackJob.findOne({
+      sessionId,
+      userId: req.userId,
+    })
+    const feedbackCount = await FeedbackReport.countDocuments({
+      sessionId,
+      userId: req.userId,
+    })
+
+    res.json({
+      session: {
+        id: session._id,
+        status: session.status,
+        completedAt: session.completedAt,
+      },
+      feedback: {
+        ready: feedbackCount > 0,
+        count: feedbackCount,
+        job: serializeFeedbackJob(feedbackJob),
+      },
+    })
+  } catch (error) {
+    console.error('Get feedback status error:', error)
+    res.status(500).json({
+      error: {
+        message: 'Failed to fetch feedback status',
+        code: 'FEEDBACK_STATUS_ERROR',
+      },
+    })
+  }
+})
+
+/**
  * @route   GET /api/sessions/:id/feedback
  * @desc    Get AI-generated feedback for a completed session
  * @access  Private
@@ -593,8 +701,8 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
       })
     }
 
-    // Check if feedback already exists
-    let existingFeedback = await FeedbackReport.find({
+    // Return existing feedback if available.
+    const existingFeedback = await FeedbackReport.find({
       sessionId: sessionId,
       userId: req.userId,
     }).populate({
@@ -606,89 +714,57 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
     })
 
     if (existingFeedback.length > 0) {
-      // Return existing feedback
       return res.json({
-        feedback: existingFeedback.map((f) => ({
-          id: f._id,
-          responseId: f.responseId?._id || null,
-          questionText: getQuestionText(f.responseId?.questionId),
-          scores: f.scores,
-          rating: f.rating,
-          evaluatorType: f.evaluatorType,
-          strengths: f.strengths,
-          suggestions: f.suggestions,
-          createdAt: f.createdAt,
-        })),
+        feedback: serializeFeedbackReports(existingFeedback),
         count: existingFeedback.length,
       })
     }
 
-    // Get all responses for the session
-    const responses = await InterviewResponse.find({
+    // No report yet; return async job status instead of generating feedback inline.
+    const feedbackJob = await FeedbackJob.findOne({
       sessionId: sessionId,
       userId: req.userId,
-    }).populate('questionId')
+    })
 
-    if (responses.length === 0) {
-      return res.status(400).json({
-        error: {
-          message: 'No responses found for this session',
-          code: 'NO_RESPONSES',
-        },
+    if (!feedbackJob) {
+      return res.status(202).json({
+        message: 'Feedback generation has not started yet',
+        feedback: [],
+        count: 0,
+        status: 'pending',
+        feedbackJob: null,
       })
     }
 
-    // Generate feedback for each response
-    const feedbackReports = []
-
-    for (const response of responses) {
-      try {
-        // Evaluate the response through the provider abstraction.
-        const { evaluation, evaluatorType } = await evaluateResponseWithProvider(
-          response.responseText,
-          response.questionId
-        )
-
-        // Create and save feedback report
-        const feedback = new FeedbackReport({
-          sessionId: sessionId,
-          userId: req.userId,
-          responseId: response._id,
-          scores: evaluation.scores,
-          rating: evaluation.rating,
-          strengths: evaluation.strengths,
-          suggestions: evaluation.suggestions,
-          analysis: evaluation.analysis,
-          evaluatorType,
-        })
-
-        await feedback.save()
-
-        feedbackReports.push({
-          id: feedback._id,
-          responseId: response._id,
-          questionText: getQuestionText(response.questionId),
-          scores: feedback.scores,
-          rating: feedback.rating,
-          evaluatorType: feedback.evaluatorType,
-          strengths: feedback.strengths,
-          suggestions: feedback.suggestions,
-          analysis: feedback.analysis,
-          createdAt: feedback.createdAt,
-        })
-      } catch (responseError) {
-        console.error(
-          `Error generating feedback for response ${response._id}:`,
-          responseError.message
-        )
-        throw responseError
-      }
+    if (feedbackJob.status === 'queued' || feedbackJob.status === 'processing') {
+      return res.status(202).json({
+        message: 'Feedback is being generated',
+        feedback: [],
+        count: 0,
+        status: 'pending',
+        feedbackJob: serializeFeedbackJob(feedbackJob),
+      })
     }
 
-    res.json({
-      message: 'Feedback generated successfully',
-      feedback: feedbackReports,
-      count: feedbackReports.length,
+    if (feedbackJob.status === 'failed') {
+      return res.status(500).json({
+        error: {
+          message:
+            feedbackJob.lastError?.message ||
+            'Feedback generation failed for this session',
+          code: 'FEEDBACK_JOB_FAILED',
+        },
+        feedbackJob: serializeFeedbackJob(feedbackJob),
+      })
+    }
+
+    // Terminal completed status with no persisted reports indicates unexpected state.
+    return res.status(500).json({
+      error: {
+        message: 'Feedback job completed but no reports were found',
+        code: 'FEEDBACK_REPORTS_MISSING',
+      },
+      feedbackJob: serializeFeedbackJob(feedbackJob),
     })
   } catch (error) {
     console.error('Get feedback error:', error.message)
