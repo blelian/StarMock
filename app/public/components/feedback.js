@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const DASH_ARRAY = 552;
+  const FEEDBACK_POLL_INTERVAL_MS = 2500;
+  const FEEDBACK_POLL_TIMEOUT_MS = 120000;
 
   const apiRequest = async (url, options = {}) => {
     const response = await fetch(url, {
@@ -32,6 +34,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     return { ok: response.ok, status: response.status, payload };
   };
+
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const escapeHtml = (value) =>
     String(value)
@@ -160,16 +164,87 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  const feedbackResult = await apiRequest(`/api/sessions/${sessionId}/feedback`);
-  if (!feedbackResult.ok || !Array.isArray(feedbackResult.payload?.feedback)) {
-    messageEl.textContent =
-      feedbackResult.payload?.error?.message || 'Unable to load feedback.';
+  const loadFeedbackWithPolling = async () => {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < FEEDBACK_POLL_TIMEOUT_MS) {
+      const statusResult = await apiRequest(
+        `/api/sessions/${sessionId}/feedback-status`
+      );
+
+      if (!statusResult.ok) {
+        return {
+          ok: false,
+          message:
+            statusResult.payload?.error?.message ||
+            'Unable to check feedback status.',
+        };
+      }
+
+      const statusPayload = statusResult.payload || {};
+      const feedbackState = statusPayload.feedback || {};
+      const job = feedbackState.job || null;
+
+      if (feedbackState.ready) {
+        const feedbackResult = await apiRequest(`/api/sessions/${sessionId}/feedback`);
+        if (feedbackResult.status === 202) {
+          messageEl.textContent =
+            feedbackResult.payload?.message || 'Feedback is still processing...';
+          await wait(FEEDBACK_POLL_INTERVAL_MS);
+          continue;
+        }
+
+        if (!feedbackResult.ok || !Array.isArray(feedbackResult.payload?.feedback)) {
+          return {
+            ok: false,
+            message:
+              feedbackResult.payload?.error?.message ||
+              'Unable to load feedback.',
+          };
+        }
+
+        return {
+          ok: true,
+          feedbackItems: feedbackResult.payload.feedback,
+        };
+      }
+
+      if (job?.status === 'failed') {
+        return {
+          ok: false,
+          message:
+            job?.lastError?.message ||
+            'Feedback generation failed. Please retry this session.',
+        };
+      }
+
+      if (job?.status === 'processing') {
+        messageEl.textContent = `Generating feedback (attempt ${job.attempts || 1}/${job.maxAttempts || 3})...`;
+      } else if (job?.status === 'queued') {
+        messageEl.textContent = 'Feedback is queued and will be ready shortly...';
+      } else {
+        messageEl.textContent = 'Preparing feedback...';
+      }
+
+      await wait(FEEDBACK_POLL_INTERVAL_MS);
+    }
+
+    return {
+      ok: false,
+      message:
+        'Feedback is taking longer than expected. Please refresh in a moment.',
+    };
+  };
+
+  const feedbackLoadResult = await loadFeedbackWithPolling();
+  if (!feedbackLoadResult.ok) {
+    messageEl.textContent = feedbackLoadResult.message;
     messageEl.classList.remove('text-slate-500', 'dark:text-slate-400');
     messageEl.classList.add('text-red-400');
     return;
   }
 
-  const feedbackItems = feedbackResult.payload.feedback;
+  const feedbackItems = feedbackLoadResult.feedbackItems;
   if (!feedbackItems.length) {
     messageEl.textContent = 'No feedback generated for this session yet.';
     return;

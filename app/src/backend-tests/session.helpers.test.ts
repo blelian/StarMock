@@ -1,5 +1,4 @@
 // @vitest-environment node
-/// <reference path="./js-module-shims.d.ts" />
 
 import { describe, expect, it, vi } from 'vitest'
 import { sessionHelpers } from '../config/session.js'

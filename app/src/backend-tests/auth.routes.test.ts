@@ -4,8 +4,14 @@ import { describe, expect, it } from 'vitest'
 import authRoutes from '../routes/auth.js'
 import { getRouteHandlers, runRouteHandlers } from './routerHarness'
 
+type RouterLike = {
+  stack: Array<Record<string, unknown>>
+}
+
+const authRouter = authRoutes as unknown as RouterLike
+
 describe('auth routes', () => {
-  const statusHandlers = getRouteHandlers(authRoutes, 'get', '/status')
+  const statusHandlers = getRouteHandlers(authRouter, 'get', '/status')
 
   it('returns unauthenticated when session is missing', async () => {
     const res = await runRouteHandlers(statusHandlers, {})
