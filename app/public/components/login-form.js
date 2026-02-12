@@ -112,4 +112,44 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+
+  // -----------------------
+  // ADD LOGIN/SIGNUP HANDLER
+  // -----------------------
+  const authForm = document.getElementById("auth-form");
+
+  authForm.addEventListener("submit", async (e) => {
+    e.preventDefault(); // Prevent page reload
+
+    const mode = document.querySelector('input[name="auth-mode"]:checked').value;
+
+    const email = authForm.querySelector('input[type="email"]').value;
+    const password = authForm.querySelector('input[type="password"]').value;
+    const fullNameInput = authForm.querySelector('#fullname-field input');
+    const fullName = fullNameInput ? fullNameInput.value : "";
+
+    // Change endpoint depending on mode
+    const endpoint = mode === "Login" ? "/api/auth/login" : "/api/auth/signup";
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, fullName })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`${mode} successful!`);
+        // Optionally redirect or update UI here
+        // window.location.href = "/dashboard";
+      } else {
+        alert(`Error: ${data.message || "Something went wrong"}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error");
+    }
+  });
 });
