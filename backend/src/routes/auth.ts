@@ -6,6 +6,10 @@ import { pool } from "../db.js";
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
 
+interface DatabaseError extends Error {
+  code?: string;
+}
+
 // Sign up
 router.post("/signup", async (req, res) => {
   const { email, password, name } = req.body;
@@ -25,7 +29,8 @@ router.post("/signup", async (req, res) => {
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
 
     res.status(201).json({ user, token });
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as DatabaseError;
     if (error.code === "23505") {
       return res.status(400).json({ error: "Email already exists" });
     }
@@ -82,7 +87,8 @@ router.get("/me", async (req, res) => {
     }
 
     res.json(user);
-  } catch (error) {
+  } catch (err) {
+    console.error("Auth error:", err);
     res.status(401).json({ error: "Invalid token" });
   }
 });

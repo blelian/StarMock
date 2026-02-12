@@ -20,6 +20,10 @@ interface Message {
     content: string;
 }
 
+interface ChatResponse {
+    text: string;
+}
+
 const InterviewPage = () => {
     const { user, token } = useAuth();
     const [messages, setMessages] = useState<Message[]>([
@@ -52,7 +56,7 @@ const InterviewPage = () => {
         setIsLoading(true);
 
         try {
-            const response = await axios.post('http://localhost:3001/api/interview/chat', {
+            const response = await axios.post<ChatResponse>('http://localhost:3001/api/interview/chat', {
                 message: text,
                 history: messages.map(m => ({
                     role: m.role === 'user' ? 'user' : 'model',
@@ -76,7 +80,9 @@ const InterviewPage = () => {
     const toggleMic = () => {
         if (isListening) {
             stopListening();
-            if (inputText) handleSendMessage(inputText);
+            if (inputText) {
+                void handleSendMessage(inputText);
+            }
         } else {
             startListening();
         }
@@ -161,7 +167,11 @@ const InterviewPage = () => {
                                 className={`flex-1 ${isListening ? 'border-primary' : ''}`}
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        void handleSendMessage();
+                                    }
+                                }}
                             />
 
                             <button
@@ -178,7 +188,9 @@ const InterviewPage = () => {
                             </button>
 
                             <button
-                                onClick={() => handleSendMessage()}
+                                onClick={() => {
+                                    void handleSendMessage();
+                                }}
                                 disabled={!inputText.trim() || isLoading}
                                 className="btn-primary p-3 rounded-xl"
                             >

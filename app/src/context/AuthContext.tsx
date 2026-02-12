@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 interface User {
@@ -10,26 +10,31 @@ interface User {
 interface AuthContextType {
     user: User | null;
     token: string | null;
-    login: (userData: any, token: string) => void;
+    login: (user: User, token: string) => void;
     logout: () => void;
     loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_URL = 'http://localhost:3001/api';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
 
+    const logout = useCallback(() => {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
+    }, []);
+
     useEffect(() => {
         const fetchUser = async () => {
-            if (token) {
+            const savedToken = localStorage.getItem('token');
+            if (savedToken) {
                 try {
-                    const response = await axios.get(`${API_URL}/auth/me`, {
-                        headers: { Authorization: `Bearer ${token}` },
+                    const response = await axios.get<User>('http://localhost:3001/api/auth/me', {
+                        headers: { Authorization: `Bearer ${savedToken}` }
                     });
                     setUser(response.data);
                 } catch (error) {
@@ -39,20 +44,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             setLoading(false);
         };
+        void fetchUser();
+    }, [logout]);
 
-        fetchUser();
-    }, [token]);
-
-    const login = (userData: User, newToken: string) => {
+    const login = (userData: User, userToken: string) => {
         setUser(userData);
-        setToken(newToken);
-        localStorage.setItem('token', newToken);
-    };
-
-    const logout = () => {
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem('token');
+        setToken(userToken);
+        localStorage.setItem('token', userToken);
     };
 
     return (
@@ -64,8 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
+    if (!context) throw new Error('useAuth must be used within an AuthProvider');
     return context;
 };

@@ -32,7 +32,7 @@ router.post("/chat", async (req, res) => {
         const text = response.text();
 
         res.json({ text });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Gemini API error:", error);
         res.status(500).json({ error: "Failed to get AI response" });
     }

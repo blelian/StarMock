@@ -5,7 +5,6 @@ import { authRouter } from "./routes/auth.js";
 import { interviewRouter } from "./routes/interview.js";
 
 const app = express();
-const PORT = process.env.PORT ?? 3001;
 
 app.use(cors({
   origin: [
@@ -25,6 +24,11 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/interview", interviewRouter);
 
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  const PORT = process.env.PORT ?? 3001;
+  app.listen(PORT, () => {
+    console.log(`Backend running on http://localhost:${PORT}`);
+  });
+}
+
+export { app };

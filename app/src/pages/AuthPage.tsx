@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, User, Sparkles, Loader2 } from 'lucide-react';
+
+interface AuthResponse {
+    user: {
+        id: string;
+        email: string;
+        name: string;
+    };
+    token: string;
+}
 
 const AuthPage = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -25,12 +34,13 @@ const AuthPage = () => {
 
         try {
             const endpoint = isLogin ? '/auth/login' : '/auth/signup';
-            const response = await axios.post(`http://localhost:3001/api${endpoint}`, formData);
+            const response = await axios.post<AuthResponse>(`http://localhost:3001/api${endpoint}`, formData);
 
             login(response.data.user, response.data.token);
-            navigate('/interview');
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Something went wrong');
+            void navigate('/interview');
+        } catch (err) {
+            const error = err as AxiosError<{ error: string }>;
+            setError(error.response?.data?.error || 'Something went wrong');
         } finally {
             setLoading(false);
         }
@@ -66,13 +76,19 @@ const AuthPage = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form
+                    onSubmit={(e) => {
+                        void handleSubmit(e);
+                    }}
+                    className="space-y-4"
+                >
                     {!isLogin && (
                         <div className="space-y-1">
-                            <label className="text-sm font-medium text-text-muted">Full Name</label>
+                            <label htmlFor="name" className="text-sm font-medium text-text-muted">Full Name</label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
                                 <input
+                                    id="name"
                                     type="text"
                                     placeholder="John Doe"
                                     className="pl-10"
@@ -85,10 +101,11 @@ const AuthPage = () => {
                     )}
 
                     <div className="space-y-1">
-                        <label className="text-sm font-medium text-text-muted">Email Address</label>
+                        <label htmlFor="email" className="text-sm font-medium text-text-muted">Email Address</label>
                         <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
                             <input
+                                id="email"
                                 type="email"
                                 placeholder="name@example.com"
                                 className="pl-10"
@@ -100,10 +117,11 @@ const AuthPage = () => {
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-sm font-medium text-text-muted">Password</label>
+                        <label htmlFor="password" className="text-sm font-medium text-text-muted">Password</label>
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
                             <input
+                                id="password"
                                 type="password"
                                 placeholder="••••••••"
                                 className="pl-10"
