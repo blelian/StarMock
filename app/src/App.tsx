@@ -39,13 +39,4 @@ function App() {
   );
 }
 
-<<<<<<< HEAD
-export default App
-// Test comments for pre-commit hook
-// Another test comment
-// Final test comment
-// Test final hook
-// Test skip tests
-=======
 export default App;
->>>>>>> df18ae2 (feat: implement secure auth system, JWT, and Gemini-powered AI interview assistant with speech recognition)
