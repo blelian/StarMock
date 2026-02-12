@@ -22,11 +22,13 @@ router.post("/signup", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
       "INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name",
-      [email, hashedPassword, name]
+      [email, hashedPassword, name],
     );
 
     const user = result.rows[0];
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.status(201).json({ user, token });
   } catch (err) {
@@ -48,14 +50,18 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
     const user = result.rows[0];
 
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.json({
       user: { id: user.id, email: user.email, name: user.name },
@@ -77,9 +83,10 @@ router.get("/me", async (req, res) => {
   const token = authHeader.split(" ")[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    const result = await pool.query("SELECT id, email, name FROM users WHERE id = $1", [
-      decoded.userId,
-    ]);
+    const result = await pool.query(
+      "SELECT id, email, name FROM users WHERE id = $1",
+      [decoded.userId],
+    );
     const user = result.rows[0];
 
     if (!user) {
