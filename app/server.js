@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import connectDB from "./src/config/database.js";
-import { sessionMiddleware } from "./src/config/session.js";
+import { createSessionMiddleware } from "./src/config/session.js";
 import { authRoutes, interviewRoutes } from "./src/routes/index.js";
 import { validateEnvironment, getEnvironmentSummary } from "./src/config/validateEnv.js";
 import { runStartupChecks, healthCheck, readinessCheck } from "./src/config/healthCheck.js";
@@ -33,8 +33,10 @@ console.log("");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || "development";
+const sessionMiddleware = createSessionMiddleware();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+let server = null;
 
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -52,23 +54,6 @@ const authRateLimiter = rateLimit({
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Connect to database
-connectDB()
-  .then(async () => {
-    console.log("✅ Database connected successfully");
-    
-    // Run startup health checks
-    const checksPass = await runStartupChecks();
-    if (!checksPass && NODE_ENV === "production") {
-      console.error("\n❌ Startup health checks failed in production. Exiting...");
-      process.exit(1);
-    }
-  })
-  .catch((err) => {
-    console.error("❌ Failed to connect to MongoDB:", err);
-    process.exit(1);
-  });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -172,11 +157,26 @@ app.use((err, req, res, _next) => {
   });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📦 Environment: ${NODE_ENV}`);
-  console.log(`🌐 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🔐 Session management: enabled`);
+async function startServer() {
+  await connectDB();
+  console.log("✅ Database connected successfully");
+
+  const checksPass = await runStartupChecks();
+  if (!checksPass && NODE_ENV === "production") {
+    throw new Error("Startup health checks failed in production");
+  }
+
+  server = app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📦 Environment: ${NODE_ENV}`);
+    console.log(`🌐 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🔐 Session management: enabled`);
+  });
+}
+
+startServer().catch((err) => {
+  console.error("❌ Failed to start server:", err);
+  process.exit(1);
 });
 
 // Graceful shutdown handlers
@@ -190,16 +190,7 @@ async function gracefulShutdown(signal) {
   isShuttingDown = true;
   console.log(`\n⚠️  ${signal} received. Starting graceful shutdown...`);
   
-  // Stop accepting new connections
-  server.close(async (err) => {
-    if (err) {
-      console.error("❌ Error closing server:", err);
-      process.exit(1);
-    }
-    
-    console.log("✅ Server closed");
-    
-    // Close database connection
+  const closeDatabase = async () => {
     try {
       const mongoose = await import('mongoose');
       await mongoose.default.connection.close(false);
@@ -207,7 +198,24 @@ async function gracefulShutdown(signal) {
     } catch (error) {
       console.error("❌ Error closing database:", error);
     }
+  };
+
+  if (!server || !server.listening) {
+    await closeDatabase();
+    console.log("👋 Shutdown complete");
+    process.exit(0);
+    return;
+  }
+
+  // Stop accepting new connections
+  server.close(async (err) => {
+    if (err && err.code !== 'ERR_SERVER_NOT_RUNNING') {
+      console.error("❌ Error closing server:", err);
+      process.exit(1);
+    }
     
+    console.log("✅ Server closed");
+    await closeDatabase();
     console.log("👋 Shutdown complete");
     process.exit(0);
   });

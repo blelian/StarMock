@@ -16,12 +16,18 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "check:secrets": "node scripts/check-secrets.js",
     "preview": "vite preview",
-    "test": "vitest",
+    "test": "vitest --pool=typescript --maxWorkers=1 --no-file-parallelism",
+    "test:raw": "vitest",
+    "test:stable": "vitest --run --pool=typescript --maxWorkers=1 --no-file-parallelism",
+    "test:backend": "vitest --run --config vitest.backend.config.ts --pool=typescript --maxWorkers=1 --no-file-parallelism",
+    "test:backend:coverage": "vitest --run --config vitest.backend.config.ts --coverage --pool=typescript --maxWorkers=1 --no-file-parallelism",
+    "test:backend:ci": "vitest --run --config vitest.backend.config.ts --coverage --pool=forks --maxWorkers=1 --no-file-parallelism",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
+    "test:coverage": "vitest --run --coverage --pool=typescript --maxWorkers=1 --no-file-parallelism",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
+    "verify:backend:signoff": "bash scripts/verify-backend-signoff.sh",
     "playwright:install:browsers": "playwright install chromium",
     "playwright:install:local-libs": "bash scripts/setup-playwright-local-libs.sh",
     "prepare": "node -e \"try { require('husky') } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e }\""
@@ -62,11 +68,8 @@
     "prettier": "^3.8.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "npm:rolldown-vite@7.2.5",
+    "vite": "^7.2.5",
     "vitest": "^4.0.18"
-  },
-  "overrides": {
-    "vite": "npm:rolldown-vite@7.2.5"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx,js,jsx}": [

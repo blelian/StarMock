@@ -14,17 +14,8 @@ if (!SESSION_SECRET) {
   )
 }
 
-/**
- * Configure session middleware with MongoDB store
- * Sessions are stored in MongoDB for persistence across server restarts
- */
-const sessionConfig = {
-  secret: SESSION_SECRET,
-  resave: false, // Don't save session if unmodified
-  saveUninitialized: false, // Don't create session until something stored
-  name: 'starmock.sid', // Custom session cookie name
-
-  store: MongoStore.create({
+function createSessionStore() {
+  return MongoStore.create({
     mongoUrl: MONGODB_URI,
     dbName: 'starmock',
     collectionName: 'sessions',
@@ -35,21 +26,37 @@ const sessionConfig = {
     autoRemove: 'native', // Use MongoDB TTL for automatic cleanup
     autoRemoveInterval: 10, // Check for expired sessions every 10 minutes
     stringify: false, // Store sessions as native MongoDB documents (better performance)
-  }),
+    mongoOptions: {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    },
+  })
+}
 
-  cookie: {
-    httpOnly: true, // Prevent client-side JS from reading the cookie
-    secure: NODE_ENV === 'production', // Only send cookie over HTTPS in production
-    sameSite: NODE_ENV === 'production' ? 'strict' : 'lax', // CSRF protection
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days in milliseconds
-    path: '/',
-  },
+function createSessionConfig() {
+  return {
+    secret: SESSION_SECRET,
+    resave: false, // Don't save session if unmodified
+    saveUninitialized: false, // Don't create session until something stored
+    name: 'starmock.sid', // Custom session cookie name
+    store: createSessionStore(),
+    cookie: {
+      httpOnly: true, // Prevent client-side JS from reading the cookie
+      secure: NODE_ENV === 'production', // Only send cookie over HTTPS in production
+      sameSite: NODE_ENV === 'production' ? 'strict' : 'lax', // CSRF protection
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days in milliseconds
+      path: '/',
+    },
+  }
 }
 
 /**
- * Create and export session middleware
+ * Build session middleware lazily so module import itself does not block startup.
  */
-export const sessionMiddleware = session(sessionConfig)
+export function createSessionMiddleware() {
+  return session(createSessionConfig())
+}
 
 /**
  * Session helper utilities
@@ -85,10 +92,35 @@ export const sessionHelpers = {
   },
 
   /**
+   * Persist in-memory session mutations to the store before responding.
+   */
+  saveSession: (req) => {
+    return new Promise((resolve, reject) => {
+      if (!req.session) {
+        resolve()
+        return
+      }
+
+      req.session.save((err) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
+    })
+  },
+
+  /**
    * Clear user session (logout)
    */
   clearUserSession: (req) => {
     return new Promise((resolve, reject) => {
+      if (!req.session) {
+        resolve()
+        return
+      }
+
       req.session.destroy((err) => {
         if (err) {
           reject(err)
@@ -104,6 +136,11 @@ export const sessionHelpers = {
    */
   regenerateSession: (req) => {
     return new Promise((resolve, reject) => {
+      if (!req.session) {
+        resolve()
+        return
+      }
+
       req.session.regenerate((err) => {
         if (err) {
           reject(err)
@@ -141,4 +178,4 @@ export const sessionHelpers = {
   },
 }
 
-export default sessionMiddleware
+export default createSessionMiddleware

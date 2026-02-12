@@ -7,13 +7,27 @@ import {
 } from '../models/index.js'
 import { requireAuth } from '../middleware/auth.js'
 import { validateRequest } from '../middleware/validate.js'
-import { evaluateResponse } from '../services/feedbackService.js'
+import { evaluateResponseWithProvider } from '../services/feedback/index.js'
 import {
   validateCreateSessionRequest,
   validateSubmitResponseRequest,
 } from '../validators/api.js'
 
 const router = express.Router()
+const ALLOWED_QUESTION_TYPES = new Set([
+  'behavioral',
+  'technical',
+  'situational',
+  'leadership',
+])
+const ALLOWED_DIFFICULTIES = new Set(['easy', 'medium', 'hard'])
+const ALLOWED_SESSION_STATUSES = new Set([
+  'in_progress',
+  'completed',
+  'abandoned',
+])
+const MAX_QUESTION_LIMIT = 20
+const MAX_HISTORY_LIMIT = 50
 
 function getQuestionText(question) {
   if (!question) return 'Question not found'
@@ -23,6 +37,14 @@ function getQuestionText(question) {
     question.title ||
     'Question not found'
   )
+}
+
+function parsePositiveInteger(value, fallback) {
+  const parsed = Number.parseInt(value, 10)
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return fallback
+  }
+  return parsed
 }
 
 /**
@@ -36,16 +58,47 @@ function getQuestionText(question) {
 router.get('/questions', requireAuth, async (req, res) => {
   try {
     const { type, difficulty, limit = 5 } = req.query
+    const parsedLimit = parsePositiveInteger(limit, 5)
+
+    if (parsedLimit > MAX_QUESTION_LIMIT) {
+      return res.status(400).json({
+        error: {
+          message: `Limit must be between 1 and ${MAX_QUESTION_LIMIT}`,
+          code: 'INVALID_LIMIT',
+        },
+      })
+    }
 
     // Build query filter
-    const filter = {}
-    if (type) filter.type = type
-    if (difficulty) filter.difficulty = difficulty
+    const filter = { isActive: true }
+    if (type) {
+      if (!ALLOWED_QUESTION_TYPES.has(type)) {
+        return res.status(400).json({
+          error: {
+            message: 'Invalid question type',
+            code: 'INVALID_TYPE',
+          },
+        })
+      }
+      filter.type = type
+    }
+
+    if (difficulty) {
+      if (!ALLOWED_DIFFICULTIES.has(difficulty)) {
+        return res.status(400).json({
+          error: {
+            message: 'Invalid difficulty level',
+            code: 'INVALID_DIFFICULTY',
+          },
+        })
+      }
+      filter.difficulty = difficulty
+    }
 
     // Get random questions
     const questions = await InterviewQuestion.aggregate([
       { $match: filter },
-      { $sample: { size: parseInt(limit) } },
+      { $sample: { size: parsedLimit } },
     ])
 
     res.json({
@@ -126,13 +179,24 @@ router.post(
   async (req, res) => {
     try {
       const { questionIds } = req.body
+      const uniqueQuestionIds = [...new Set(questionIds)]
+
+      if (uniqueQuestionIds.length !== questionIds.length) {
+        return res.status(400).json({
+          error: {
+            message: 'Question IDs must be unique within a session',
+            code: 'DUPLICATE_QUESTIONS',
+          },
+        })
+      }
 
       // Verify all questions exist
       const questions = await InterviewQuestion.find({
-        _id: { $in: questionIds },
+        _id: { $in: uniqueQuestionIds },
+        isActive: true,
       })
 
-      if (questions.length !== questionIds.length) {
+      if (questions.length !== uniqueQuestionIds.length) {
         return res.status(400).json({
           error: {
             message: 'One or more invalid question IDs',
@@ -144,7 +208,7 @@ router.post(
       // Create interview session
       const session = new InterviewSession({
         userId: req.userId,
-        questions: questionIds,
+        questions: uniqueQuestionIds,
         status: 'in_progress',
         startedAt: new Date(),
       })
@@ -260,6 +324,21 @@ router.post(
           error: {
             message: 'Question not part of this session',
             code: 'INVALID_QUESTION',
+          },
+        })
+      }
+
+      const existingResponse = await InterviewResponse.findOne({
+        sessionId: req.params.id,
+        userId: req.userId,
+        questionId,
+      })
+
+      if (existingResponse) {
+        return res.status(409).json({
+          error: {
+            message: 'A response for this question already exists in session',
+            code: 'DUPLICATE_RESPONSE',
           },
         })
       }
@@ -412,20 +491,41 @@ router.get('/sessions/:id/responses', requireAuth, async (req, res) => {
 router.get('/history', requireAuth, async (req, res) => {
   try {
     const { status, limit = 10, page = 1 } = req.query
+    const parsedLimit = parsePositiveInteger(limit, 10)
+    const parsedPage = parsePositiveInteger(page, 1)
+
+    if (parsedLimit > MAX_HISTORY_LIMIT) {
+      return res.status(400).json({
+        error: {
+          message: `Limit must be between 1 and ${MAX_HISTORY_LIMIT}`,
+          code: 'INVALID_LIMIT',
+        },
+      })
+    }
 
     // Build query filter
     const filter = { userId: req.userId }
-    if (status) filter.status = status
+    if (status) {
+      if (!ALLOWED_SESSION_STATUSES.has(status)) {
+        return res.status(400).json({
+          error: {
+            message: 'Invalid status filter',
+            code: 'INVALID_STATUS',
+          },
+        })
+      }
+      filter.status = status
+    }
 
     // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit)
+    const skip = (parsedPage - 1) * parsedLimit
 
     // Get sessions with pagination
     const sessions = await InterviewSession.find(filter)
       .populate('questions')
       .sort({ startedAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit))
+      .limit(parsedLimit)
 
     // Get total count for pagination
     const totalCount = await InterviewSession.countDocuments(filter)
@@ -442,8 +542,8 @@ router.get('/history', requireAuth, async (req, res) => {
         duration: s.duration,
       })),
       pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        currentPage: parsedPage,
+        totalPages: Math.ceil(totalCount / parsedLimit),
         totalSessions: totalCount,
         hasMore: skip + sessions.length < totalCount,
       },
@@ -514,6 +614,7 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
           questionText: getQuestionText(f.responseId?.questionId),
           scores: f.scores,
           rating: f.rating,
+          evaluatorType: f.evaluatorType,
           strengths: f.strengths,
           suggestions: f.suggestions,
           createdAt: f.createdAt,
@@ -542,8 +643,8 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
 
     for (const response of responses) {
       try {
-        // Evaluate the response using the feedback service
-        const evaluation = evaluateResponse(
+        // Evaluate the response through the provider abstraction.
+        const { evaluation, evaluatorType } = await evaluateResponseWithProvider(
           response.responseText,
           response.questionId
         )
@@ -558,6 +659,7 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
           strengths: evaluation.strengths,
           suggestions: evaluation.suggestions,
           analysis: evaluation.analysis,
+          evaluatorType,
         })
 
         await feedback.save()
@@ -568,6 +670,7 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
           questionText: getQuestionText(response.questionId),
           scores: feedback.scores,
           rating: feedback.rating,
+          evaluatorType: feedback.evaluatorType,
           strengths: feedback.strengths,
           suggestions: feedback.suggestions,
           analysis: feedback.analysis,

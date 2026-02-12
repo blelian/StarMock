@@ -9,6 +9,16 @@ import {
 } from '../validators/api.js'
 
 const router = express.Router()
+const isProduction = process.env.NODE_ENV === 'production'
+
+function getSessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax',
+    path: '/',
+  }
+}
 
 /**
  * @route   POST /api/auth/signup
@@ -54,6 +64,7 @@ router.post(
         lastName: user.lastName,
         role: user.role,
       })
+      await sessionHelpers.saveSession(req)
 
       // Update last login
       user.lastLogin = new Date()
@@ -142,6 +153,7 @@ router.post(
         lastName: user.lastName,
         role: user.role,
       })
+      await sessionHelpers.saveSession(req)
 
       // Update last login
       user.lastLogin = new Date()
@@ -178,6 +190,7 @@ router.post(
 router.post('/logout', requireAuth, async (req, res) => {
   try {
     await sessionHelpers.clearUserSession(req)
+    res.clearCookie('starmock.sid', getSessionCookieOptions())
 
     res.json({
       message: 'Logout successful',
@@ -241,7 +254,9 @@ router.get('/me', requireAuth, async (req, res) => {
  * @access  Public
  */
 router.get('/status', (req, res) => {
-  const isAuthenticated = sessionHelpers.isAuthenticated(req)
+  const isAuthenticated = Boolean(
+    req.session?.userId && req.session?.user?.id?.toString() === req.session.userId.toString()
+  )
 
   res.json({
     isAuthenticated,
