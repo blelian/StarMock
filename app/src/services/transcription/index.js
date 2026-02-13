@@ -6,6 +6,7 @@ import {
   observeDuration,
   setGauge,
 } from '../metrics/index.js'
+import { openAITranscriptionProvider } from './openAITranscriptionProvider.js'
 
 const DEFAULT_PROVIDER_ID = process.env.TRANSCRIPTION_PROVIDER || 'mock'
 const DEFAULT_BATCH_SIZE = 2
@@ -88,6 +89,7 @@ async function mockTranscribe({ response, audioUrl }) {
 
 const transcriptionProviders = new Map([
   ['mock', { transcribe: mockTranscribe }],
+  ['openai', openAITranscriptionProvider],
 ])
 
 function getTranscriptionProvider(providerId = DEFAULT_PROVIDER_ID) {
