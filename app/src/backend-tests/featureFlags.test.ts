@@ -1,7 +1,10 @@
 // @vitest-environment node
 
 import { afterEach, describe, expect, it } from 'vitest'
-import { getFeatureFlagsForUser, isFeatureEnabled } from '../config/featureFlags.js'
+import {
+  getFeatureFlagsForUser,
+  isFeatureEnabled,
+} from '../config/featureFlags.js'
 
 const featureEnvKeys = [
   'FEATURE_AI_RECORDING_ENABLED',

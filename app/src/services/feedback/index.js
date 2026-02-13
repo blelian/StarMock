@@ -39,7 +39,9 @@ async function runWithTimeout(promise, timeoutMs, providerId) {
   let timeoutHandle
   const timeoutPromise = new Promise((_, reject) => {
     timeoutHandle = setTimeout(() => {
-      reject(new Error(`Provider "${providerId}" timed out after ${timeoutMs}ms`))
+      reject(
+        new Error(`Provider "${providerId}" timed out after ${timeoutMs}ms`)
+      )
     }, timeoutMs)
   })
 
@@ -128,7 +130,9 @@ function normalizeProviderId(providerId) {
   return providerAliases.get(normalized) || normalized
 }
 
-export function getFeedbackProvider(providerId = process.env.FEEDBACK_PROVIDER) {
+export function getFeedbackProvider(
+  providerId = process.env.FEEDBACK_PROVIDER
+) {
   const normalizedId = normalizeProviderId(providerId)
   const provider = providers.get(normalizedId)
 

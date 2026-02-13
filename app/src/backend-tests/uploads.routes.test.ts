@@ -28,7 +28,11 @@ afterEach(() => {
 })
 
 describe('upload routes', () => {
-  const presignHandlers = getRouteHandlers(uploadRouter, 'post', '/audio/presign')
+  const presignHandlers = getRouteHandlers(
+    uploadRouter,
+    'post',
+    '/audio/presign'
+  )
 
   it('requires authentication', async () => {
     const res = await runRouteHandlers(presignHandlers, {

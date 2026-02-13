@@ -194,7 +194,9 @@ feedbackJobSchema.statics.getQueuedJobs = function (limit = 10) {
  * @param {number} staleMinutes - Minutes after which processing job is considered stale
  * @returns {Promise<FeedbackJob[]>}
  */
-feedbackJobSchema.statics.getStaleProcessingJobs = function (staleMinutes = 10) {
+feedbackJobSchema.statics.getStaleProcessingJobs = function (
+  staleMinutes = 10
+) {
   const staleThreshold = new Date(Date.now() - staleMinutes * 60 * 1000)
   return this.find({
     status: 'processing',

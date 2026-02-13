@@ -162,7 +162,10 @@ transcriptionJobSchema.methods.canRetry = function () {
   return this.status !== 'ready' && this.attempts < this.maxAttempts
 }
 
-const TranscriptionJob = mongoose.model('TranscriptionJob', transcriptionJobSchema)
+const TranscriptionJob = mongoose.model(
+  'TranscriptionJob',
+  transcriptionJobSchema
+)
 
 export default TranscriptionJob
 export { JOB_STATUSES as TRANSCRIPTION_JOB_STATUSES, DEFAULT_MAX_ATTEMPTS }

@@ -2,7 +2,10 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import mongoose from 'mongoose'
-import FeedbackJob, { JOB_STATUSES, MAX_ATTEMPTS } from '../models/FeedbackJob.js'
+import FeedbackJob, {
+  JOB_STATUSES,
+  MAX_ATTEMPTS,
+} from '../models/FeedbackJob.js'
 
 type FeedbackJobModelLike = {
   generateIdempotencyKey: (sessionId: string) => string
@@ -53,7 +56,12 @@ afterEach(() => {
 
 describe('FeedbackJob model helpers', () => {
   it('exports supported job statuses and max attempts', () => {
-    expect(JOB_STATUSES).toEqual(['queued', 'processing', 'completed', 'failed'])
+    expect(JOB_STATUSES).toEqual([
+      'queued',
+      'processing',
+      'completed',
+      'failed',
+    ])
     expect(MAX_ATTEMPTS).toBe(3)
   })
 
@@ -124,7 +132,9 @@ describe('FeedbackJob instance methods', () => {
     expect(job.status).toBe('processing')
     expect(job.attempts).toBe(1)
     expect(job.startedAt).toBeInstanceOf(Date)
-    expect((job.save as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1)
+    expect(
+      (job.save as unknown as ReturnType<typeof vi.fn>).mock.calls.length
+    ).toBe(1)
   })
 
   it('markProcessing is no-op when status is not queued', async () => {
@@ -133,7 +143,9 @@ describe('FeedbackJob instance methods', () => {
     const changed = await job.markProcessing()
 
     expect(changed).toBe(false)
-    expect((job.save as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0)
+    expect(
+      (job.save as unknown as ReturnType<typeof vi.fn>).mock.calls.length
+    ).toBe(0)
   })
 
   it('markCompleted sets terminal status and completion time', async () => {
@@ -143,7 +155,9 @@ describe('FeedbackJob instance methods', () => {
 
     expect(job.status).toBe('completed')
     expect(job.completedAt).toBeInstanceOf(Date)
-    expect((job.save as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1)
+    expect(
+      (job.save as unknown as ReturnType<typeof vi.fn>).mock.calls.length
+    ).toBe(1)
   })
 
   it('markFailed requeues when attempts are still available', async () => {
@@ -209,7 +223,9 @@ describe('FeedbackJob static query helpers', () => {
     const exec = vi.fn().mockResolvedValue([{ id: 1 }])
     const limit = vi.fn().mockReturnValue({ exec })
     const sort = vi.fn().mockReturnValue({ limit })
-    const find = vi.spyOn(FeedbackJobModel, 'find').mockReturnValue({ sort } as unknown)
+    const find = vi
+      .spyOn(FeedbackJobModel, 'find')
+      .mockReturnValue({ sort } as unknown)
 
     const result = await FeedbackJobModel.getQueuedJobs(3)
 
@@ -221,7 +237,9 @@ describe('FeedbackJob static query helpers', () => {
 
   it('getStaleProcessingJobs queries processing jobs older than threshold', async () => {
     const exec = vi.fn().mockResolvedValue([{ id: 'stale' }])
-    const find = vi.spyOn(FeedbackJobModel, 'find').mockReturnValue({ exec } as unknown)
+    const find = vi
+      .spyOn(FeedbackJobModel, 'find')
+      .mockReturnValue({ exec } as unknown)
 
     const result = await FeedbackJobModel.getStaleProcessingJobs(15)
 

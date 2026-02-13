@@ -159,8 +159,7 @@ export function validateSubmitResponseRequest(req) {
     if (normalizedText.length > 0 && normalizedText.length < 20) {
       return {
         valid: false,
-        message:
-          'Transcript text must be at least 20 characters when provided',
+        message: 'Transcript text must be at least 20 characters when provided',
         code: 'TRANSCRIPT_TOO_SHORT',
       }
     }

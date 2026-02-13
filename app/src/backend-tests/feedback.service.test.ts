@@ -25,9 +25,7 @@ describe('feedbackService.evaluateResponse', () => {
     }
 
     expect(evaluation.scores.overall).toBeGreaterThan(0)
-    expect(evaluation.rating).toMatch(
-      /excellent|good|fair|needs_improvement/
-    )
+    expect(evaluation.rating).toMatch(/excellent|good|fair|needs_improvement/)
     expect(evaluation.analysis.structure.wordCount).toBeGreaterThan(20)
     expect(evaluation.analysis.starComponents.action.score).toBeGreaterThan(0)
     expect(evaluation.strengths.length).toBeGreaterThan(0)

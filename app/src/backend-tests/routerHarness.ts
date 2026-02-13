@@ -43,7 +43,7 @@ export function createMockResponse(): MockResponse {
 
 export function getRouteHandlers(
   router: RouterLike,
-  method: 'get' | 'post',
+  method: 'get' | 'post' | 'patch',
   path: string
 ): RouteHandler[] {
   const layer = router.stack.find(

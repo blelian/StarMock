@@ -1,9 +1,6 @@
 import fs from 'fs/promises'
 import path from 'path'
-import {
-  InterviewResponse,
-  TranscriptionJob,
-} from '../../models/index.js'
+import { InterviewResponse, TranscriptionJob } from '../../models/index.js'
 import {
   incrementCounter,
   observeDuration,
@@ -38,7 +35,8 @@ function resolveUploadPath(audioUrl) {
     return null
   }
   const storageDir =
-    process.env.UPLOAD_STORAGE_DIR || path.join(process.cwd(), 'tmp', 'audio-uploads')
+    process.env.UPLOAD_STORAGE_DIR ||
+    path.join(process.cwd(), 'tmp', 'audio-uploads')
   return path.join(storageDir, objectKey)
 }
 
@@ -57,7 +55,9 @@ async function mockTranscribe({ response, audioUrl }) {
   }
 
   const existingText =
-    typeof response.responseText === 'string' ? response.responseText.trim() : ''
+    typeof response.responseText === 'string'
+      ? response.responseText.trim()
+      : ''
   const transcriptText =
     existingText ||
     `Auto transcript placeholder for response ${response._id}. ${audioHint} Please review and edit before final submit.`
@@ -74,7 +74,10 @@ async function mockTranscribe({ response, audioUrl }) {
     segments: [
       {
         startMs: 0,
-        endMs: Math.max(1000, Math.round((response.audioDurationSeconds || 10) * 1000)),
+        endMs: Math.max(
+          1000,
+          Math.round((response.audioDurationSeconds || 10) * 1000)
+        ),
         text: transcriptText,
         confidence,
       },
@@ -83,11 +86,15 @@ async function mockTranscribe({ response, audioUrl }) {
   }
 }
 
-const transcriptionProviders = new Map([['mock', { transcribe: mockTranscribe }]])
+const transcriptionProviders = new Map([
+  ['mock', { transcribe: mockTranscribe }],
+])
 
 function getTranscriptionProvider(providerId = DEFAULT_PROVIDER_ID) {
   const normalized = (providerId || 'mock').toLowerCase().trim()
-  return transcriptionProviders.get(normalized) || transcriptionProviders.get('mock')
+  return (
+    transcriptionProviders.get(normalized) || transcriptionProviders.get('mock')
+  )
 }
 
 async function applyTranscriptToResponse(response, transcriptResult) {
@@ -151,7 +158,11 @@ export async function processTranscriptionJob(job) {
       Date.now() - startedAt,
       { status: 'ready' }
     )
-    incrementCounter('starmock_transcription_jobs_total', { status: 'ready' }, 1)
+    incrementCounter(
+      'starmock_transcription_jobs_total',
+      { status: 'ready' },
+      1
+    )
 
     return {
       processed: true,
@@ -194,7 +205,8 @@ export async function processTranscriptionJob(job) {
 export async function recoverStaleTranscriptionJobs(
   staleMinutes = DEFAULT_STALE_MINUTES
 ) {
-  const staleJobs = await TranscriptionJob.getStaleTranscribingJobs(staleMinutes)
+  const staleJobs =
+    await TranscriptionJob.getStaleTranscribingJobs(staleMinutes)
 
   for (const staleJob of staleJobs) {
     await staleJob.markFailed(new Error('Transcription job timed out'))
@@ -203,7 +215,9 @@ export async function recoverStaleTranscriptionJobs(
   return staleJobs.length
 }
 
-export async function processNextTranscriptionJobs(batchSize = DEFAULT_BATCH_SIZE) {
+export async function processNextTranscriptionJobs(
+  batchSize = DEFAULT_BATCH_SIZE
+) {
   const jobs = await TranscriptionJob.getQueuedJobs(batchSize)
   const results = []
   for (const job of jobs) {
@@ -233,7 +247,9 @@ export async function runTranscriptionJobCycle() {
 
     const staleRecovered = await recoverStaleTranscriptionJobs(staleMinutes)
     const processedJobs = await processNextTranscriptionJobs(batchSize)
-    const queueDepth = await TranscriptionJob.countDocuments({ status: 'uploaded' })
+    const queueDepth = await TranscriptionJob.countDocuments({
+      status: 'uploaded',
+    })
     setGauge('starmock_transcription_queue_depth', {}, queueDepth)
     if (staleRecovered > 0) {
       incrementCounter(

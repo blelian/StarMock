@@ -70,6 +70,21 @@ declare module '../services/feedback/index.js' {
     analysis: Record<string, unknown>
   }
 
+  export interface FeedbackEvaluatorMetadata {
+    provider: string
+    attempts: number
+    retries: number
+    latencyMs: number
+    timeoutMs: number
+    fallback: boolean
+    model?: string | null
+    promptVersion?: string | null
+    tokenUsage?: Record<string, number> | null
+    fallbackFrom?: string
+    fallbackReason?: string
+    upstreamErrors?: Array<Record<string, unknown>>
+  }
+
   export interface FeedbackProvider {
     id: string
   }
@@ -80,7 +95,29 @@ declare module '../services/feedback/index.js' {
     responseText: string,
     question?: unknown,
     providerId?: string
-  ): Promise<{ evaluation: FeedbackEvaluationResult; evaluatorType: string }>
+  ): Promise<{
+    evaluation: FeedbackEvaluationResult
+    evaluatorType: string
+    evaluatorMetadata?: FeedbackEvaluatorMetadata
+  }>
+}
+
+declare module '../services/feedback/validation.js' {
+  export interface FeedbackEvaluationValidationResult {
+    valid: boolean
+    errors: string[]
+    evaluation: {
+      scores: Record<string, number>
+      rating: string
+      strengths: string[]
+      suggestions: string[]
+      analysis: Record<string, unknown>
+    }
+  }
+
+  export function validateFeedbackEvaluation(
+    payload: unknown
+  ): FeedbackEvaluationValidationResult
 }
 
 declare module '../validators/api.js' {
@@ -95,6 +132,7 @@ declare module '../validators/api.js' {
   export function validateLoginRequest(req: unknown): ValidationResult
   export function validateCreateSessionRequest(req: unknown): ValidationResult
   export function validateSubmitResponseRequest(req: unknown): ValidationResult
+  export function validateAudioPresignRequest(req: unknown): ValidationResult
 }
 
 declare module '../models/FeedbackJob.js' {
@@ -145,7 +183,12 @@ declare module '../models/FeedbackJob.js' {
     getStaleProcessingJobs(staleMinutes?: number): Promise<IFeedbackJob[]>
   }
 
-  export const JOB_STATUSES: readonly ['queued', 'processing', 'completed', 'failed']
+  export const JOB_STATUSES: readonly [
+    'queued',
+    'processing',
+    'completed',
+    'failed',
+  ]
   export const MAX_ATTEMPTS: 3
 
   const FeedbackJob: IFeedbackJobModel

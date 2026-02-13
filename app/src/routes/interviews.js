@@ -425,9 +425,13 @@ router.post(
         responseText: normalizedResponseText,
         audioUrl: responseType === 'audio_transcript' ? audioUrl : undefined,
         audioMimeType:
-          responseType === 'audio_transcript' ? audioMimeType || undefined : undefined,
+          responseType === 'audio_transcript'
+            ? audioMimeType || undefined
+            : undefined,
         audioSizeBytes:
-          responseType === 'audio_transcript' ? audioSizeBytes || undefined : undefined,
+          responseType === 'audio_transcript'
+            ? audioSizeBytes || undefined
+            : undefined,
         audioDurationSeconds:
           responseType === 'audio_transcript'
             ? audioDurationSeconds || undefined
@@ -440,13 +444,16 @@ router.post(
               : undefined
             : undefined,
         transcriptProvider:
-          responseType === 'audio_transcript' && normalizedResponseText.length > 0
+          responseType === 'audio_transcript' &&
+          normalizedResponseText.length > 0
             ? 'manual'
             : undefined,
         transcriptEdited:
-          responseType === 'audio_transcript' && normalizedResponseText.length > 0,
+          responseType === 'audio_transcript' &&
+          normalizedResponseText.length > 0,
         transcriptReviewedAt:
-          responseType === 'audio_transcript' && normalizedResponseText.length > 0
+          responseType === 'audio_transcript' &&
+          normalizedResponseText.length > 0
             ? new Date()
             : undefined,
       })
@@ -454,7 +461,10 @@ router.post(
       await response.save()
 
       let transcriptionJobPayload = null
-      if (responseType === 'audio_transcript' && normalizedResponseText.length === 0) {
+      if (
+        responseType === 'audio_transcript' &&
+        normalizedResponseText.length === 0
+      ) {
         const { job, created } = await TranscriptionJob.findOrCreateForResponse(
           response._id,
           req.params.id,
@@ -692,7 +702,8 @@ router.get(
       if (response.responseType !== 'audio_transcript') {
         return res.status(400).json({
           error: {
-            message: 'Transcription status is only available for audio responses',
+            message:
+              'Transcription status is only available for audio responses',
             code: 'INVALID_RESPONSE_TYPE',
           },
         })
@@ -819,7 +830,7 @@ router.patch(
       const normalizedConfidence =
         typeof transcriptConfidence === 'number'
           ? transcriptConfidence
-          : response.transcriptConfidence ?? 0.8
+          : (response.transcriptConfidence ?? 0.8)
 
       response.responseText = normalizedTranscript
       response.transcriptConfidence = normalizedConfidence
@@ -1068,7 +1079,10 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
       })
     }
 
-    if (feedbackJob.status === 'queued' || feedbackJob.status === 'processing') {
+    if (
+      feedbackJob.status === 'queued' ||
+      feedbackJob.status === 'processing'
+    ) {
       return res.status(202).json({
         message: 'Feedback is being generated',
         feedback: [],

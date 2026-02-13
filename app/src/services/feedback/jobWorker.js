@@ -59,9 +59,9 @@ async function generateFeedbackReportsForJob(job) {
 
     const { evaluation, evaluatorType, evaluatorMetadata } =
       await evaluateResponseWithProvider(
-      response.responseText,
-      response.questionId
-    )
+        response.responseText,
+        response.questionId
+      )
 
     const feedback = new FeedbackReport({
       sessionId: job.sessionId,
@@ -80,7 +80,9 @@ async function generateFeedbackReportsForJob(job) {
         ...(evaluatorMetadata || {}),
         generatedAt: new Date(),
         correlationId:
-          evaluatorMetadata?.correlationId || job.metadata?.correlationId || null,
+          evaluatorMetadata?.correlationId ||
+          job.metadata?.correlationId ||
+          null,
       },
     })
 
@@ -150,7 +152,9 @@ export async function processFeedbackJobById(jobId) {
   return processFeedbackJob(job)
 }
 
-export async function recoverStaleProcessingJobs(staleMinutes = DEFAULT_STALE_MINUTES) {
+export async function recoverStaleProcessingJobs(
+  staleMinutes = DEFAULT_STALE_MINUTES
+) {
   const staleJobs = await FeedbackJob.getStaleProcessingJobs(staleMinutes)
 
   for (const staleJob of staleJobs) {
@@ -195,7 +199,11 @@ export async function runFeedbackJobCycle() {
     const queueDepth = await FeedbackJob.countDocuments({ status: 'queued' })
     setGauge('starmock_feedback_queue_depth', {}, queueDepth)
     if (staleRecovered > 0) {
-      incrementCounter('starmock_feedback_stale_recovered_total', {}, staleRecovered)
+      incrementCounter(
+        'starmock_feedback_stale_recovered_total',
+        {},
+        staleRecovered
+      )
     }
 
     return {
@@ -210,7 +218,9 @@ export async function runFeedbackJobCycle() {
 
 export function startFeedbackJobWorker() {
   if (process.env.FEEDBACK_JOB_WORKER_ENABLED === 'false') {
-    console.log('[feedback-worker] Disabled via FEEDBACK_JOB_WORKER_ENABLED=false')
+    console.log(
+      '[feedback-worker] Disabled via FEEDBACK_JOB_WORKER_ENABLED=false'
+    )
     return null
   }
 
@@ -223,7 +233,9 @@ export function startFeedbackJobWorker() {
     DEFAULT_POLL_INTERVAL_MS
   )
 
-  console.log(`[feedback-worker] Starting poller (${pollIntervalMs}ms interval)`)
+  console.log(
+    `[feedback-worker] Starting poller (${pollIntervalMs}ms interval)`
+  )
   pollTimer = setInterval(() => {
     runFeedbackJobCycle().catch((error) => {
       console.error('[feedback-worker] Cycle error:', error)

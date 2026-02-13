@@ -6,6 +6,7 @@ import {
   FeedbackJob,
   InterviewResponse,
   InterviewSession,
+  TranscriptionJob,
 } from '../models/index.js'
 import interviewRoutes from '../routes/interviews.js'
 import { getRouteHandlers, runRouteHandlers } from './routerHarness'
@@ -33,7 +34,9 @@ type FeedbackJobModelLike = {
 
 type FeedbackReportModelLike = {
   find: (...args: unknown[]) => {
-    populate: (...populateArgs: unknown[]) => Promise<Array<Record<string, unknown>>>
+    populate: (
+      ...populateArgs: unknown[]
+    ) => Promise<Array<Record<string, unknown>>>
   }
   countDocuments: (...args: unknown[]) => Promise<number>
 }
@@ -45,6 +48,20 @@ type RouterLike = {
 const interviewRouter = interviewRoutes as unknown as RouterLike
 const feedbackJobModel = FeedbackJob as unknown as FeedbackJobModelLike
 const feedbackReportModel = FeedbackReport as unknown as FeedbackReportModelLike
+const transcriptionJobModel = TranscriptionJob as unknown as {
+  findOrCreateForResponse: (...args: unknown[]) => Promise<{
+    job: { _id: string; status: string; attempts: number }
+    created: boolean
+  }>
+  findOne: (...args: unknown[]) => Promise<{
+    _id: string
+    status: string
+    attempts: number
+    maxAttempts?: number
+    lastError?: { message?: string; code?: string; occurredAt?: Date } | null
+    save?: () => Promise<void>
+  } | null>
+}
 
 function createAuthenticatedRequest() {
   return {
@@ -63,9 +80,21 @@ afterEach(() => {
 })
 
 describe('interview route validation guards', () => {
-  const getQuestionsHandlers = getRouteHandlers(interviewRouter, 'get', '/questions')
-  const getHistoryHandlers = getRouteHandlers(interviewRouter, 'get', '/history')
-  const createSessionHandlers = getRouteHandlers(interviewRouter, 'post', '/sessions')
+  const getQuestionsHandlers = getRouteHandlers(
+    interviewRouter,
+    'get',
+    '/questions'
+  )
+  const getHistoryHandlers = getRouteHandlers(
+    interviewRouter,
+    'get',
+    '/history'
+  )
+  const createSessionHandlers = getRouteHandlers(
+    interviewRouter,
+    'post',
+    '/sessions'
+  )
 
   it('rejects invalid question type', async () => {
     const res = await runRouteHandlers(getQuestionsHandlers, {
@@ -188,7 +217,9 @@ describe('interview completion route', () => {
     }
 
     vi.spyOn(InterviewSession, 'findOne').mockResolvedValue(session as never)
-    vi.spyOn(InterviewResponse, 'countDocuments').mockResolvedValue(3 as never)
+    vi.spyOn(InterviewResponse, 'countDocuments')
+      .mockResolvedValueOnce(3 as never)
+      .mockResolvedValueOnce(0 as never)
     vi.spyOn(feedbackJobModel, 'findOrCreateForSession').mockResolvedValue({
       job: {
         _id: 'job-1',
@@ -238,7 +269,9 @@ describe('interview completion route', () => {
     }
 
     vi.spyOn(InterviewSession, 'findOne').mockResolvedValue(session as never)
-    vi.spyOn(InterviewResponse, 'countDocuments').mockResolvedValue(3 as never)
+    vi.spyOn(InterviewResponse, 'countDocuments')
+      .mockResolvedValueOnce(3 as never)
+      .mockResolvedValueOnce(0 as never)
     vi.spyOn(feedbackJobModel, 'findOrCreateForSession').mockResolvedValue({
       job: {
         _id: 'job-1',
@@ -267,6 +300,46 @@ describe('interview completion route', () => {
         created: false,
       },
     })
+  })
+
+  it('returns conflict when audio transcriptions are still pending', async () => {
+    const save = vi.fn().mockResolvedValue(undefined)
+    const session = {
+      _id: 'session-1',
+      status: 'in_progress',
+      completedAt: null,
+      duration: 120,
+      save,
+    }
+
+    vi.spyOn(InterviewSession, 'findOne').mockResolvedValue(session as never)
+    const enqueueSpy = vi
+      .spyOn(feedbackJobModel, 'findOrCreateForSession')
+      .mockResolvedValue({
+        job: {
+          _id: 'job-1',
+          status: 'queued',
+          attempts: 0,
+        },
+        created: true,
+      } as never)
+    vi.spyOn(InterviewResponse, 'countDocuments')
+      .mockResolvedValueOnce(3 as never)
+      .mockResolvedValueOnce(1 as never)
+
+    const res = await runRouteHandlers(completeSessionHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-1' },
+    })
+
+    expect(res.statusCode).toBe(409)
+    expect(res.body).toMatchObject({
+      error: {
+        code: 'TRANSCRIPTION_PENDING',
+      },
+      pendingTranscriptions: 1,
+    })
+    expect(enqueueSpy).not.toHaveBeenCalled()
   })
 })
 
@@ -386,6 +459,147 @@ describe('feedback status routes', () => {
           evaluatorType: 'ai_model',
         },
       ],
+    })
+  })
+})
+
+describe('audio response and transcription routes', () => {
+  const submitResponseHandlers = getRouteHandlers(
+    interviewRouter,
+    'post',
+    '/sessions/:id/responses'
+  )
+  const transcriptionStatusHandlers = getRouteHandlers(
+    interviewRouter,
+    'get',
+    '/sessions/:id/responses/:responseId/transcription-status'
+  )
+  const updateTranscriptHandlers = getRouteHandlers(
+    interviewRouter,
+    'patch',
+    '/sessions/:id/responses/:responseId/transcript'
+  )
+
+  it('submits audio response and creates transcription job when transcript is pending', async () => {
+    vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
+      _id: 'session-1',
+      status: 'in_progress',
+      questions: ['question-1'],
+    } as never)
+    vi.spyOn(InterviewResponse, 'findOne').mockResolvedValue(null)
+    vi.spyOn(InterviewResponse.prototype, 'save').mockResolvedValue(
+      undefined as never
+    )
+    vi.spyOn(
+      transcriptionJobModel,
+      'findOrCreateForResponse'
+    ).mockResolvedValue({
+      job: {
+        _id: 'transcription-job-1',
+        status: 'uploaded',
+        attempts: 0,
+      },
+      created: true,
+    } as never)
+
+    const res = await runRouteHandlers(submitResponseHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-1' },
+      body: {
+        questionId: 'question-1',
+        responseType: 'audio_transcript',
+        responseText: '',
+        audioUrl: 'local-upload://audio-1.webm',
+        audioMimeType: 'audio/webm',
+        audioDurationSeconds: 12.4,
+      },
+    })
+
+    expect(res.statusCode).toBe(201)
+    expect(res.body).toMatchObject({
+      response: {
+        responseType: 'audio_transcript',
+        transcriptionStatus: 'uploaded',
+      },
+      transcriptionJob: {
+        id: 'transcription-job-1',
+        status: 'uploaded',
+        created: true,
+      },
+    })
+  })
+
+  it('returns transcription status for audio response', async () => {
+    vi.spyOn(InterviewResponse, 'findOne').mockResolvedValue({
+      _id: 'response-1',
+      responseType: 'audio_transcript',
+      transcriptionStatus: 'transcribing',
+      transcriptConfidence: null,
+      transcriptProvider: null,
+      transcriptEdited: false,
+      transcriptReviewedAt: null,
+    } as never)
+    vi.spyOn(transcriptionJobModel, 'findOne').mockResolvedValue({
+      _id: 'transcription-job-1',
+      status: 'transcribing',
+      attempts: 1,
+      maxAttempts: 3,
+      lastError: null,
+    })
+
+    const res = await runRouteHandlers(transcriptionStatusHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-1', responseId: 'response-1' },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toMatchObject({
+      response: {
+        id: 'response-1',
+        transcriptionStatus: 'transcribing',
+      },
+      transcriptionJob: {
+        id: 'transcription-job-1',
+        status: 'transcribing',
+      },
+    })
+  })
+
+  it('updates reviewed transcript text', async () => {
+    const saveResponse = vi.fn().mockResolvedValue(undefined)
+    const saveJob = vi.fn().mockResolvedValue(undefined)
+
+    vi.spyOn(InterviewResponse, 'findOne').mockResolvedValue({
+      _id: 'response-1',
+      responseType: 'audio_transcript',
+      transcriptConfidence: 0.6,
+      save: saveResponse,
+    } as never)
+    vi.spyOn(transcriptionJobModel, 'findOne').mockResolvedValue({
+      _id: 'transcription-job-1',
+      status: 'transcribing',
+      attempts: 1,
+      save: saveJob,
+    })
+
+    const res = await runRouteHandlers(updateTranscriptHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-1', responseId: 'response-1' },
+      body: {
+        responseText:
+          'This is the reviewed transcript with enough detail to pass validation.',
+        transcriptConfidence: 0.82,
+      },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(saveResponse).toHaveBeenCalledTimes(1)
+    expect(saveJob).toHaveBeenCalledTimes(1)
+    expect(res.body).toMatchObject({
+      response: {
+        id: 'response-1',
+        transcriptEdited: true,
+      },
     })
   })
 })

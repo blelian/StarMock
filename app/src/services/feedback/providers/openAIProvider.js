@@ -79,9 +79,7 @@ function normalizeEvaluation(payload, modelName, usage) {
     : []
 
   const suggestions = Array.isArray(payload?.suggestions)
-    ? payload.suggestions
-        .filter((item) => typeof item === 'string')
-        .slice(0, 6)
+    ? payload.suggestions.filter((item) => typeof item === 'string').slice(0, 6)
     : []
 
   return {
@@ -172,7 +170,9 @@ async function requestOpenAI({ apiKey, model, prompt }) {
 
     if (!response.ok) {
       const errorBody = await response.text()
-      throw new Error(`OpenAI request failed (${response.status}): ${errorBody}`)
+      throw new Error(
+        `OpenAI request failed (${response.status}): ${errorBody}`
+      )
     }
 
     const data = await response.json()
@@ -202,7 +202,11 @@ export const openAIFeedbackProvider = {
 
     const model = process.env.OPENAI_FEEDBACK_MODEL || DEFAULT_MODEL
     const prompt = buildPrompt(responseText, question)
-    const { payload, usage, model: resolvedModel } = await requestOpenAI({
+    const {
+      payload,
+      usage,
+      model: resolvedModel,
+    } = await requestOpenAI({
       apiKey,
       model,
       prompt,

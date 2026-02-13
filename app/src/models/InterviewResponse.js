@@ -25,7 +25,8 @@ const interviewResponseSchema = new mongoose.Schema(
       validate: [
         {
           validator(value) {
-            const normalizedValue = typeof value === 'string' ? value.trim() : ''
+            const normalizedValue =
+              typeof value === 'string' ? value.trim() : ''
             if (this.responseType === 'audio_transcript') {
               if (!normalizedValue) return true
               return normalizedValue.length >= 20
@@ -60,7 +61,14 @@ const interviewResponseSchema = new mongoose.Schema(
     },
     transcriptionStatus: {
       type: String,
-      enum: ['none', 'uploaded', 'transcribing', 'ready', 'failed', 'review_required'],
+      enum: [
+        'none',
+        'uploaded',
+        'transcribing',
+        'ready',
+        'failed',
+        'review_required',
+      ],
       default: 'none',
       index: true,
     },
@@ -128,7 +136,10 @@ interviewResponseSchema.pre('save', function () {
   }
 
   if (this.responseType === 'audio_transcript' && !this.audioUrl) {
-    this.invalidate('audioUrl', 'Audio URL is required for audio transcript responses')
+    this.invalidate(
+      'audioUrl',
+      'Audio URL is required for audio transcript responses'
+    )
   }
 })
 

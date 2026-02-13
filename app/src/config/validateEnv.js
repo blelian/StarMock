@@ -13,10 +13,13 @@ const requiredEnvVars = {
     'PORT',
     'NODE_ENV',
     'FRONTEND_URL',
-    'FEEDBACK_PROVIDER',
-    'TRANSCRIPTION_PROVIDER',
-    'UPLOAD_SIGNING_SECRET',
   ],
+}
+
+// Optional vars with defaults (applied before validation)
+const optionalDefaults = {
+  FEEDBACK_PROVIDER: 'rule_based',
+  TRANSCRIPTION_PROVIDER: 'mock',
 }
 
 /**
@@ -27,6 +30,14 @@ export function validateEnvironment() {
   const required = requiredEnvVars[env] || requiredEnvVars.development
 
   console.log(`\n🔍 Validating ${env} environment...`)
+
+  // Apply optional defaults before validation
+  for (const [key, value] of Object.entries(optionalDefaults)) {
+    if (!process.env[key]) {
+      process.env[key] = value
+      console.log(`ℹ️  Using default for ${key}: ${value}`)
+    }
+  }
 
   const missing = []
   const present = []
@@ -88,24 +99,18 @@ export function validateEnvironment() {
   const feedbackProvider = (process.env.FEEDBACK_PROVIDER || 'rule_based')
     .toLowerCase()
     .trim()
-  const transcriptionProvider = (
-    process.env.TRANSCRIPTION_PROVIDER || 'mock'
-  )
+  const transcriptionProvider = (process.env.TRANSCRIPTION_PROVIDER || 'mock')
     .toLowerCase()
     .trim()
 
-  if (
-    !['rule_based', 'openai', 'ai_model'].includes(feedbackProvider)
-  ) {
+  if (!['rule_based', 'openai', 'ai_model'].includes(feedbackProvider)) {
     validationErrors.push(
       'FEEDBACK_PROVIDER must be one of: rule_based, openai, ai_model'
     )
   }
 
   if (!['mock', 'openai'].includes(transcriptionProvider)) {
-    validationErrors.push(
-      'TRANSCRIPTION_PROVIDER must be one of: mock, openai'
-    )
+    validationErrors.push('TRANSCRIPTION_PROVIDER must be one of: mock, openai')
   }
 
   const requiresOpenAI =

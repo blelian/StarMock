@@ -255,7 +255,8 @@ router.get('/me', requireAuth, async (req, res) => {
  */
 router.get('/status', (req, res) => {
   const isAuthenticated = Boolean(
-    req.session?.userId && req.session?.user?.id?.toString() === req.session.userId.toString()
+    req.session?.userId &&
+    req.session?.user?.id?.toString() === req.session.userId.toString()
   )
 
   res.json({

@@ -70,7 +70,9 @@ function getSigningSecret() {
 }
 
 function signUploadPayload(payload) {
-  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url')
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString(
+    'base64url'
+  )
   const signature = crypto
     .createHmac('sha256', getSigningSecret())
     .update(encodedPayload)
@@ -249,7 +251,9 @@ router.put(
       const token = String(req.query.token || '')
       const payload = verifyUploadToken(token)
       if (!payload || payload.objectKey !== objectKey) {
-        incrementCounter('starmock_audio_upload_total', { status: 'invalid_token' })
+        incrementCounter('starmock_audio_upload_total', {
+          status: 'invalid_token',
+        })
         return res.status(403).json({
           error: {
             message: 'Invalid or expired upload token',
@@ -258,7 +262,9 @@ router.put(
         })
       }
 
-      const contentType = String(req.headers['content-type'] || '').toLowerCase()
+      const contentType = String(
+        req.headers['content-type'] || ''
+      ).toLowerCase()
       if (!contentType || !contentType.startsWith('audio/')) {
         incrementCounter('starmock_audio_upload_total', {
           status: 'invalid_content_type',
@@ -272,7 +278,9 @@ router.put(
       }
 
       if (contentType !== payload.mimeType) {
-        incrementCounter('starmock_audio_upload_total', { status: 'mime_mismatch' })
+        incrementCounter('starmock_audio_upload_total', {
+          status: 'mime_mismatch',
+        })
         return res.status(400).json({
           error: {
             message: 'Upload content type does not match signed request',
@@ -298,7 +306,10 @@ router.put(
         process.env.UPLOAD_MAX_AUDIO_BYTES,
         DEFAULT_UPLOAD_MAX_BYTES
       )
-      if (bodyBuffer.length > maxBytes || bodyBuffer.length > payload.sizeBytes) {
+      if (
+        bodyBuffer.length > maxBytes ||
+        bodyBuffer.length > payload.sizeBytes
+      ) {
         incrementCounter('starmock_audio_upload_total', { status: 'too_large' })
         return res.status(400).json({
           error: {
