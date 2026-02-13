@@ -5,6 +5,16 @@ type InterviewMockOptions = {
   captureResponsePayloads: Array<Record<string, unknown>>
 }
 
+type FeedbackSessionPayload = {
+  summary: Record<string, unknown>
+  feedback: Array<Record<string, unknown>>
+}
+
+type FeedbackHistoryMockOptions = {
+  historySessions: Array<Record<string, unknown>>
+  feedbackBySession: Record<string, FeedbackSessionPayload>
+}
+
 async function mockInterviewApis(
   page: import('@playwright/test').Page,
   options: InterviewMockOptions
@@ -167,6 +177,126 @@ async function mockInterviewApis(
             id: 'session-1',
             status: 'completed',
           },
+        }),
+      })
+      return
+    }
+
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: {
+          message: `Unhandled mock for ${method} ${pathname}`,
+          code: 'UNHANDLED_MOCK',
+        },
+      }),
+    })
+  })
+}
+
+async function mockFeedbackAndHistoryApis(
+  page: import('@playwright/test').Page,
+  options: FeedbackHistoryMockOptions
+) {
+  await page.route('**/api/**', async (route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+    const { pathname } = url
+    const method = request.method()
+
+    if (pathname === '/api/auth/status' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          isAuthenticated: true,
+          user: { id: 'test-user', email: 'test@starmock.com' },
+        }),
+      })
+      return
+    }
+
+    if (pathname === '/api/history' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          sessions: options.historySessions,
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalSessions: options.historySessions.length,
+            hasMore: false,
+          },
+        }),
+      })
+      return
+    }
+
+    const feedbackStatusMatch = pathname.match(
+      /^\/api\/sessions\/([^/]+)\/feedback-status$/
+    )
+    if (feedbackStatusMatch && method === 'GET') {
+      const sessionId = feedbackStatusMatch[1]
+      const payload = options.feedbackBySession[sessionId]
+      if (!payload) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: {
+              message: `No mocked payload for ${sessionId}`,
+              code: 'NOT_FOUND',
+            },
+          }),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          session: {
+            id: sessionId,
+            status: 'completed',
+          },
+          feedback: {
+            ready: true,
+            count: payload.feedback.length,
+            job: null,
+          },
+        }),
+      })
+      return
+    }
+
+    const feedbackMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/feedback$/)
+    if (feedbackMatch && method === 'GET') {
+      const sessionId = feedbackMatch[1]
+      const payload = options.feedbackBySession[sessionId]
+      if (!payload) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: {
+              message: `No mocked payload for ${sessionId}`,
+              code: 'NOT_FOUND',
+            },
+          }),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          feedback: payload.feedback,
+          count: payload.feedback.length,
+          summary: payload.summary,
         }),
       })
       return
@@ -411,5 +541,158 @@ test.describe('AI recording interview flows', () => {
     await expect(page).toHaveURL(/feedback\.html\?sessionId=session-1/)
     expect(payloads).toHaveLength(1)
     expect(payloads[0]?.responseText).toContain('refined the transcript')
+  })
+})
+
+test.describe('AIR feedback and history metrics', () => {
+  test('renders AIR metrics panel on feedback page when summary is AIR-enabled', async ({
+    page,
+  }) => {
+    await mockFeedbackAndHistoryApis(page, {
+      historySessions: [],
+      feedbackBySession: {
+        'session-air': {
+          summary: {
+            airMode: true,
+            starScores: {
+              situation: 72,
+              task: 75,
+              action: 85,
+              result: 88,
+              overall: 82,
+            },
+            roleMetrics: {
+              roleFitScore: 84,
+              competencyCoverage: 75,
+              strongestCompetency: { key: 'reliability', label: 'Reliability', score: 88 },
+              weakestCompetency: { key: 'api-design', label: 'Api Design', score: 74 },
+              competencyScores: [
+                { key: 'reliability', label: 'Reliability', score: 88 },
+                { key: 'api-design', label: 'Api Design', score: 74 },
+              ],
+              trend: {
+                direction: 'up',
+                delta: 6,
+                comparedSessions: 3,
+                baselineScore: 78,
+              },
+            },
+          },
+          feedback: [
+            {
+              id: 'feedback-1',
+              scores: { overall: 82, situation: 72, task: 75, action: 85, result: 88 },
+              suggestions: ['Quantify outage impact with one additional metric.'],
+            },
+          ],
+        },
+      },
+    })
+
+    await page.goto('/feedback.html?sessionId=session-air')
+
+    await expect(page.locator('#air-metrics-panel')).toBeVisible()
+    await expect(page.locator('#air-role-fit-score')).toHaveText('84%')
+    await expect(page.locator('#air-competency-coverage')).toHaveText('75%')
+    await expect(page.locator('#air-trend-score')).toContainText('Improving')
+    await expect(page.locator('#air-competency-breakdown')).toContainText(
+      'Reliability'
+    )
+  })
+
+  test('hides AIR metrics panel on generic feedback sessions', async ({ page }) => {
+    await mockFeedbackAndHistoryApis(page, {
+      historySessions: [],
+      feedbackBySession: {
+        'session-generic': {
+          summary: {
+            airMode: false,
+            starScores: {
+              situation: 60,
+              task: 62,
+              action: 70,
+              result: 72,
+              overall: 66,
+            },
+            roleMetrics: {
+              roleFitScore: null,
+              competencyCoverage: null,
+              competencyScores: [],
+              trend: null,
+            },
+          },
+          feedback: [
+            {
+              id: 'feedback-1',
+              scores: { overall: 66, situation: 60, task: 62, action: 70, result: 72 },
+              suggestions: ['Use more specific results.'],
+            },
+          ],
+        },
+      },
+    })
+
+    await page.goto('/feedback.html?sessionId=session-generic')
+    await expect(page.locator('#air-metrics-panel')).toBeHidden()
+  })
+
+  test('renders AIR trend details in history rows', async ({ page }) => {
+    await mockFeedbackAndHistoryApis(page, {
+      historySessions: [
+        {
+          id: 'session-air',
+          status: 'completed',
+          questionTypes: ['technical'],
+          previewQuestion: 'How did you improve API reliability?',
+          completedAt: '2026-02-12T00:00:00.000Z',
+          startedAt: '2026-02-12T00:00:00.000Z',
+          duration: 180,
+          airMode: true,
+        },
+        {
+          id: 'session-generic',
+          status: 'completed',
+          questionTypes: ['behavioral'],
+          previewQuestion: 'Tell me about a challenge.',
+          completedAt: '2026-02-10T00:00:00.000Z',
+          startedAt: '2026-02-10T00:00:00.000Z',
+          duration: 140,
+          airMode: false,
+        },
+      ],
+      feedbackBySession: {
+        'session-air': {
+          summary: {
+            airMode: true,
+            starScores: { overall: 81 },
+            roleMetrics: {
+              roleFitScore: 84,
+              competencyCoverage: 75,
+              trend: { direction: 'up', delta: 6 },
+            },
+          },
+          feedback: [{ id: 'f1', scores: { overall: 81 } }],
+        },
+        'session-generic': {
+          summary: {
+            airMode: false,
+            starScores: { overall: 64 },
+            roleMetrics: { roleFitScore: null, competencyCoverage: null, trend: null },
+          },
+          feedback: [{ id: 'f2', scores: { overall: 64 } }],
+        },
+      },
+    })
+
+    await page.goto('/history.html')
+
+    const airRow = page.locator('[data-session-id="session-air"]')
+    await expect(airRow).toContainText('AIR mode')
+    await expect(airRow).toContainText('Role fit 84%')
+    await expect(airRow).toContainText('Coverage 75%')
+    await expect(airRow).toContainText('Improving (+6 pts)')
+
+    const genericRow = page.locator('[data-session-id="session-generic"]')
+    await expect(genericRow).not.toContainText('AIR mode')
   })
 })

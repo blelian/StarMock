@@ -230,8 +230,10 @@ Implementation status (current):
 - ✅ `GET /api/sessions/:id/feedback` returns `summary` alongside `feedback[]` when reports exist.
 - ✅ `feedback.html` — NEW `air-metrics-panel` section: 4 metric cards (Role Fit, Coverage, Weakest, Trend) + competency breakdown list. Hidden when `airMode` is false.
 - ✅ `feedback.js` — `renderAirMetrics(summary)` populates AIR metric cards, `formatDelta()` for trend display, `competencyLabelFromKey()` formatting, graceful fallback to `--` for missing data. Uses `summary.starScores` when available, falls back to client-side averaging.
+- ✅ `history.js` — history rows now surface AIR status + role metrics (`Role fit`, `Coverage`, `Trend`) when available, with per-session `data-session-id` hooks for e2e assertions.
+- ✅ `ai-recording.spec.ts` — added Playwright coverage for AIR metrics rendering on feedback page and AIR trend surfacing in history rows.
 - ✅ Backend test: `'returns AIR summary metrics when competency scores are present'` verifies full `roleMetrics` shape including strongest/weakest competency and coverage.
-- ⏳ Remaining: history-page AIR trends, deeper e2e coverage for AIR metrics, rollout playbook finalization.
+- ⏳ Remaining: execute AIR e2e suite in CI-compatible browser runtime and finalize rollout playbook.
 
 Primary files:
 - `app/public/interview.html`

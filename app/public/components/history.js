@@ -55,7 +55,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#39;');
 
-  const buildItemHtml = (session, score) => {
+  const toPercent = (score) => {
+    if (!Number.isFinite(score)) return null;
+    return Math.max(0, Math.min(100, Math.round(score)));
+  };
+
+  const formatTrend = (trend) => {
+    if (!trend || !Number.isFinite(trend.delta)) {
+      return 'No baseline yet';
+    }
+
+    const delta = Math.round(trend.delta);
+    const deltaLabel = `${delta >= 0 ? '+' : ''}${delta} pts`;
+    if (trend.direction === 'up') return `Improving (${deltaLabel})`;
+    if (trend.direction === 'down') return `Declining (${deltaLabel})`;
+    return `Stable (${deltaLabel})`;
+  };
+
+  const average = (values) => {
+    const numeric = values.filter((value) => Number.isFinite(value));
+    if (!numeric.length) return null;
+    return numeric.reduce((sum, value) => sum + value, 0) / numeric.length;
+  };
+
+  const buildItemHtml = (session, metrics) => {
     const primaryType = session.questionTypes?.[0] || 'General';
     const statusLabel = (session.status || 'unknown').replace('_', ' ');
     const dateLabel = formatDate(session.completedAt || session.startedAt);
@@ -67,20 +90,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     const badgeClass = getTypeBadgeClass(primaryType);
     const duration = formatDuration(session.duration);
     const scoreLabel =
-      score === null || score === undefined ? '--' : `${Math.round(score)}%`;
+      metrics?.overall === null || metrics?.overall === undefined
+        ? '--'
+        : `${Math.round(metrics.overall)}%`;
     const feedbackHref = `/feedback.html?sessionId=${encodeURIComponent(
       session.id
     )}`;
     const details = duration ? `${statusLabel} • ${dateLabel} • ${duration}` : `${statusLabel} • ${dateLabel}`;
+    const isAirMode = Boolean(session.airMode || metrics?.airMode);
+    const roleFit = toPercent(metrics?.roleFitScore);
+    const coverage = toPercent(metrics?.competencyCoverage);
+    const trendLabel = formatTrend(metrics?.trend);
+    const airDetails = isAirMode
+      ? `
+      <p class="text-xs text-primary/80 mt-2">
+        AIR mode • Role fit ${roleFit === null ? '--' : `${roleFit}%`} • Coverage ${
+          coverage === null ? '--' : `${coverage}%`
+        } • ${escapeHtml(trendLabel)}
+      </p>
+    `
+      : '';
+    const airBadge = isAirMode
+      ? `
+            <span class="inline-block mb-2 bg-primary/15 text-primary text-[10px] font-bold tracking-widest uppercase px-2 py-1 rounded">
+              AIR
+            </span>
+          `
+      : '';
 
     return `
-      <div class="history-item">
+      <div class="history-item" data-session-id="${escapeHtml(session.id)}">
         <div>
+          ${airBadge}
           <span class="inline-block mb-2 ${badgeClass} text-[10px] font-bold tracking-widest uppercase px-2 py-1 rounded">
             ${escapeHtml(primaryType)}
           </span>
           <h3 class="text-lg font-bold text-white">${escapeHtml(shortQuestionLabel)}</h3>
           <p class="text-sm text-slate-400 mt-1">${escapeHtml(details)}</p>
+          ${airDetails}
         </div>
         <div class="flex items-center gap-4">
           <div class="text-center">
@@ -95,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
   };
 
-  const fetchSessionScore = async (sessionId, status) => {
+  const fetchSessionMetrics = async (sessionId, status) => {
     if (status !== 'completed') {
       return null;
     }
@@ -108,13 +155,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const scores = feedbackResult.payload.feedback
       .map((item) => item?.scores?.overall)
       .filter((value) => Number.isFinite(value));
+    const summary = feedbackResult.payload?.summary || {};
+    const roleMetrics = summary.roleMetrics || {};
 
-    if (!scores.length) {
-      return null;
-    }
-
-    const total = scores.reduce((sum, value) => sum + value, 0);
-    return total / scores.length;
+    return {
+      overall: toPercent(summary?.starScores?.overall) ?? average(scores),
+      roleFitScore: toPercent(roleMetrics.roleFitScore),
+      competencyCoverage: toPercent(roleMetrics.competencyCoverage),
+      trend: roleMetrics.trend || null,
+      airMode: Boolean(summary.airMode),
+    };
   };
 
   messageEl.textContent = 'Loading history...';
@@ -135,12 +185,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  const sessionScores = await Promise.all(
-    sessions.map((session) => fetchSessionScore(session.id, session.status))
+  const sessionMetrics = await Promise.all(
+    sessions.map((session) => fetchSessionMetrics(session.id, session.status))
   );
 
   listEl.innerHTML = sessions
-    .map((session, index) => buildItemHtml(session, sessionScores[index]))
+    .map((session, index) => buildItemHtml(session, sessionMetrics[index]))
     .join('');
 
   messageEl.textContent = `Loaded ${sessions.length} session${
