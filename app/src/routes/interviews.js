@@ -19,6 +19,7 @@ import {
   isSupportedSeniority,
 } from '../config/airProfiles.js'
 import { resolveAirContext } from '../services/air/index.js'
+import { generateAirQuestions } from '../services/air/openAIQuestionProvider.js'
 
 const router = express.Router()
 const ALLOWED_QUESTION_TYPES = new Set([
@@ -76,8 +77,30 @@ async function sampleQuestions(filter, limit) {
   return InterviewQuestion.aggregate([{ $match: filter }, { $sample: { size: limit } }])
 }
 
-async function getQuestionsForAirContext(baseFilter, parsedLimit, airContext) {
+function normalizeGenerationError(error) {
+  if (error instanceof Error) {
+    return error
+  }
+  return new Error(typeof error === 'string' ? error : 'Unknown AIR generation error')
+}
+
+async function getQuestionsForAirContext(
+  baseFilter,
+  parsedLimit,
+  airContext,
+  {
+    allowAiGeneration = false,
+    preferredType = null,
+    preferredDifficulty = null,
+  } = {}
+) {
   const roleId = airContext?.role?.id || 'custom_role'
+  const sourceBreakdown = {
+    roleMatched: 0,
+    aiGenerated: 0,
+    fallback: 0,
+  }
+
   const roleMatched = await sampleQuestions(
     {
       ...baseFilter,
@@ -87,32 +110,74 @@ async function getQuestionsForAirContext(baseFilter, parsedLimit, airContext) {
     },
     parsedLimit
   )
+  sourceBreakdown.roleMatched = roleMatched.length
 
-  if (roleMatched.length >= parsedLimit) {
-    return {
-      questions: roleMatched,
-      sourceBreakdown: {
-        roleMatched: roleMatched.length,
-        fallback: 0,
-      },
+  const selectedQuestions = [...roleMatched]
+  let aiGeneration = null
+
+  if (allowAiGeneration && selectedQuestions.length < parsedLimit) {
+    const remaining = parsedLimit - selectedQuestions.length
+    try {
+      const generated = await generateAirQuestions({
+        airContext,
+        count: remaining,
+        type: preferredType,
+        difficulty: preferredDifficulty,
+        existingQuestions: selectedQuestions.map((question) =>
+          getQuestionText(question)
+        ),
+      })
+
+      const generatedCount = Array.isArray(generated.questions)
+        ? generated.questions.length
+        : 0
+
+      if (generatedCount > 0) {
+        const insertedQuestions = await InterviewQuestion.insertMany(
+          generated.questions
+        )
+        selectedQuestions.push(...insertedQuestions)
+        sourceBreakdown.aiGenerated = insertedQuestions.length
+      }
+
+      aiGeneration = {
+        ...(generated.metadata || {}),
+        enabled: true,
+        attempted: true,
+        generated: sourceBreakdown.aiGenerated,
+      }
+    } catch (error) {
+      const normalizedError = normalizeGenerationError(error)
+      console.warn(
+        `[air] OpenAI AIR question generation failed (${normalizedError.message}). Continuing with curated fallback.`
+      )
+      aiGeneration = {
+        enabled: true,
+        attempted: true,
+        generated: 0,
+        error: normalizedError.message,
+        upstreamErrors: normalizedError.attemptErrors || [],
+      }
     }
   }
 
-  const remaining = parsedLimit - roleMatched.length
-  const fallback = await sampleQuestions(
-    {
-      ...baseFilter,
-      _id: { $nin: roleMatched.map((question) => question._id) },
-    },
-    remaining
-  )
+  if (selectedQuestions.length < parsedLimit) {
+    const remaining = parsedLimit - selectedQuestions.length
+    const fallback = await sampleQuestions(
+      {
+        ...baseFilter,
+        _id: { $nin: selectedQuestions.map((question) => question._id) },
+      },
+      remaining
+    )
+    sourceBreakdown.fallback = fallback.length
+    selectedQuestions.push(...fallback)
+  }
 
   return {
-    questions: [...roleMatched, ...fallback],
-    sourceBreakdown: {
-      roleMatched: roleMatched.length,
-      fallback: fallback.length,
-    },
+    questions: selectedQuestions,
+    sourceBreakdown,
+    aiGeneration,
   }
 }
 
@@ -134,6 +199,180 @@ function parsePositiveInteger(value, fallback) {
   return parsed
 }
 
+function toOptionalScore(value) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) {
+    return null
+  }
+  return Math.max(0, Math.min(100, Math.round(parsed)))
+}
+
+function average(values) {
+  const numeric = values.filter((value) => Number.isFinite(value))
+  if (!numeric.length) return null
+  const sum = numeric.reduce((acc, value) => acc + value, 0)
+  return Math.round(sum / numeric.length)
+}
+
+function normalizeCompetencyKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+}
+
+function competencyLabelFromKey(key) {
+  return key
+    .split('-')
+    .filter(Boolean)
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(' ')
+}
+
+function getRoleFitScore(feedbackReport) {
+  return toOptionalScore(
+    feedbackReport?.analysis?.roleFitScore ?? feedbackReport?.scores?.overall
+  )
+}
+
+function aggregateCompetencyScores(feedbackReports, expectedCompetencies = []) {
+  const expectedSet = new Set(
+    (Array.isArray(expectedCompetencies) ? expectedCompetencies : [])
+      .map((competency) => normalizeCompetencyKey(competency))
+      .filter(Boolean)
+  )
+  const buckets = new Map()
+
+  for (const report of feedbackReports) {
+    const scores = report?.analysis?.competencyScores
+    if (!scores || typeof scores !== 'object') {
+      continue
+    }
+    for (const [rawKey, rawValue] of Object.entries(scores)) {
+      const key = normalizeCompetencyKey(rawKey)
+      if (!key) continue
+      if (expectedSet.size > 0 && !expectedSet.has(key)) continue
+      const score = toOptionalScore(rawValue)
+      if (score === null) continue
+      if (!buckets.has(key)) {
+        buckets.set(key, [])
+      }
+      buckets.get(key).push(score)
+    }
+  }
+
+  return Array.from(buckets.entries())
+    .map(([key, scores]) => ({
+      key,
+      label: competencyLabelFromKey(key),
+      score: average(scores) ?? 0,
+    }))
+    .sort((a, b) => b.score - a.score)
+}
+
+async function buildFeedbackSummary({ session, feedbackReports, userId }) {
+  const starScores = {
+    situation: average(feedbackReports.map((item) => item?.scores?.situation)),
+    task: average(feedbackReports.map((item) => item?.scores?.task)),
+    action: average(feedbackReports.map((item) => item?.scores?.action)),
+    result: average(feedbackReports.map((item) => item?.scores?.result)),
+    overall: average(feedbackReports.map((item) => item?.scores?.overall)),
+  }
+
+  const sessionAirContext = session?.metadata?.airContext || null
+  const serializedAirContext = serializeAirContext(sessionAirContext)
+  const expectedCompetencies = Array.isArray(sessionAirContext?.competencies)
+    ? sessionAirContext.competencies
+    : []
+  const normalizedExpectedCompetencies = expectedCompetencies
+    .map((competency) => normalizeCompetencyKey(competency))
+    .filter(Boolean)
+  const competencyScores = aggregateCompetencyScores(
+    feedbackReports,
+    normalizedExpectedCompetencies
+  )
+  const roleFitScore = average(feedbackReports.map((item) => getRoleFitScore(item)))
+  const coveredCount = normalizedExpectedCompetencies.filter((competencyKey) =>
+    competencyScores.some((item) => item.key === competencyKey)
+  ).length
+  const competencyCoverage =
+    normalizedExpectedCompetencies.length > 0
+      ? Math.round((coveredCount / normalizedExpectedCompetencies.length) * 100)
+      : null
+  const strongestCompetency =
+    competencyScores.length > 0 ? competencyScores[0] : null
+  const weakestCompetency =
+    competencyScores.length > 0
+      ? competencyScores[competencyScores.length - 1]
+      : null
+
+  let trend = null
+  if (
+    sessionAirContext?.contextKey &&
+    roleFitScore !== null &&
+    typeof userId === 'string'
+  ) {
+    const historicalReports = await FeedbackReport.find({
+      userId,
+      sessionId: { $ne: session._id },
+      'evaluatorMetadata.airContextKey': sessionAirContext.contextKey,
+    })
+      .sort({ createdAt: -1 })
+      .limit(40)
+      .select('sessionId analysis scores createdAt')
+
+    const sessionBuckets = new Map()
+    const sessionOrder = []
+
+    for (const report of historicalReports) {
+      const sessionId = String(report?.sessionId || '')
+      if (!sessionId) continue
+      const score = getRoleFitScore(report)
+      if (score === null) continue
+
+      if (!sessionBuckets.has(sessionId)) {
+        sessionBuckets.set(sessionId, [])
+        sessionOrder.push(sessionId)
+      }
+      sessionBuckets.get(sessionId).push(score)
+    }
+
+    const previousSessionScores = sessionOrder
+      .slice(0, 5)
+      .map((sessionId) => average(sessionBuckets.get(sessionId) || []))
+      .filter((score) => Number.isFinite(score))
+
+    if (previousSessionScores.length > 0) {
+      const baselineScore = average(previousSessionScores)
+      if (baselineScore !== null) {
+        const delta = roleFitScore - baselineScore
+        trend = {
+          baselineScore,
+          delta,
+          direction: delta > 3 ? 'up' : delta < -3 ? 'down' : 'flat',
+          comparedSessions: previousSessionScores.length,
+        }
+      }
+    }
+  }
+
+  return {
+    airMode: Boolean(session?.metadata?.airMode),
+    airContext: serializedAirContext,
+    starScores,
+    roleMetrics: {
+      roleFitScore,
+      competencyCoverage,
+      strongestCompetency,
+      weakestCompetency,
+      competencyScores,
+      trend,
+    },
+  }
+}
+
 function serializeFeedbackReports(feedbackReports) {
   return feedbackReports.map((f) => ({
     id: f._id,
@@ -145,6 +384,7 @@ function serializeFeedbackReports(feedbackReports) {
     evaluatorMetadata: f.evaluatorMetadata || null,
     strengths: f.strengths,
     suggestions: f.suggestions,
+    analysis: f.analysis || null,
     createdAt: f.createdAt,
   }))
 }
@@ -221,8 +461,10 @@ router.get('/questions', requireAuth, async (req, res) => {
     let airContext = null
     let sourceBreakdown = {
       roleMatched: 0,
+      aiGenerated: 0,
       fallback: 0,
     }
+    let aiGeneration = null
     let questions = []
 
     if (isAirMode) {
@@ -267,13 +509,22 @@ router.get('/questions', requireAuth, async (req, res) => {
         jobDescriptionText,
       })
 
+      const allowAiGeneration = isFeatureEnabled('airQuestionGeneration', {
+        userId: req.userId,
+      })
       const airSelection = await getQuestionsForAirContext(
         filter,
         parsedLimit,
-        airContext
+        airContext,
+        {
+          allowAiGeneration,
+          preferredType: typeof type === 'string' ? type : null,
+          preferredDifficulty: typeof difficulty === 'string' ? difficulty : null,
+        }
       )
       questions = airSelection.questions
       sourceBreakdown = airSelection.sourceBreakdown
+      aiGeneration = airSelection.aiGeneration
     } else {
       questions = await sampleQuestions(filter, parsedLimit)
     }
@@ -293,6 +544,7 @@ router.get('/questions', requireAuth, async (req, res) => {
       mode: isAirMode ? 'air' : 'generic',
       airContext: serializeAirContext(airContext),
       sourceBreakdown,
+      aiGeneration,
     })
   } catch (error) {
     console.error('Get questions error:', error)
@@ -1225,9 +1477,16 @@ router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
     })
 
     if (existingFeedback.length > 0) {
+      const summary = await buildFeedbackSummary({
+        session,
+        feedbackReports: existingFeedback,
+        userId: req.userId,
+      })
+
       return res.json({
         feedback: serializeFeedbackReports(existingFeedback),
         count: existingFeedback.length,
+        summary,
       })
     }
 

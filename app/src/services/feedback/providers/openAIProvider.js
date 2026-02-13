@@ -24,6 +24,45 @@ function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(parsed)))
 }
 
+function toOptionalScore(value) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return null
+  return Math.max(0, Math.min(100, Math.round(parsed)))
+}
+
+function normalizeCompetencyKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+}
+
+function normalizeCompetencyScores(rawScores, allowedCompetencies = []) {
+  if (!rawScores || typeof rawScores !== 'object') {
+    return {}
+  }
+
+  const allowedSet = new Set(
+    (Array.isArray(allowedCompetencies) ? allowedCompetencies : [])
+      .map((competency) => normalizeCompetencyKey(competency))
+      .filter(Boolean)
+  )
+
+  const normalized = {}
+  for (const [key, rawScore] of Object.entries(rawScores)) {
+    const normalizedKey = normalizeCompetencyKey(key)
+    if (!normalizedKey) continue
+    if (allowedSet.size > 0 && !allowedSet.has(normalizedKey)) continue
+    const score = toOptionalScore(rawScore)
+    if (score === null) continue
+    normalized[normalizedKey] = score
+  }
+
+  return normalized
+}
+
 function deriveRating(overall) {
   if (overall >= 85) return 'excellent'
   if (overall >= 70) return 'good'
@@ -48,8 +87,30 @@ function parseJsonContent(content) {
   return JSON.parse(cleaned)
 }
 
-function normalizeEvaluation(payload, modelName, usage) {
+function serializeAirContextSummary(airContext) {
+  if (!airContext || typeof airContext !== 'object') {
+    return null
+  }
+
+  return {
+    contextKey: airContext.contextKey || null,
+    roleId: airContext.role?.id || 'custom_role',
+    roleLabel: airContext.role?.label || airContext.targetJobTitle || null,
+    industry: airContext.industry || null,
+    seniority: airContext.seniority || null,
+    targetJobTitle: airContext.targetJobTitle || null,
+    competencies: Array.isArray(airContext.competencies)
+      ? airContext.competencies
+      : [],
+  }
+}
+
+function normalizeEvaluation(payload, modelName, usage, airContext) {
   const scores = payload?.scores || {}
+  const rawAnalysis =
+    payload?.analysis && typeof payload.analysis === 'object'
+      ? payload.analysis
+      : {}
   const normalizedScores = {
     situation: clampScore(scores.situation),
     task: clampScore(scores.task),
@@ -82,16 +143,48 @@ function normalizeEvaluation(payload, modelName, usage) {
     ? payload.suggestions.filter((item) => typeof item === 'string').slice(0, 6)
     : []
 
+  const expectedCompetencies = Array.isArray(airContext?.competencies)
+    ? airContext.competencies
+    : []
+  const competencyScores = normalizeCompetencyScores(
+    rawAnalysis.competencyScores,
+    expectedCompetencies
+  )
+  const competencyValues = Object.values(competencyScores)
+  const roleFitScore =
+    toOptionalScore(rawAnalysis.roleFitScore) ??
+    (competencyValues.length
+      ? clampScore(
+          competencyValues.reduce((sum, value) => sum + value, 0) /
+            competencyValues.length
+        )
+      : normalizedScores.overall)
+  const competencyCoverage =
+    expectedCompetencies.length > 0
+      ? clampScore((Object.keys(competencyScores).length / expectedCompetencies.length) * 100)
+      : null
+  const roleFitSummary =
+    typeof rawAnalysis.roleFitSummary === 'string' &&
+    rawAnalysis.roleFitSummary.trim().length > 0
+      ? rawAnalysis.roleFitSummary.trim().slice(0, 220)
+      : null
+
   return {
     scores: normalizedScores,
     rating,
     strengths,
     suggestions,
     analysis: {
-      ...(payload?.analysis || {}),
+      ...rawAnalysis,
       provider: 'openai',
       model: modelName,
       promptVersion: PROMPT_VERSION,
+      airContext: serializeAirContextSummary(airContext),
+      airContextUsed: Boolean(airContext?.contextKey),
+      roleFitScore,
+      roleFitSummary,
+      competencyScores,
+      competencyCoverage,
       tokenUsage:
         usage && typeof usage === 'object'
           ? {
@@ -104,8 +197,38 @@ function normalizeEvaluation(payload, modelName, usage) {
   }
 }
 
-function buildPrompt(responseText, question) {
+function buildAirContextBlock(airContext) {
+  const summary = serializeAirContextSummary(airContext)
+  if (!summary) {
+    return ''
+  }
+
+  return `
+AIR context:
+- Target role: ${summary.roleLabel || 'Custom role'}
+- Role ID: ${summary.roleId}
+- Industry: ${summary.industry || 'Not provided'}
+- Seniority: ${summary.seniority || 'Not provided'}
+- Core competencies: ${summary.competencies.join(', ') || 'Not provided'}
+
+AIR guidance:
+- Evaluate answer quality in the context of this role.
+- Keep STAR scoring objective and role-appropriate.
+- Include concise role-fit observations in "analysis".
+`.trim()
+}
+
+function buildPrompt(responseText, question, airContext) {
   const questionText = getQuestionText(question)
+  const airContextBlock = buildAirContextBlock(airContext)
+  const competencySchema = airContextBlock
+    ? `
+  "analysis": {
+    "roleFitScore": number,
+    "roleFitSummary": string,
+    "competencyScores": { "<competency-key>": number }
+  }`
+    : '"analysis": object'
   return `
 You are evaluating a mock interview answer using the STAR framework.
 Return ONLY strict JSON with this shape:
@@ -121,7 +244,7 @@ Return ONLY strict JSON with this shape:
   "rating": "excellent" | "good" | "fair" | "needs_improvement",
   "strengths": string[],
   "suggestions": string[],
-  "analysis": object
+  ${competencySchema}
 }
 
 Scoring rules:
@@ -129,6 +252,11 @@ Scoring rules:
 - Weigh Action/Result higher than Situation/Task.
 - Favor specific measurable outcomes.
 - "overall" must be consistent with subscores.
+${airContextBlock ? `- Use AIR context when judging role-fit depth.\n` : ''}
+${airContextBlock ? `- Fill analysis.roleFitScore as 0-100.\n` : ''}
+${airContextBlock ? `- Fill analysis.competencyScores only with competency keys from AIR context.\n` : ''}
+
+${airContextBlock ? `${airContextBlock}\n` : ''}
 
 Question:
 ${questionText || 'Not provided'}
@@ -194,14 +322,14 @@ async function requestOpenAI({ apiKey, model, prompt }) {
 
 export const openAIFeedbackProvider = {
   id: PROVIDER_ID,
-  evaluate: async ({ responseText, question }) => {
+  evaluate: async ({ responseText, question, airContext }) => {
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY is not configured')
     }
 
     const model = process.env.OPENAI_FEEDBACK_MODEL || DEFAULT_MODEL
-    const prompt = buildPrompt(responseText, question)
+    const prompt = buildPrompt(responseText, question, airContext)
     const {
       payload,
       usage,
@@ -212,7 +340,7 @@ export const openAIFeedbackProvider = {
       prompt,
     })
 
-    return normalizeEvaluation(payload, resolvedModel || model, usage)
+    return normalizeEvaluation(payload, resolvedModel || model, usage, airContext)
   },
 }
 

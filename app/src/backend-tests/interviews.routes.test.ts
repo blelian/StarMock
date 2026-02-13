@@ -9,6 +9,7 @@ import {
   InterviewSession,
   TranscriptionJob,
 } from '../models/index.js'
+import * as openAIQuestionProvider from '../services/air/openAIQuestionProvider.js'
 import interviewRoutes from '../routes/interviews.js'
 import { getRouteHandlers, runRouteHandlers } from './routerHarness'
 
@@ -78,6 +79,8 @@ function createAuthenticatedRequest() {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  delete process.env.FEATURE_AIR_QUESTION_GENERATION_ENABLED
+  delete process.env.FEATURE_AIR_QUESTION_GENERATION_ROLLOUT_PERCENT
 })
 
 describe('interview route validation guards', () => {
@@ -192,6 +195,104 @@ describe('interview route validation guards', () => {
         roleMatched: 1,
       },
       count: 1,
+    })
+  })
+
+  it('uses OpenAI AIR generation when curated role coverage is insufficient', async () => {
+    process.env.FEATURE_AIR_QUESTION_GENERATION_ENABLED = 'true'
+    process.env.FEATURE_AIR_QUESTION_GENERATION_ROLLOUT_PERCENT = '100'
+
+    vi.spyOn(InterviewQuestion, 'aggregate')
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([] as never)
+    const generateAirQuestionsSpy = vi
+      .spyOn(openAIQuestionProvider, 'generateAirQuestions')
+      .mockResolvedValue({
+      questions: [
+        {
+          title: 'Scaling APIs under pressure',
+          description:
+            'Tell me about a time you improved backend reliability during a high-traffic incident.',
+          type: 'technical',
+          difficulty: 'medium',
+          category: 'problem-solving',
+          tags: ['ai-generated', 'air'],
+          starGuidelines: {
+            situation: 'Set context',
+            task: 'Define ownership',
+            action: 'Describe actions',
+            result: 'Quantify outcome',
+          },
+          airProfile: {
+            contextVersion: 'air-context.v1',
+            industries: ['technology'],
+            roles: ['backend_developer'],
+            seniority: ['mid'],
+            competencies: ['api-design', 'reliability'],
+          },
+        },
+      ],
+      metadata: {
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        promptVersion: 'air-questions.v1',
+        attempts: 1,
+        retries: 1,
+        latencyMs: 120,
+        tokenUsage: {
+          promptTokens: 100,
+          completionTokens: 60,
+          totalTokens: 160,
+        },
+      },
+    } as never)
+    const insertManySpy = vi.spyOn(InterviewQuestion, 'insertMany').mockResolvedValue([
+      {
+        _id: 'generated-1',
+        type: 'technical',
+        difficulty: 'medium',
+        category: 'problem-solving',
+        title: 'Scaling APIs under pressure',
+        description:
+          'Tell me about a time you improved backend reliability during a high-traffic incident.',
+        starGuidelines: {
+          situation: 'Set context',
+          task: 'Define ownership',
+          action: 'Describe actions',
+          result: 'Quantify outcome',
+        },
+      },
+    ] as never)
+
+    const res = await runRouteHandlers(getQuestionsHandlers, {
+      ...createAuthenticatedRequest(),
+      query: {
+        airMode: 'true',
+        targetJobTitle: 'Backend Engineer',
+        industry: 'technology',
+        seniority: 'mid',
+        limit: '1',
+      },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(generateAirQuestionsSpy).toHaveBeenCalledTimes(1)
+    expect(insertManySpy).toHaveBeenCalledTimes(1)
+    expect(res.body).toMatchObject({
+      mode: 'air',
+      count: 1,
+      sourceBreakdown: {
+        roleMatched: 0,
+        aiGenerated: 1,
+        fallback: 0,
+      },
+      aiGeneration: {
+        enabled: true,
+        attempted: true,
+        generated: 1,
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+      },
     })
   })
 
@@ -533,6 +634,81 @@ describe('feedback status routes', () => {
           evaluatorType: 'ai_model',
         },
       ],
+    })
+  })
+
+  it('returns AIR summary metrics when competency scores are present', async () => {
+    const feedbackRows = [
+      {
+        _id: 'report-1',
+        responseId: {
+          _id: 'response-1',
+          questionId: { questionText: 'How did you improve API reliability?' },
+        },
+        scores: {
+          situation: 70,
+          task: 72,
+          action: 84,
+          result: 86,
+          overall: 80,
+        },
+        rating: 'good',
+        evaluatorType: 'ai_model',
+        analysis: {
+          roleFitScore: 82,
+          competencyScores: {
+            'api-design': 78,
+            reliability: 86,
+          },
+        },
+        strengths: ['Clear ownership'],
+        suggestions: ['Add one more metric'],
+        createdAt: new Date('2026-02-13T00:00:00.000Z'),
+      },
+    ]
+
+    vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
+      _id: 'session-1',
+      status: 'completed',
+      metadata: {
+        airMode: true,
+        airContext: {
+          version: 'air-context.v1',
+          targetJobTitle: 'Backend Engineer',
+          industry: 'technology',
+          seniority: 'mid',
+          competencies: ['api-design', 'reliability'],
+        },
+      },
+      completedAt: new Date('2026-02-13T00:00:00.000Z'),
+    } as never)
+    vi.spyOn(feedbackReportModel, 'find').mockReturnValue({
+      populate: vi.fn().mockResolvedValue(feedbackRows),
+    } as never)
+
+    const res = await runRouteHandlers(feedbackHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-1' },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toMatchObject({
+      count: 1,
+      summary: {
+        airMode: true,
+        roleMetrics: {
+          roleFitScore: 82,
+          competencyCoverage: 100,
+          strongestCompetency: {
+            key: 'reliability',
+            score: 86,
+          },
+          weakestCompetency: {
+            key: 'api-design',
+            score: 78,
+          },
+        },
+      },
     })
   })
 })

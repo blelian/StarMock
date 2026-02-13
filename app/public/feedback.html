@@ -84,6 +84,39 @@
         </div>
       </div>
 
+      <section id="air-metrics-panel" class="hidden">
+        <div class="flex items-center justify-between mb-4 px-1">
+          <h3 class="text-lg font-bold leading-tight tracking-tight">AIR Role Metrics</h3>
+          <span class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase">
+            Dynamic
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70">Role Fit</p>
+            <p id="air-role-fit-score" class="text-2xl font-bold mt-1">--%</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70">Coverage</p>
+            <p id="air-competency-coverage" class="text-2xl font-bold mt-1">--%</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70">Weakest</p>
+            <p id="air-weakest-competency" class="text-sm font-semibold mt-1">--</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70">Trend</p>
+            <p id="air-trend-score" class="text-sm font-semibold mt-1">--</p>
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
+          <p class="text-sm font-semibold mb-2">Competency Breakdown</p>
+          <ul id="air-competency-breakdown" class="space-y-2 text-sm text-slate-600 dark:text-primary/70"></ul>
+        </div>
+      </section>
+
       <div class="flex items-center justify-between mb-4 px-1">
         <h3 class="text-lg font-bold leading-tight tracking-tight">STAR Method Breakdown</h3>
         <span class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase">

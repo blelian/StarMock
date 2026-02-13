@@ -17,6 +17,12 @@ const DEFAULT_FLAGS = {
     defaultEnabled: true,
     defaultRolloutPercent: 100,
   },
+  airQuestionGeneration: {
+    envEnabledKey: 'FEATURE_AIR_QUESTION_GENERATION_ENABLED',
+    envRolloutKey: 'FEATURE_AIR_QUESTION_GENERATION_ROLLOUT_PERCENT',
+    defaultEnabled: false,
+    defaultRolloutPercent: 0,
+  },
 }
 
 function parseBoolean(value, fallback) {
@@ -90,10 +96,13 @@ export function getFeatureFlagsForUser(userId) {
     aiRecording: isFeatureEnabled('aiRecording', { userId }),
     audioUploads: isFeatureEnabled('audioUploads', { userId }),
     transcription: isFeatureEnabled('transcription', { userId }),
+    airQuestionGeneration: isFeatureEnabled('airQuestionGeneration', { userId }),
     rollout: {
       aiRecording: readFlagConfig('aiRecording').rolloutPercent,
       audioUploads: readFlagConfig('audioUploads').rolloutPercent,
       transcription: readFlagConfig('transcription').rolloutPercent,
+      airQuestionGeneration:
+        readFlagConfig('airQuestionGeneration').rolloutPercent,
     },
   }
 }

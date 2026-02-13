@@ -2,6 +2,7 @@ import {
   FeedbackJob,
   FeedbackReport,
   InterviewResponse,
+  InterviewSession,
 } from '../../models/index.js'
 import { evaluateResponseWithProvider } from './index.js'
 import {
@@ -36,6 +37,12 @@ function toPositiveInteger(value, fallback) {
 }
 
 async function generateFeedbackReportsForJob(job) {
+  const session = await InterviewSession.findOne({
+    _id: job.sessionId,
+    userId: job.userId,
+  })
+  const airContext = session?.metadata?.airContext || null
+
   const responses = await InterviewResponse.find({
     sessionId: job.sessionId,
     userId: job.userId,
@@ -60,7 +67,11 @@ async function generateFeedbackReportsForJob(job) {
     const { evaluation, evaluatorType, evaluatorMetadata } =
       await evaluateResponseWithProvider(
         response.responseText,
-        response.questionId
+        response.questionId,
+        undefined,
+        {
+          airContext,
+        }
       )
 
     const feedback = new FeedbackReport({
@@ -74,10 +85,21 @@ async function generateFeedbackReportsForJob(job) {
       analysis: {
         ...(evaluation.analysis || {}),
         questionText: getQuestionText(response.questionId),
+        airContext: airContext
+          ? {
+              contextKey: airContext.contextKey || null,
+              roleId: airContext.role?.id || 'custom_role',
+              industry: airContext.industry || null,
+              seniority: airContext.seniority || null,
+              targetJobTitle: airContext.targetJobTitle || null,
+            }
+          : null,
       },
       evaluatorType,
       evaluatorMetadata: {
         ...(evaluatorMetadata || {}),
+        airContextKey: airContext?.contextKey || null,
+        airMode: Boolean(airContext),
         generatedAt: new Date(),
         correlationId:
           evaluatorMetadata?.correlationId ||

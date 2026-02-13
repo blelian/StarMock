@@ -113,6 +113,13 @@ const feedbackReportSchema = new mongoose.Schema(
       fallbackReason: {
         type: String,
       },
+      airMode: {
+        type: Boolean,
+        default: false,
+      },
+      airContextKey: {
+        type: String,
+      },
       tokenUsage: {
         promptTokens: { type: Number },
         completionTokens: { type: Number },

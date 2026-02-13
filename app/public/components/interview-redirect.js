@@ -587,6 +587,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       params.set('industry', careerProfile.industry)
       params.set('seniority', careerProfile.seniority)
       params.set('targetJobTitle', careerProfile.targetJobTitle)
+      if (careerProfile.jobDescriptionText) {
+        params.set(
+          'jobDescriptionText',
+          careerProfile.jobDescriptionText.slice(0, 500)
+        )
+      }
     }
 
     return `/api/questions?${params.toString()}`

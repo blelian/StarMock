@@ -130,4 +130,52 @@ describe('feedback provider abstraction', () => {
     expect(evaluatorMetadata?.attempts).toBe(2)
     expect(evaluatorMetadata?.fallback).toBe(false)
   })
+
+  it('forwards AIR context to provider evaluation call', async () => {
+    const evaluateSpy = vi.spyOn(openAIFeedbackProvider, 'evaluate').mockResolvedValue({
+      scores: {
+        situation: 74,
+        task: 72,
+        action: 83,
+        result: 80,
+        detail: 70,
+        overall: 78,
+      },
+      rating: 'good',
+      strengths: ['Clear role-specific example'],
+      suggestions: ['Add more quantified impact'],
+      analysis: {
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        promptVersion: 'star-eval.v1',
+      },
+    } as never)
+
+    const airContext = {
+      contextKey: 'technology:mid:backend_developer',
+      targetJobTitle: 'Backend Engineer',
+      industry: 'technology',
+      seniority: 'mid',
+      role: {
+        id: 'backend_developer',
+        label: 'Backend Developer',
+      },
+      competencies: ['api-design', 'reliability'],
+    }
+
+    const result = await evaluateResponseWithProvider(
+      'Situation: We had API latency spikes. Task: stabilize system. Action: I tuned query plans and added caching. Result: p95 improved by 40%.',
+      { id: 'question-1' },
+      'openai',
+      { airContext }
+    )
+
+    expect(result.evaluatorType).toBe('ai_model')
+    expect(evaluateSpy).toHaveBeenCalledTimes(1)
+    expect(evaluateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        airContext,
+      })
+    )
+  })
 })

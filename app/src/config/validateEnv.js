@@ -102,6 +102,11 @@ export function validateEnvironment() {
   const transcriptionProvider = (process.env.TRANSCRIPTION_PROVIDER || 'mock')
     .toLowerCase()
     .trim()
+  const airQuestionGenerationEnabled = ['true', '1', 'yes', 'on'].includes(
+    String(process.env.FEATURE_AIR_QUESTION_GENERATION_ENABLED || '')
+      .toLowerCase()
+      .trim()
+  )
 
   if (!['rule_based', 'openai', 'ai_model'].includes(feedbackProvider)) {
     validationErrors.push(
@@ -116,11 +121,12 @@ export function validateEnvironment() {
   const requiresOpenAI =
     feedbackProvider === 'openai' ||
     feedbackProvider === 'ai_model' ||
-    transcriptionProvider === 'openai'
+    transcriptionProvider === 'openai' ||
+    airQuestionGenerationEnabled
 
   if (requiresOpenAI && !process.env.OPENAI_API_KEY) {
     validationErrors.push(
-      'OPENAI_API_KEY is required when OpenAI feedback/transcription providers are enabled'
+      'OPENAI_API_KEY is required when OpenAI feedback/transcription/AIR generation is enabled'
     )
   }
 
@@ -212,6 +218,8 @@ export function getEnvironmentSummary() {
     jwtSecret: process.env.JWT_SECRET ? '***' : 'not set',
     feedbackProvider: process.env.FEEDBACK_PROVIDER || 'rule_based',
     transcriptionProvider: process.env.TRANSCRIPTION_PROVIDER || 'mock',
+    airQuestionGenerationEnabled:
+      process.env.FEATURE_AIR_QUESTION_GENERATION_ENABLED || 'false',
     openaiApiKey: process.env.OPENAI_API_KEY ? '***' : 'not set',
     uploadSigningSecret: process.env.UPLOAD_SIGNING_SECRET ? '***' : 'not set',
     uploadTtlSeconds: process.env.UPLOAD_URL_TTL_SECONDS || '300',

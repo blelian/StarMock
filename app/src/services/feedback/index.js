@@ -59,7 +59,7 @@ function normalizeProviderError(error) {
   return new Error(typeof error === 'string' ? error : 'Unknown provider error')
 }
 
-async function evaluateWithPolicy(provider, responseText, question) {
+async function evaluateWithPolicy(provider, responseText, question, options = {}) {
   const retries = providerRetries()
   const timeoutMs = providerTimeoutMs()
   const startedAt = Date.now()
@@ -68,7 +68,7 @@ async function evaluateWithPolicy(provider, responseText, question) {
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
       const rawEvaluation = await runWithTimeout(
-        Promise.resolve(provider.evaluate({ responseText, question })),
+        Promise.resolve(provider.evaluate({ responseText, question, ...options })),
         timeoutMs,
         provider.id
       )
@@ -150,12 +150,18 @@ export function getFeedbackProvider(
 export async function evaluateResponseWithProvider(
   responseText,
   question,
-  providerId
+  providerId,
+  options = {}
 ) {
   const provider = getFeedbackProvider(providerId)
   const startedAt = Date.now()
   try {
-    const result = await evaluateWithPolicy(provider, responseText, question)
+    const result = await evaluateWithPolicy(
+      provider,
+      responseText,
+      question,
+      options
+    )
     incrementCounter('starmock_feedback_provider_calls_total', {
       provider: result.evaluatorType,
       fallback: 'false',
@@ -179,7 +185,8 @@ export async function evaluateResponseWithProvider(
     const fallbackResult = await evaluateWithPolicy(
       fallbackProvider,
       responseText,
-      question
+      question,
+      options
     )
 
     const fallbackError = normalizeProviderError(error)

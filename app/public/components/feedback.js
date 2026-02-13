@@ -4,6 +4,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const overallScoreRingEl = document.getElementById('overall-score-ring');
   const breakdownEl = document.getElementById('star-breakdown');
   const suggestionsEl = document.getElementById('feedback-suggestions');
+  const airMetricsPanelEl = document.getElementById('air-metrics-panel');
+  const airRoleFitScoreEl = document.getElementById('air-role-fit-score');
+  const airCoverageEl = document.getElementById('air-competency-coverage');
+  const airWeakestEl = document.getElementById('air-weakest-competency');
+  const airTrendEl = document.getElementById('air-trend-score');
+  const airCompetencyBreakdownEl = document.getElementById(
+    'air-competency-breakdown'
+  );
 
   if (
     !messageEl ||
@@ -90,6 +98,72 @@ document.addEventListener('DOMContentLoaded', async () => {
     task: 'State your exact ownership and what success required.',
     action: 'Detail concrete steps you personally took.',
     result: 'Quantify outcomes and reflect on impact.',
+  };
+
+  const formatDelta = (delta) => {
+    if (!Number.isFinite(delta)) return '--';
+    return `${delta >= 0 ? '+' : ''}${Math.round(delta)} pts`;
+  };
+
+  const renderAirMetrics = (summary) => {
+    if (
+      !airMetricsPanelEl ||
+      !airRoleFitScoreEl ||
+      !airCoverageEl ||
+      !airWeakestEl ||
+      !airTrendEl ||
+      !airCompetencyBreakdownEl
+    ) {
+      return;
+    }
+
+    const roleMetrics = summary?.roleMetrics || {};
+    const roleFitScore = toPercent(roleMetrics.roleFitScore);
+    const coverage = toPercent(roleMetrics.competencyCoverage);
+    const weakest = roleMetrics.weakestCompetency || null;
+    const trend = roleMetrics.trend || null;
+    const competencyScores = Array.isArray(roleMetrics.competencyScores)
+      ? roleMetrics.competencyScores
+      : [];
+
+    if (!summary?.airMode) {
+      airMetricsPanelEl.classList.add('hidden');
+      return;
+    }
+
+    airMetricsPanelEl.classList.remove('hidden');
+    airRoleFitScoreEl.textContent =
+      roleFitScore === null ? '--%' : `${roleFitScore}%`;
+    airCoverageEl.textContent = coverage === null ? '--%' : `${coverage}%`;
+    airWeakestEl.textContent = weakest
+      ? `${weakest.label} (${toPercent(weakest.score)}%)`
+      : '--';
+
+    if (trend && Number.isFinite(trend.delta)) {
+      const directionLabel =
+        trend.direction === 'up'
+          ? 'Improving'
+          : trend.direction === 'down'
+            ? 'Declining'
+            : 'Stable';
+      airTrendEl.textContent = `${directionLabel} (${formatDelta(trend.delta)})`;
+    } else {
+      airTrendEl.textContent = 'No baseline yet';
+    }
+
+    if (!competencyScores.length) {
+      airCompetencyBreakdownEl.innerHTML =
+        '<li>No competency-level scores available yet.</li>';
+      return;
+    }
+
+    airCompetencyBreakdownEl.innerHTML = competencyScores
+      .slice(0, 6)
+      .map((item) => {
+        const score = toPercent(item.score);
+        return `<li class="flex items-center justify-between"><span>${escapeHtml(item.label)}</span><span class="font-semibold">${score ?? '--'}%</span></li>`;
+      })
+      .join('');
   };
 
   const renderBreakdown = (scores) => {
@@ -206,6 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return {
           ok: true,
           feedbackItems: feedbackResult.payload.feedback,
+          summary: feedbackResult.payload.summary || null,
         };
       }
 
@@ -245,12 +320,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const feedbackItems = feedbackLoadResult.feedbackItems;
+  const summary = feedbackLoadResult.summary || null;
   if (!feedbackItems.length) {
     messageEl.textContent = 'No feedback generated for this session yet.';
     return;
   }
 
-  const aggregateScores = {
+  const aggregateScores = summary?.starScores || {
     situation: average(feedbackItems.map((item) => item?.scores?.situation)),
     task: average(feedbackItems.map((item) => item?.scores?.task)),
     action: average(feedbackItems.map((item) => item?.scores?.action)),
@@ -267,6 +343,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderBreakdown(aggregateScores);
   renderSuggestions(feedbackItems);
+  renderAirMetrics(summary);
 
   messageEl.textContent = `Feedback loaded for session ${sessionId.slice(-6)}.`;
 });

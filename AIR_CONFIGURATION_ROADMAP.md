@@ -1,6 +1,6 @@
 # AIR Configuration Roadmap
 
-Last updated: February 13, 2026
+Last updated: February 14, 2026
 
 ## Objective
 Implement AI Role (AIR) configuration so interview questions, feedback, and progress stats adapt to each user's target role, industry, and seniority level.
@@ -21,13 +21,14 @@ Implement AI Role (AIR) configuration so interview questions, feedback, and prog
 - ~~User model does not store career targeting metadata~~ → **DONE (Phase 1)**: `app/src/models/User.js` now has `careerProfile` subdocument.
 - ~~No profile API or UI~~ → **DONE (Phase 1)**: `GET/PATCH /api/auth/profile` + AIR overlay on interview page.
 - ~~No AIR taxonomy or context resolver~~ → **DONE (Phase 2)**: `airProfiles.js` canonical schema + `resolveAirContext()` deterministic resolver.
-- AI feedback prompt does not include role/industry context: `app/src/services/feedback/providers/openAIProvider.js`.
-- Feedback UI is STAR-centric and session-aggregated, not role competency-aware: `app/public/components/feedback.js`.
-- **OpenAI provider status (as of current `.env`)**:
+- ~~AI feedback prompt does not include role/industry context~~ → **DONE (Phase 3)**: OpenAI feedback prompt now receives AIR context from session snapshot via feedback worker; analysis stores AIR summary.
+- ~~No AI-generated question fallback for sparse curated coverage~~ → **DONE (Phase 3)**: OpenAI AIR question provider with three-tier pipeline (curated → AI-generated → generic), feature-flagged.
+- ~~Feedback UI is STAR-centric and session-aggregated, not role competency-aware~~ → **DONE (Phase 4)**: `feedback.html` + `feedback.js` now render AIR role metrics (role fit, coverage, weakest competency, trend) + competency breakdown cards. Backend `buildFeedbackSummary()` aggregates competency-level scores.
+- **OpenAI provider status (as of current implementation)**:
   - `OPENAI_API_KEY` is provisioned.
   - `FEEDBACK_PROVIDER=openai` is enabled (OpenAI active for feedback path).
   - `TRANSCRIPTION_PROVIDER=mock` (OpenAI Whisper path exists but is not active).
-  - AIR question generation is not yet using OpenAI (Phase 3 scope).
+  - AIR question generation is implemented behind `airQuestionGeneration` feature flag with OpenAI fallback + retry/timeout.
 
 ## Target Outcome
 - User is asked for role context before starting interview flow.
@@ -48,7 +49,7 @@ Implement AI Role (AIR) configuration so interview questions, feedback, and prog
   - if AIR context is missing or invalid, use existing generic question + STAR evaluation path.
 
 ## OpenAI Provisioning And Operations
-Status: **Partially complete**
+Status: **Mostly complete (Phase 4 ops hardening pending)**
 
 Completed:
 - Credential provisioning:
@@ -56,9 +57,9 @@ Completed:
 - Provider wiring:
   - OpenAI feedback provider implemented and selectable via `FEEDBACK_PROVIDER`.
 
-Pending for AIR runtime:
+Completed for AIR runtime:
 - AIR question generation provider path:
-  - add OpenAI-backed generator for question fallback when curated coverage is low.
+  - OpenAI-backed generator is active for curated coverage gaps when feature flag is enabled.
 - OpenAI configuration surface for AIR:
   - `OPENAI_AIR_QUESTION_MODEL`
   - `OPENAI_AIR_QUESTION_TIMEOUT_MS`
@@ -66,12 +67,17 @@ Pending for AIR runtime:
   - `OPENAI_AIR_QUESTION_MAX_TOKENS`
 - Reliability controls:
   - bounded retry, timeout, and fallback to curated/generic question bank.
+- Rollout controls:
+  - feature-flagged AIR OpenAI calls via `airQuestionGeneration`.
+
+Pending for production hardening:
 - Cost and usage controls:
   - per-request token limits, aggregate usage metrics, and alert thresholds.
 - Security controls:
   - ensure API key is only env-based in deployment; no client exposure.
-- Rollout controls:
-  - feature-flagged AIR OpenAI calls (`0% -> 10% -> 50% -> 100%`).
+  - add deployment checklist validation for OpenAI secrets.
+- Rollout tuning:
+  - staged traffic progression (`0% -> 10% -> 50% -> 100%`) with monitored fallback/error rates.
 
 ## Delivery Plan
 
@@ -149,36 +155,55 @@ Timeline: 3-4 days
 - `getQuestionsForAirContext()` filters by `roles` only, not `industries` or `seniority` — fine for MVP, revisit when question bank grows.
 - No rate-limit on profile edit endpoint beyond auth guard.
 
-### Phase 3: Merged AIR Runtime (Questions + Feedback) ← NEXT
+### Phase 3: Merged AIR Runtime (Questions + Feedback) ✅ COMPLETE
+Completed: February 13, 2026 | Tests: 86/86 passing | Lint: clean
 Timeline: 4-5 days
 
-Goals:
-- Update question selection pipeline to use AIR context.
-- Support source priority:
-  1. curated role-matched bank
-  2. AI-generated fallback when coverage is low
-- Inject AIR context into feedback provider prompt.
-- Add competency scoring extension alongside STAR scoring.
-- Store prompt/profile/version metadata for both question and feedback outputs.
-- Activate OpenAI for AIR question generation path with timeout/retry/fallback controls.
+**What was delivered:**
+- `openAIQuestionProvider.js` — NEW: OpenAI-backed AIR question generator with:
+  - Strict JSON parsing with code-fence stripping.
+  - Full normalization pipeline (type, difficulty, category, STAR guidelines, dedup by description).
+  - Bounded retry + AbortController timeout + token/latency metadata.
+  - Env-configurable model, timeout, max tokens, retries, prompt version (`air-questions.v1`).
+- `getQuestionsForAirContext()` in interviews route — Three-tier question pipeline:
+  1. Curated role-matched from DB (industry + seniority + role/generic).
+  2. OpenAI-generated fallback when coverage is insufficient and `airQuestionGeneration` flag is enabled.
+  3. Generic DB fallback with `_id $nin` dedup.
+- Generated questions are persisted via `InterviewQuestion.insertMany()` with full `airProfile` metadata.
+- `GET /api/questions` response now includes `aiGeneration` object (provider, model, promptVersion, attempts, latency, tokenUsage, error info) and expanded `sourceBreakdown: {roleMatched, aiGenerated, fallback}`.
+- Frontend `buildQuestionUrl()` forwards `jobDescriptionText` (capped to 500 chars) in AIR mode requests.
+- Feedback pipeline AIR integration:
+  - `jobWorker.js` — reads `session.metadata.airContext` and passes it as `options.airContext` to `evaluateResponseWithProvider()`.
+  - `feedback/index.js` — `evaluateWithPolicy()` spreads options (including `airContext`) into provider `evaluate()` call.
+  - `openAIProvider.js` — `buildPrompt()` generates AIR context block with role/industry/seniority/competencies; `normalizeEvaluation()` stores `airContext` summary and `airContextUsed` flag in analysis.
+  - `FeedbackReport` stores AIR markers in `evaluatorMetadata`: `airMode`, `airContextKey`, `generatedAt`, `correlationId`.
+- `featureFlags.js` — `airQuestionGeneration` flag with `FEATURE_AIR_QUESTION_GENERATION_ENABLED` (default: off) and `FEATURE_AIR_QUESTION_GENERATION_ROLLOUT_PERCENT` (default: 0%).
+- `validateEnv.js` — `OPENAI_API_KEY` is now required when `FEATURE_AIR_QUESTION_GENERATION_ENABLED` is true (alongside existing feedback/transcription checks).
+- Test coverage: AIR OpenAI generation test (spy + insertMany mock), AIR context forwarding test in feedback provider, `airQuestionGeneration` flag snapshot test. `afterEach` cleans up AIR flag env vars.
 
-Primary files:
-- `app/src/routes/interviews.js`
-- `app/public/components/interview-redirect.js`
-- `app/src/services/feedback/providers/openAIProvider.js`
-- `app/src/services/feedback/jobWorker.js`
-- `app/src/models/FeedbackReport.js`
+**Files changed:**
+- `app/src/services/air/openAIQuestionProvider.js` — NEW: OpenAI AIR question generator
+- `app/src/routes/interviews.js` — three-tier question pipeline, `aiGeneration` response, `sourceBreakdown` expansion
+- `app/src/services/feedback/index.js` — options spread through `evaluateWithPolicy` to provider
+- `app/src/services/feedback/jobWorker.js` — AIR context extraction from session + pass-through
+- `app/src/services/feedback/providers/openAIProvider.js` — AIR context block in prompt, AIR summary in analysis
+- `app/src/models/FeedbackReport.js` — `airMode`, `airContextKey`, `correlationId`, `generatedAt` in `evaluatorMetadata`
+- `app/src/config/featureFlags.js` — `airQuestionGeneration` flag definition + rollout in snapshot
+- `app/src/config/validateEnv.js` — OpenAI key required when AIR generation enabled
+- `app/public/components/interview-redirect.js` — `jobDescriptionText` forwarding in `buildQuestionUrl()`
+- `app/src/backend-tests/interviews.routes.test.ts` — AIR generation test + env cleanup
+- `app/src/backend-tests/feedback.provider.test.ts` — AIR context forwarding test
+- `app/src/backend-tests/featureFlags.test.ts` — AIR flag snapshot assertion
 
-Acceptance criteria:
-- `GET /api/questions` returns AIR-aware questions when profile exists.
-- Feedback content and suggestions are role/seniority-specific.
-- Existing generic behavior still works when AIR context is absent.
-- Prompt and AIR version metadata is persisted.
-- OpenAI-backed AIR question generation works behind a feature flag.
-- OpenAI timeout/retry/fallback behavior is tested for AIR question flow.
-- AI token usage/latency metadata is captured for AIR question generation.
+**Known minor gaps (non-blocking, address in Phase 4):**
+1. ~~**Competency scoring extension**~~ — **Resolved (Phase 4)**: `roleFitScore`, `competencyScores`, `competencyCoverage` now normalized in `openAIProvider.js` and aggregated in `buildFeedbackSummary()`.
+2. **No negative-path unit test for `generateAirQuestions` directly** — the provider is tested indirectly via the route spy mock. A dedicated unit test file (e.g. `openAIQuestionProvider.test.ts`) with timeout, retry-exhaustion, and malformed-JSON scenarios would strengthen coverage.
+3. **`normalizeGenerationError` duplication** — identical helper exists in both `interviews.js` and `feedback/index.js`. Could be extracted to a shared util.
+4. **`toPositiveInteger` / `clampString` repeated** — appear in `openAIQuestionProvider.js`, `feedback/index.js`, and `jobWorker.js`. Candidate for a shared `utils/parse.js` module.
+5. **Token-budget guardrails** — `DEFAULT_MAX_TOKENS = 1200` is set but there's no aggregate per-user or per-session token cap. Acceptable for MVP; should be monitored before wide rollout.
+6. **`jobDescriptionText` truncation consistency** — frontend caps at 500 chars in query string, but the prompt template doesn't re-truncate. Low risk since query strings have browser limits, but explicit capping in the prompt builder would be defensive.
 
-### Phase 4: Dynamic Stats, Testing, and Rollout
+### Phase 4: Dynamic Stats, Testing, and Rollout ⚙️ IN PROGRESS
 Timeline: 2-3 days
 
 Goals:
@@ -190,6 +215,23 @@ Goals:
 - Add role context indicators in interview and feedback views.
 - Add backend/provider/e2e coverage for AIR flows.
 - Roll out behind feature flags with staged traffic.
+
+Implementation status (current):
+- ✅ `openAIProvider.js` — `normalizeEvaluation()` now produces `analysis.roleFitScore`, `analysis.competencyScores`, `analysis.competencyCoverage`, `analysis.roleFitSummary`. New helpers: `toOptionalScore()`, `normalizeCompetencyKey()`, `normalizeCompetencyScores()`. Prompt schema asks for `roleFitScore`, `roleFitSummary`, and `competencyScores` when AIR context is present.
+- ✅ `interviews.js` — NEW `buildFeedbackSummary()` function aggregates per-report data into session-level `summary`:
+  - `starScores` (averaged STAR subscores).
+  - `roleMetrics.roleFitScore` (averaged per-report role-fit).
+  - `roleMetrics.competencyCoverage` (covered / expected competencies %).
+  - `roleMetrics.strongestCompetency` / `weakestCompetency` (sorted by score).
+  - `roleMetrics.competencyScores[]` (key, label, averaged score).
+  - `roleMetrics.trend` (delta vs up-to-5 prior same-context sessions; direction: up/down/flat with ±3pt threshold).
+  - Historical lookup queries `FeedbackReport` by `evaluatorMetadata.airContextKey` + `userId`, limited to 40 reports / 5 sessions.
+- ✅ `serializeFeedbackReports()` now includes `analysis` field per report.
+- ✅ `GET /api/sessions/:id/feedback` returns `summary` alongside `feedback[]` when reports exist.
+- ✅ `feedback.html` — NEW `air-metrics-panel` section: 4 metric cards (Role Fit, Coverage, Weakest, Trend) + competency breakdown list. Hidden when `airMode` is false.
+- ✅ `feedback.js` — `renderAirMetrics(summary)` populates AIR metric cards, `formatDelta()` for trend display, `competencyLabelFromKey()` formatting, graceful fallback to `--` for missing data. Uses `summary.starScores` when available, falls back to client-side averaging.
+- ✅ Backend test: `'returns AIR summary metrics when competency scores are present'` verifies full `roleMetrics` shape including strongest/weakest competency and coverage.
+- ⏳ Remaining: history-page AIR trends, deeper e2e coverage for AIR metrics, rollout playbook finalization.
 
 Primary files:
 - `app/public/interview.html`
