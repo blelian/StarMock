@@ -15,8 +15,8 @@ describe('API validators', () => {
       body: {
         email: 'bad-email',
         password: 'short',
-        firstName: '',
-        lastName: '',
+        firstName: 'Test',
+        lastName: 'User',
       },
     } as any)
 

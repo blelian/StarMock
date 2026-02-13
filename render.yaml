@@ -8,4 +8,14 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: TRANSCRIPTION_PROVIDER
+        value: openai
+      - key: FEEDBACK_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false # Set in Render dashboard (secret)
+      - key: MONGODB_URI
+        sync: false # Set in Render dashboard (secret)
+      - key: SESSION_SECRET
+        sync: false # Set in Render dashboard (secret)
     healthCheckPath: /api/health

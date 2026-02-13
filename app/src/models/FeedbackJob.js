@@ -16,7 +16,6 @@ const feedbackJobSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'InterviewSession',
       required: true,
-      index: true,
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,

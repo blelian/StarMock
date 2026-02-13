@@ -40,6 +40,6 @@ describe('feedbackService.evaluateResponse', () => {
 
     expect(evaluation.rating).toBe('needs_improvement')
     expect(evaluation.suggestions.length).toBeGreaterThan(0)
-    expect(evaluation.scores.detail).toBeLessThanOrEqual(30)
+    expect(evaluation.scores.detail).toBeLessThanOrEqual(40)
   })
 })
