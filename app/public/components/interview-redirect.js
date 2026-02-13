@@ -151,6 +151,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
+    // Block submit while transcription is still in progress
+    if (uploadedAudioUrl && submittedResponseId && !transcriptReady) {
+      submitBtn.disabled = true
+      return
+    }
+
     const minLength = uploadedAudioUrl ? 20 : 50
     submitBtn.disabled = responseInput.value.trim().length < minLength
     updateTranscriptWarning()
