@@ -5,6 +5,7 @@ import {
   InterviewResponse,
   FeedbackReport,
   FeedbackJob,
+  TranscriptionJob,
 } from '../models/index.js'
 import { requireAuth } from '../middleware/auth.js'
 import { validateRequest } from '../middleware/validate.js'
@@ -12,6 +13,7 @@ import {
   validateCreateSessionRequest,
   validateSubmitResponseRequest,
 } from '../validators/api.js'
+import { isFeatureEnabled } from '../config/featureFlags.js'
 
 const router = express.Router()
 const ALLOWED_QUESTION_TYPES = new Set([
@@ -55,6 +57,7 @@ function serializeFeedbackReports(feedbackReports) {
     scores: f.scores,
     rating: f.rating,
     evaluatorType: f.evaluatorType,
+    evaluatorMetadata: f.evaluatorMetadata || null,
     strengths: f.strengths,
     suggestions: f.suggestions,
     createdAt: f.createdAt,
@@ -325,7 +328,18 @@ router.post(
   validateRequest(validateSubmitResponseRequest),
   async (req, res) => {
     try {
-      const { questionId, responseText } = req.body
+      const {
+        questionId,
+        responseText = '',
+        responseType = 'text',
+        audioUrl = null,
+        audioMimeType = null,
+        audioSizeBytes = null,
+        audioDurationSeconds = null,
+        transcriptConfidence = null,
+      } = req.body
+      const normalizedResponseText =
+        typeof responseText === 'string' ? responseText.trim() : ''
 
       // Verify session exists and belongs to user
       const session = await InterviewSession.findOne({
@@ -362,6 +376,18 @@ router.post(
         })
       }
 
+      if (
+        responseType === 'audio_transcript' &&
+        !isFeatureEnabled('aiRecording', { userId: req.userId })
+      ) {
+        return res.status(403).json({
+          error: {
+            message: 'Audio interview responses are currently disabled',
+            code: 'FEATURE_DISABLED',
+          },
+        })
+      }
+
       const existingResponse = await InterviewResponse.findOne({
         sessionId: req.params.id,
         userId: req.userId,
@@ -377,24 +403,89 @@ router.post(
         })
       }
 
+      const normalizedConfidence =
+        typeof transcriptConfidence === 'number'
+          ? Math.max(0, Math.min(1, transcriptConfidence))
+          : null
+      const transcriptionStatus =
+        responseType === 'audio_transcript'
+          ? normalizedResponseText.length > 0
+            ? normalizedConfidence !== null && normalizedConfidence < 0.75
+              ? 'review_required'
+              : 'ready'
+            : 'uploaded'
+          : 'none'
+
       // Create response
       const response = new InterviewResponse({
         sessionId: req.params.id,
         userId: req.userId,
         questionId,
-        responseText: responseText.trim(),
+        responseType,
+        responseText: normalizedResponseText,
+        audioUrl: responseType === 'audio_transcript' ? audioUrl : undefined,
+        audioMimeType:
+          responseType === 'audio_transcript' ? audioMimeType || undefined : undefined,
+        audioSizeBytes:
+          responseType === 'audio_transcript' ? audioSizeBytes || undefined : undefined,
+        audioDurationSeconds:
+          responseType === 'audio_transcript'
+            ? audioDurationSeconds || undefined
+            : undefined,
+        transcriptionStatus,
+        transcriptConfidence:
+          responseType === 'audio_transcript'
+            ? normalizedConfidence !== null
+              ? normalizedConfidence
+              : undefined
+            : undefined,
+        transcriptProvider:
+          responseType === 'audio_transcript' && normalizedResponseText.length > 0
+            ? 'manual'
+            : undefined,
+        transcriptEdited:
+          responseType === 'audio_transcript' && normalizedResponseText.length > 0,
+        transcriptReviewedAt:
+          responseType === 'audio_transcript' && normalizedResponseText.length > 0
+            ? new Date()
+            : undefined,
       })
 
       await response.save()
+
+      let transcriptionJobPayload = null
+      if (responseType === 'audio_transcript' && normalizedResponseText.length === 0) {
+        const { job, created } = await TranscriptionJob.findOrCreateForResponse(
+          response._id,
+          req.params.id,
+          req.userId,
+          {
+            provider: process.env.TRANSCRIPTION_PROVIDER || 'mock',
+            audioUrl: response.audioUrl,
+            correlationId: req.correlationId || null,
+          }
+        )
+        transcriptionJobPayload = {
+          id: job?._id,
+          status: job?.status || 'uploaded',
+          attempts: job?.attempts || 0,
+          created,
+        }
+      }
 
       res.status(201).json({
         message: 'Response submitted successfully',
         response: {
           id: response._id,
           questionId: response.questionId,
+          responseType: response.responseType,
+          audioUrl: response.audioUrl || null,
+          transcriptionStatus: response.transcriptionStatus,
+          transcriptConfidence: response.transcriptConfidence ?? null,
           wordCount: response.wordCount,
           submittedAt: response.createdAt,
         },
+        transcriptionJob: transcriptionJobPayload,
       })
     } catch (error) {
       console.error('Submit response error:', error)
@@ -444,12 +535,31 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
       userId: req.userId,
     })
 
+    const pendingTranscriptionCount = await InterviewResponse.countDocuments({
+      sessionId: req.params.id,
+      userId: req.userId,
+      responseType: 'audio_transcript',
+      transcriptionStatus: { $in: ['uploaded', 'transcribing'] },
+    })
+
+    if (pendingTranscriptionCount > 0) {
+      return res.status(409).json({
+        error: {
+          message:
+            'One or more audio responses are still being transcribed. Please review transcript status before completing feedback.',
+          code: 'TRANSCRIPTION_PENDING',
+        },
+        pendingTranscriptions: pendingTranscriptionCount,
+      })
+    }
+
     const { job, created } = await FeedbackJob.findOrCreateForSession(
       session._id.toString(),
       req.userId.toString(),
       {
         provider: process.env.FEEDBACK_PROVIDER || 'rule_based',
         responseCount,
+        correlationId: req.correlationId || null,
       }
     )
 
@@ -518,6 +628,16 @@ router.get('/sessions/:id/responses', requireAuth, async (req, res) => {
         id: r._id,
         question: r.questionId,
         responseText: r.responseText,
+        responseType: r.responseType,
+        audioUrl: r.audioUrl || null,
+        audioMimeType: r.audioMimeType || null,
+        audioSizeBytes: r.audioSizeBytes || null,
+        audioDurationSeconds: r.audioDurationSeconds || null,
+        transcriptionStatus: r.transcriptionStatus || 'none',
+        transcriptConfidence: r.transcriptConfidence ?? null,
+        transcriptProvider: r.transcriptProvider || null,
+        transcriptEdited: Boolean(r.transcriptEdited),
+        transcriptReviewedAt: r.transcriptReviewedAt || null,
         wordCount: r.wordCount,
         submittedAt: r.createdAt,
       })),
@@ -533,6 +653,218 @@ router.get('/sessions/:id/responses', requireAuth, async (req, res) => {
     })
   }
 })
+
+/**
+ * @route   GET /api/sessions/:id/responses/:responseId/transcription-status
+ * @desc    Get transcription status for an audio response
+ * @access  Private
+ */
+router.get(
+  '/sessions/:id/responses/:responseId/transcription-status',
+  requireAuth,
+  async (req, res) => {
+    try {
+      if (!isFeatureEnabled('transcription', { userId: req.userId })) {
+        return res.status(403).json({
+          error: {
+            message: 'Transcription features are currently disabled',
+            code: 'FEATURE_DISABLED',
+          },
+        })
+      }
+
+      const { id: sessionId, responseId } = req.params
+      const response = await InterviewResponse.findOne({
+        _id: responseId,
+        sessionId,
+        userId: req.userId,
+      })
+
+      if (!response) {
+        return res.status(404).json({
+          error: {
+            message: 'Response not found',
+            code: 'NOT_FOUND',
+          },
+        })
+      }
+
+      if (response.responseType !== 'audio_transcript') {
+        return res.status(400).json({
+          error: {
+            message: 'Transcription status is only available for audio responses',
+            code: 'INVALID_RESPONSE_TYPE',
+          },
+        })
+      }
+
+      const transcriptionJob = await TranscriptionJob.findOne({
+        responseId,
+        userId: req.userId,
+      })
+
+      return res.json({
+        response: {
+          id: response._id,
+          responseType: response.responseType,
+          transcriptionStatus: response.transcriptionStatus,
+          transcriptConfidence: response.transcriptConfidence ?? null,
+          transcriptProvider: response.transcriptProvider || null,
+          transcriptEdited: Boolean(response.transcriptEdited),
+          transcriptReviewedAt: response.transcriptReviewedAt || null,
+        },
+        transcriptionJob: transcriptionJob
+          ? {
+              id: transcriptionJob._id,
+              status: transcriptionJob.status,
+              attempts: transcriptionJob.attempts,
+              maxAttempts: transcriptionJob.maxAttempts,
+              lastError: transcriptionJob.lastError
+                ? {
+                    message: transcriptionJob.lastError.message,
+                    code: transcriptionJob.lastError.code,
+                    occurredAt: transcriptionJob.lastError.occurredAt,
+                  }
+                : null,
+            }
+          : null,
+      })
+    } catch (error) {
+      console.error('Get transcription status error:', error)
+      return res.status(500).json({
+        error: {
+          message: 'Failed to fetch transcription status',
+          code: 'TRANSCRIPTION_STATUS_ERROR',
+        },
+      })
+    }
+  }
+)
+
+/**
+ * @route   PATCH /api/sessions/:id/responses/:responseId/transcript
+ * @desc    Save reviewed transcript text for an audio response
+ * @access  Private
+ */
+router.patch(
+  '/sessions/:id/responses/:responseId/transcript',
+  requireAuth,
+  async (req, res) => {
+    try {
+      if (!isFeatureEnabled('transcription', { userId: req.userId })) {
+        return res.status(403).json({
+          error: {
+            message: 'Transcription features are currently disabled',
+            code: 'FEATURE_DISABLED',
+          },
+        })
+      }
+
+      const { id: sessionId, responseId } = req.params
+      const { responseText, transcriptConfidence } = req.body || {}
+
+      if (
+        typeof responseText !== 'string' ||
+        responseText.trim().length < 20 ||
+        responseText.trim().length > 5000
+      ) {
+        return res.status(400).json({
+          error: {
+            message:
+              'Reviewed transcript text must be between 20 and 5000 characters',
+            code: 'INVALID_TRANSCRIPT_TEXT',
+          },
+        })
+      }
+
+      if (
+        transcriptConfidence !== undefined &&
+        (!Number.isFinite(transcriptConfidence) ||
+          transcriptConfidence < 0 ||
+          transcriptConfidence > 1)
+      ) {
+        return res.status(400).json({
+          error: {
+            message: 'Transcript confidence must be between 0 and 1',
+            code: 'INVALID_TRANSCRIPT_CONFIDENCE',
+          },
+        })
+      }
+
+      const response = await InterviewResponse.findOne({
+        _id: responseId,
+        sessionId,
+        userId: req.userId,
+      })
+
+      if (!response) {
+        return res.status(404).json({
+          error: {
+            message: 'Response not found',
+            code: 'NOT_FOUND',
+          },
+        })
+      }
+
+      if (response.responseType !== 'audio_transcript') {
+        return res.status(400).json({
+          error: {
+            message: 'Transcript edits are only supported for audio responses',
+            code: 'INVALID_RESPONSE_TYPE',
+          },
+        })
+      }
+
+      const normalizedTranscript = responseText.trim()
+      const normalizedConfidence =
+        typeof transcriptConfidence === 'number'
+          ? transcriptConfidence
+          : response.transcriptConfidence ?? 0.8
+
+      response.responseText = normalizedTranscript
+      response.transcriptConfidence = normalizedConfidence
+      response.transcriptionStatus =
+        normalizedConfidence < 0.75 ? 'review_required' : 'ready'
+      response.transcriptEdited = true
+      response.transcriptReviewedAt = new Date()
+      await response.save()
+
+      const transcriptionJob = await TranscriptionJob.findOne({
+        responseId: response._id,
+        userId: req.userId,
+      })
+
+      if (transcriptionJob && transcriptionJob.status !== 'ready') {
+        transcriptionJob.status = 'ready'
+        transcriptionJob.transcriptText = normalizedTranscript
+        transcriptionJob.confidence = normalizedConfidence
+        transcriptionJob.completedAt = new Date()
+        await transcriptionJob.save()
+      }
+
+      return res.json({
+        message: 'Transcript updated successfully',
+        response: {
+          id: response._id,
+          responseType: response.responseType,
+          transcriptionStatus: response.transcriptionStatus,
+          transcriptConfidence: response.transcriptConfidence,
+          transcriptEdited: response.transcriptEdited,
+          transcriptReviewedAt: response.transcriptReviewedAt,
+          wordCount: response.wordCount,
+        },
+      })
+    } catch (error) {
+      console.error('Update transcript error:', error)
+      return res.status(500).json({
+        error: {
+          message: 'Failed to update transcript',
+          code: 'TRANSCRIPT_UPDATE_ERROR',
+        },
+      })
+    }
+  }
+)
 
 /**
  * @route   GET /api/history

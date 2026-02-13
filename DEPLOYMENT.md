@@ -1495,3 +1495,53 @@ gh run list --workflow=deploy-render.yml
 # View specific run logs
 gh run view <run-id> --log
 ```
+## AI Recording Rollout and Runbook (2026-02-12)
+
+### Required Environment Variables
+- `FEEDBACK_PROVIDER` (`rule_based|openai|ai_model`)
+- `TRANSCRIPTION_PROVIDER` (`mock|openai`)
+- `UPLOAD_SIGNING_SECRET`
+- `UPLOAD_URL_TTL_SECONDS`
+- `UPLOAD_MAX_AUDIO_BYTES`
+- `FEATURE_AI_RECORDING_ENABLED`
+- `FEATURE_AI_RECORDING_ROLLOUT_PERCENT`
+- `FEATURE_AUDIO_UPLOADS_ENABLED`
+- `FEATURE_AUDIO_UPLOADS_ROLLOUT_PERCENT`
+- `FEATURE_TRANSCRIPTION_ENABLED`
+- `FEATURE_TRANSCRIPTION_ROLLOUT_PERCENT`
+
+### Rollout Procedure
+1. Deploy with all three feature flags enabled but rollout at `10%`.
+2. Monitor `/api/metrics` and logs for at least 30-60 minutes:
+   - `starmock_feedback_queue_depth`
+   - `starmock_transcription_queue_depth`
+   - `starmock_feedback_fallback_total`
+   - `starmock_feedback_provider_errors_total`
+3. Increase rollout to `50%` when stable.
+4. Increase rollout to `100%` only after error/fallback and queue metrics remain within SLO.
+
+### Alert Thresholds (Starter)
+- Feedback queue depth > `50` for 10 minutes.
+- Transcription queue depth > `50` for 10 minutes.
+- Feedback provider fallback ratio > `5%` sustained over 15 minutes.
+- Feedback provider error spike > `2%` sustained over 15 minutes.
+- Upload failures (`starmock_audio_upload_total{status!="success"}`) rising sharply over baseline.
+
+### Fast Rollback
+If incidents occur:
+1. Set `FEATURE_AI_RECORDING_ROLLOUT_PERCENT=0`.
+2. Set `FEATURE_AUDIO_UPLOADS_ROLLOUT_PERCENT=0`.
+3. Set `FEATURE_TRANSCRIPTION_ROLLOUT_PERCENT=0`.
+4. Optionally set:
+   - `FEATURE_AI_RECORDING_ENABLED=false`
+   - `FEATURE_AUDIO_UPLOADS_ENABLED=false`
+   - `FEATURE_TRANSCRIPTION_ENABLED=false`
+5. Redeploy and verify `/api/features` reflects disabled flags.
+
+### Incident Triage
+1. Capture `x-correlation-id` from failing client response.
+2. Search logs by `correlationId`.
+3. Check related job records:
+   - `FeedbackJob` (`queued|processing|failed`)
+   - `TranscriptionJob` (`uploaded|transcribing|failed`)
+4. Validate upload token expiry/replay failures if audio upload is impacted.

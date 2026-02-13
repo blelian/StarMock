@@ -7,13 +7,25 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import connectDB from "./src/config/database.js";
 import { createSessionMiddleware } from "./src/config/session.js";
-import { authRoutes, interviewRoutes } from "./src/routes/index.js";
+import { authRoutes, interviewRoutes, uploadRoutes } from "./src/routes/index.js";
 import { validateEnvironment, getEnvironmentSummary } from "./src/config/validateEnv.js";
 import { runStartupChecks, healthCheck, readinessCheck } from "./src/config/healthCheck.js";
+import { getFeatureFlagsForUser } from "./src/config/featureFlags.js";
+import { requestContext } from "./src/middleware/requestContext.js";
+import {
+  getMetricsSnapshot,
+  incrementCounter,
+  observeDuration,
+  toPrometheusText,
+} from "./src/services/metrics/index.js";
 import {
   startFeedbackJobWorker,
   stopFeedbackJobWorker,
 } from "./src/services/feedback/jobWorker.js";
+import {
+  startTranscriptionWorker,
+  stopTranscriptionWorker,
+} from "./src/services/transcription/index.js";
 
 dotenv.config();
 
@@ -42,6 +54,14 @@ app.disable("x-powered-by");
 app.set("trust proxy", 1);
 let server = null;
 
+const toPositiveInteger = (value, fallback) => {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+};
+
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 25,
@@ -56,6 +76,49 @@ const authRateLimiter = rateLimit({
   },
 });
 
+const expensiveRouteLimiter = rateLimit({
+  windowMs: toPositiveInteger(process.env.EXPENSIVE_ROUTE_LIMIT_WINDOW_MS, 5 * 60 * 1000),
+  max: toPositiveInteger(process.env.EXPENSIVE_ROUTE_LIMIT_MAX, 30),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => String(req.session?.userId || req.ip || 'anonymous'),
+  skip: (req) => {
+    const expensiveRoutePatterns = [
+      /^\/sessions\/[^/]+\/complete$/,
+      /^\/sessions\/[^/]+\/feedback$/,
+      /^\/sessions\/[^/]+\/feedback-status$/,
+      /^\/sessions\/[^/]+\/responses$/,
+      /^\/sessions\/[^/]+\/responses\/[^/]+\/transcript$/,
+    ];
+    return !expensiveRoutePatterns.some((pattern) => pattern.test(req.path));
+  },
+  message: {
+    error: {
+      message: "Too many expensive requests. Please retry shortly.",
+      code: "RATE_LIMITED",
+    },
+  },
+});
+
+const uploadRouteLimiter = rateLimit({
+  windowMs: toPositiveInteger(process.env.UPLOAD_RATE_LIMIT_WINDOW_MS, 5 * 60 * 1000),
+  max: toPositiveInteger(process.env.UPLOAD_RATE_LIMIT_MAX, 20),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => String(req.session?.userId || req.ip || 'anonymous'),
+  message: {
+    error: {
+      message: "Too many upload requests. Please retry shortly.",
+      code: "RATE_LIMITED",
+    },
+  },
+});
+
+const normalizePathForMetrics = (pathValue) =>
+  String(pathValue || '')
+    .replace(/[0-9a-f]{24}/gi, ':id')
+    .replace(/[0-9]{6,}/g, ':num');
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -63,6 +126,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(sessionMiddleware);
+app.use(requestContext);
 app.use(
   helmet({
     // Keep CSP off for now because current pages depend on inline scripts + CDN assets.
@@ -89,6 +153,18 @@ if (NODE_ENV === "development") {
 }
 
 app.use((req, res, next) => {
+  const requestStartedAt = Date.now();
+  res.on("finish", () => {
+    const durationMs = Date.now() - requestStartedAt;
+    const labels = {
+      method: req.method,
+      path: normalizePathForMetrics(req.path),
+      status: String(res.statusCode),
+    };
+    incrementCounter("starmock_http_requests_total", labels, 1);
+    observeDuration("starmock_http_request_duration_ms", durationMs, labels);
+  });
+
   const shouldLogHealthChecks = process.env.LOG_HEALTH_CHECKS === "true";
   const isHealthProbe = req.path === "/api/health" || req.path === "/api/ready";
 
@@ -97,7 +173,15 @@ app.use((req, res, next) => {
   }
 
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] ${req.method} ${req.path}`);
+  console.log(
+    JSON.stringify({
+      level: "info",
+      timestamp,
+      correlationId: req.correlationId || null,
+      method: req.method,
+      path: req.path,
+    })
+  );
   next();
 });
 
@@ -129,6 +213,20 @@ app.get("/api/ready", async (req, res) => {
   }
 });
 
+app.get("/api/features", (req, res) => {
+  const featureFlags = getFeatureFlagsForUser(req.session?.userId || null);
+  res.json({ features: featureFlags });
+});
+
+app.get("/api/metrics", (req, res) => {
+  const acceptHeader = String(req.headers.accept || "");
+  if (acceptHeader.includes("text/plain")) {
+    res.type("text/plain").send(toPrometheusText());
+    return;
+  }
+  res.json(getMetricsSnapshot());
+});
+
 if (NODE_ENV === "development") {
   app.get("/api/session-info", (req, res) => {
     res.json({
@@ -141,7 +239,8 @@ if (NODE_ENV === "development") {
 
 // API routes
 app.use('/api/auth', authRateLimiter, authRoutes);
-app.use('/api', interviewRoutes);
+app.use('/api', expensiveRouteLimiter, interviewRoutes);
+app.use('/api/uploads', uploadRouteLimiter, uploadRoutes);
 
 // serve frontend
 app.use(express.static(path.join(__dirname, "dist")));
@@ -156,6 +255,7 @@ app.use((err, req, res, _next) => {
   res.status(err.status || 500).json({
     error: {
       message: err.message || "Internal server error",
+      correlationId: req.correlationId || null,
       ...(NODE_ENV === "development" && { stack: err.stack }),
     },
   });
@@ -171,6 +271,7 @@ async function startServer() {
   }
 
   startFeedbackJobWorker();
+  startTranscriptionWorker();
 
   server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
@@ -196,6 +297,7 @@ async function gracefulShutdown(signal) {
   isShuttingDown = true;
   console.log(`\n⚠️  ${signal} received. Starting graceful shutdown...`);
   stopFeedbackJobWorker();
+  stopTranscriptionWorker();
   
   const closeDatabase = async () => {
     try {

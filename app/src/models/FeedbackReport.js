@@ -81,6 +81,50 @@ const feedbackReportSchema = new mongoose.Schema(
       enum: ['rule_based', 'ai_model', 'hybrid'],
       default: 'rule_based',
     },
+    evaluatorMetadata: {
+      provider: {
+        type: String,
+      },
+      model: {
+        type: String,
+      },
+      promptVersion: {
+        type: String,
+      },
+      latencyMs: {
+        type: Number,
+      },
+      timeoutMs: {
+        type: Number,
+      },
+      attempts: {
+        type: Number,
+      },
+      retries: {
+        type: Number,
+      },
+      fallback: {
+        type: Boolean,
+        default: false,
+      },
+      fallbackFrom: {
+        type: String,
+      },
+      fallbackReason: {
+        type: String,
+      },
+      tokenUsage: {
+        promptTokens: { type: Number },
+        completionTokens: { type: Number },
+        totalTokens: { type: Number },
+      },
+      correlationId: {
+        type: String,
+      },
+      generatedAt: {
+        type: Date,
+      },
+    },
     generatedAt: {
       type: Date,
       default: Date.now,

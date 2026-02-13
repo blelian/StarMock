@@ -1,6 +1,7 @@
 const PROVIDER_ID = 'ai_model'
 const DEFAULT_MODEL = process.env.OPENAI_FEEDBACK_MODEL || 'gpt-4o-mini'
 const DEFAULT_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS || 15000)
+const PROMPT_VERSION = process.env.OPENAI_PROMPT_VERSION || 'star-eval.v1'
 const OPENAI_BASE_URL = (
   process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
 ).replace(/\/+$/, '')
@@ -47,7 +48,7 @@ function parseJsonContent(content) {
   return JSON.parse(cleaned)
 }
 
-function normalizeEvaluation(payload, modelName) {
+function normalizeEvaluation(payload, modelName, usage) {
   const scores = payload?.scores || {}
   const normalizedScores = {
     situation: clampScore(scores.situation),
@@ -92,6 +93,15 @@ function normalizeEvaluation(payload, modelName) {
       ...(payload?.analysis || {}),
       provider: 'openai',
       model: modelName,
+      promptVersion: PROMPT_VERSION,
+      tokenUsage:
+        usage && typeof usage === 'object'
+          ? {
+              promptTokens: usage.prompt_tokens || 0,
+              completionTokens: usage.completion_tokens || 0,
+              totalTokens: usage.total_tokens || 0,
+            }
+          : null,
     },
   }
 }
@@ -167,7 +177,11 @@ async function requestOpenAI({ apiKey, model, prompt }) {
 
     const data = await response.json()
     const content = data?.choices?.[0]?.message?.content
-    return parseJsonContent(content)
+    return {
+      payload: parseJsonContent(content),
+      usage: data?.usage || null,
+      model: data?.model || model,
+    }
   } catch (error) {
     if (error?.name === 'AbortError') {
       throw new Error(`OpenAI request timed out after ${DEFAULT_TIMEOUT_MS}ms`)
@@ -188,9 +202,13 @@ export const openAIFeedbackProvider = {
 
     const model = process.env.OPENAI_FEEDBACK_MODEL || DEFAULT_MODEL
     const prompt = buildPrompt(responseText, question)
-    const payload = await requestOpenAI({ apiKey, model, prompt })
+    const { payload, usage, model: resolvedModel } = await requestOpenAI({
+      apiKey,
+      model,
+      prompt,
+    })
 
-    return normalizeEvaluation(payload, model)
+    return normalizeEvaluation(payload, resolvedModel || model, usage)
   },
 }
 

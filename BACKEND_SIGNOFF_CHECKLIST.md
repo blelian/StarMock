@@ -53,3 +53,34 @@ Expected artifacts are written to `app/artifacts/backend-signoff/`:
 - [ ] CI run URL attached to release notes.
 - [ ] Coverage summary attached to release notes.
 - [ ] Deployed environment health/readiness URLs and response snapshots attached.
+
+## 6. AI Recording Rollout Gate
+
+- [ ] Feature flags are explicitly set for the release window:
+  - `FEATURE_AI_RECORDING_ENABLED`
+  - `FEATURE_AI_RECORDING_ROLLOUT_PERCENT`
+  - `FEATURE_AUDIO_UPLOADS_ENABLED`
+  - `FEATURE_AUDIO_UPLOADS_ROLLOUT_PERCENT`
+  - `FEATURE_TRANSCRIPTION_ENABLED`
+  - `FEATURE_TRANSCRIPTION_ROLLOUT_PERCENT`
+- [ ] Rollout starts at canary (for example `10%`) before increasing.
+- [ ] Rollback command/process is documented in release notes (set rollout to `0` or disable flags).
+
+## 7. AI/Transcription SLO Evidence
+
+- [ ] `/api/metrics` snapshot is attached for sign-off.
+- [ ] Feedback queue depth metric is stable (`starmock_feedback_queue_depth`).
+- [ ] Transcription queue depth metric is stable (`starmock_transcription_queue_depth`).
+- [ ] Feedback fallback rate is within threshold (`starmock_feedback_fallback_total` trend).
+- [ ] No sustained spike in:
+  - `starmock_feedback_provider_errors_total`
+  - `starmock_transcription_jobs_total{status="failed"}`
+
+## 8. Operational Runbook Checks
+
+- [ ] Correlation ID is visible in request logs and error payloads (`x-correlation-id`).
+- [ ] On-call can trace a failed session end-to-end via correlation/job IDs.
+- [ ] Upload security controls validated:
+  - short-lived token expiry
+  - MIME/size validation
+  - replay blocked (`UPLOAD_ALREADY_USED`)

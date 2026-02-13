@@ -168,3 +168,30 @@ Acceptance criteria:
 - All production gates pass for two consecutive release cycles.
 - On-call runbook, rollback playbook, and dashboards are in place.
 - Post-release metrics remain within SLO for 14 days.
+
+## Implementation Status Snapshot (February 12, 2026)
+Implemented in this repository:
+- Async feedback orchestration:
+  - `POST /api/sessions/:id/complete` enqueues `FeedbackJob`.
+  - `GET /api/sessions/:id/feedback-status` and async `GET /api/sessions/:id/feedback` read paths.
+- LLM + fallback hardening:
+  - OpenAI provider integrated with timeout, bounded retry, strict evaluation validation, and rule-based fallback.
+  - Evaluator metadata persisted (`provider`, `model`, `promptVersion`, `latency`, `tokenUsage`, fallback data).
+- Audio + transcription pipeline:
+  - Browser recording start/stop/upload states in `app/public/components/interview-redirect.js`.
+  - Signed upload flow in `POST /api/uploads/audio/presign` and tokenized upload endpoint.
+  - Audio response persistence (`responseType`, `audioUrl`, transcript confidence/state metadata).
+  - Transcription job model + worker with status transitions: `uploaded -> transcribing -> ready|failed`.
+  - Transcript status and edit endpoints:
+    - `GET /api/sessions/:id/responses/:responseId/transcription-status`
+    - `PATCH /api/sessions/:id/responses/:responseId/transcript`
+- Security + rollout controls:
+  - Conditional env validation for feedback/transcription/upload providers.
+  - Route-specific rate limits for expensive feedback/upload endpoints.
+  - Signed upload replay protection.
+  - Feature flags with rollout percentages and `/api/features` endpoint.
+- Observability:
+  - Request correlation IDs (`x-correlation-id`) across API + job metadata.
+  - Structured request logging with correlation IDs.
+  - Metrics service and `/api/metrics` endpoint (JSON or Prometheus text).
+  - Feedback/transcription queue depth, latency, fallback, and error metrics.

@@ -13,6 +13,9 @@ const requiredEnvVars = {
     'PORT',
     'NODE_ENV',
     'FRONTEND_URL',
+    'FEEDBACK_PROVIDER',
+    'TRANSCRIPTION_PROVIDER',
+    'UPLOAD_SIGNING_SECRET',
   ],
 }
 
@@ -82,12 +85,37 @@ export function validateEnvironment() {
   }
 
   // OpenAI API key required when using OpenAI provider
+  const feedbackProvider = (process.env.FEEDBACK_PROVIDER || 'rule_based')
+    .toLowerCase()
+    .trim()
+  const transcriptionProvider = (
+    process.env.TRANSCRIPTION_PROVIDER || 'mock'
+  )
+    .toLowerCase()
+    .trim()
+
   if (
-    process.env.FEEDBACK_PROVIDER === 'openai' &&
-    !process.env.OPENAI_API_KEY
+    !['rule_based', 'openai', 'ai_model'].includes(feedbackProvider)
   ) {
     validationErrors.push(
-      'OPENAI_API_KEY is required when FEEDBACK_PROVIDER is set to "openai"'
+      'FEEDBACK_PROVIDER must be one of: rule_based, openai, ai_model'
+    )
+  }
+
+  if (!['mock', 'openai'].includes(transcriptionProvider)) {
+    validationErrors.push(
+      'TRANSCRIPTION_PROVIDER must be one of: mock, openai'
+    )
+  }
+
+  const requiresOpenAI =
+    feedbackProvider === 'openai' ||
+    feedbackProvider === 'ai_model' ||
+    transcriptionProvider === 'openai'
+
+  if (requiresOpenAI && !process.env.OPENAI_API_KEY) {
+    validationErrors.push(
+      'OPENAI_API_KEY is required when OpenAI feedback/transcription providers are enabled'
     )
   }
 
@@ -97,6 +125,32 @@ export function validateEnvironment() {
     !process.env.OPENAI_API_KEY.startsWith('sk-')
   ) {
     validationErrors.push('OPENAI_API_KEY should start with "sk-"')
+  }
+
+  const uploadTtlSeconds = Number.parseInt(
+    process.env.UPLOAD_URL_TTL_SECONDS || '300',
+    10
+  )
+  if (!Number.isInteger(uploadTtlSeconds) || uploadTtlSeconds <= 0) {
+    validationErrors.push('UPLOAD_URL_TTL_SECONDS must be a positive integer')
+  }
+
+  const uploadMaxAudioBytes = Number.parseInt(
+    process.env.UPLOAD_MAX_AUDIO_BYTES || '12582912',
+    10
+  )
+  if (!Number.isInteger(uploadMaxAudioBytes) || uploadMaxAudioBytes <= 0) {
+    validationErrors.push('UPLOAD_MAX_AUDIO_BYTES must be a positive integer')
+  }
+
+  if (
+    env === 'production' &&
+    process.env.UPLOAD_SIGNING_SECRET &&
+    process.env.UPLOAD_SIGNING_SECRET.length < 16
+  ) {
+    validationErrors.push(
+      'UPLOAD_SIGNING_SECRET must be at least 16 characters in production'
+    )
   }
 
   if (validationErrors.length > 0) {
@@ -152,7 +206,11 @@ export function getEnvironmentSummary() {
     sessionSecret: process.env.SESSION_SECRET ? '***' : 'not set',
     jwtSecret: process.env.JWT_SECRET ? '***' : 'not set',
     feedbackProvider: process.env.FEEDBACK_PROVIDER || 'rule_based',
+    transcriptionProvider: process.env.TRANSCRIPTION_PROVIDER || 'mock',
     openaiApiKey: process.env.OPENAI_API_KEY ? '***' : 'not set',
+    uploadSigningSecret: process.env.UPLOAD_SIGNING_SECRET ? '***' : 'not set',
+    uploadTtlSeconds: process.env.UPLOAD_URL_TTL_SECONDS || '300',
+    uploadMaxAudioBytes: process.env.UPLOAD_MAX_AUDIO_BYTES || '12582912',
   }
 }
 

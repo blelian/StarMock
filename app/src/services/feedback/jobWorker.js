@@ -4,6 +4,11 @@ import {
   InterviewResponse,
 } from '../../models/index.js'
 import { evaluateResponseWithProvider } from './index.js'
+import {
+  incrementCounter,
+  observeDuration,
+  setGauge,
+} from '../metrics/index.js'
 
 function getQuestionText(question) {
   if (!question) return 'Question not found'
@@ -41,6 +46,7 @@ async function generateFeedbackReportsForJob(job) {
   }
 
   let generatedCount = 0
+  let fallbackCount = 0
   for (const response of responses) {
     const existing = await FeedbackReport.findOne({
       responseId: response._id,
@@ -51,7 +57,8 @@ async function generateFeedbackReportsForJob(job) {
       continue
     }
 
-    const { evaluation, evaluatorType } = await evaluateResponseWithProvider(
+    const { evaluation, evaluatorType, evaluatorMetadata } =
+      await evaluateResponseWithProvider(
       response.responseText,
       response.questionId
     )
@@ -69,9 +76,18 @@ async function generateFeedbackReportsForJob(job) {
         questionText: getQuestionText(response.questionId),
       },
       evaluatorType,
+      evaluatorMetadata: {
+        ...(evaluatorMetadata || {}),
+        generatedAt: new Date(),
+        correlationId:
+          evaluatorMetadata?.correlationId || job.metadata?.correlationId || null,
+      },
     })
 
     await feedback.save()
+    if (evaluatorMetadata?.fallback) {
+      fallbackCount += 1
+    }
     generatedCount += 1
   }
 
@@ -79,6 +95,7 @@ async function generateFeedbackReportsForJob(job) {
     ...(job.metadata || {}),
     responseCount: responses.length,
     generatedCount,
+    fallbackCount,
   }
 }
 
@@ -92,12 +109,29 @@ export async function processFeedbackJob(job) {
     return { processed: false, reason: 'not_queued', status: job.status }
   }
 
+  const startedAt = Date.now()
   try {
     await generateFeedbackReportsForJob(job)
     await job.markCompleted()
+    observeDuration(
+      'starmock_feedback_job_duration_ms',
+      Date.now() - startedAt,
+      { status: 'completed' }
+    )
+    incrementCounter('starmock_feedback_jobs_total', { status: 'completed' }, 1)
     return { processed: true, status: 'completed', jobId: job._id }
   } catch (error) {
     const failure = await job.markFailed(error)
+    observeDuration(
+      'starmock_feedback_job_duration_ms',
+      Date.now() - startedAt,
+      { status: failure.retrying ? 'retrying' : 'failed' }
+    )
+    incrementCounter(
+      'starmock_feedback_jobs_total',
+      { status: failure.retrying ? 'retrying' : 'failed' },
+      1
+    )
     return {
       processed: true,
       status: failure.retrying ? 'queued' : 'failed',
@@ -158,6 +192,11 @@ export async function runFeedbackJobCycle() {
 
     const staleRecovered = await recoverStaleProcessingJobs(staleMinutes)
     const processedJobs = await processNextFeedbackJobs(batchSize)
+    const queueDepth = await FeedbackJob.countDocuments({ status: 'queued' })
+    setGauge('starmock_feedback_queue_depth', {}, queueDepth)
+    if (staleRecovered > 0) {
+      incrementCounter('starmock_feedback_stale_recovered_total', {}, staleRecovered)
+    }
 
     return {
       staleRecovered,

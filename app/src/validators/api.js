@@ -91,21 +91,191 @@ export function validateCreateSessionRequest(req) {
 }
 
 export function validateSubmitResponseRequest(req) {
-  const { questionId, responseText } = req.body || {}
+  const {
+    questionId,
+    responseText,
+    responseType = 'text',
+    audioUrl,
+    audioMimeType,
+    audioSizeBytes,
+    audioDurationSeconds,
+    transcriptConfidence,
+  } = req.body || {}
 
-  if (!isNonEmptyString(questionId) || !isNonEmptyString(responseText)) {
+  if (!isNonEmptyString(questionId)) {
     return {
       valid: false,
-      message: 'Question ID and response text are required',
-      code: 'MISSING_FIELDS',
+      message: 'Question ID is required',
+      code: 'MISSING_QUESTION_ID',
     }
   }
 
-  if (responseText.trim().length < 50) {
+  if (!['text', 'audio_transcript'].includes(responseType)) {
     return {
       valid: false,
-      message: 'Response must be at least 50 characters',
-      code: 'RESPONSE_TOO_SHORT',
+      message: 'Response type must be text or audio_transcript',
+      code: 'INVALID_RESPONSE_TYPE',
+    }
+  }
+
+  const normalizedText =
+    typeof responseText === 'string' ? responseText.trim() : ''
+
+  if (responseType === 'text') {
+    if (!isNonEmptyString(normalizedText)) {
+      return {
+        valid: false,
+        message: 'Response text is required for text submissions',
+        code: 'MISSING_RESPONSE_TEXT',
+      }
+    }
+
+    if (normalizedText.length < 50) {
+      return {
+        valid: false,
+        message: 'Response must be at least 50 characters',
+        code: 'RESPONSE_TOO_SHORT',
+      }
+    }
+
+    if (isNonEmptyString(audioUrl)) {
+      return {
+        valid: false,
+        message: 'Audio URL cannot be provided for text responses',
+        code: 'INVALID_AUDIO_FOR_TEXT',
+      }
+    }
+  }
+
+  if (responseType === 'audio_transcript') {
+    if (!isNonEmptyString(audioUrl)) {
+      return {
+        valid: false,
+        message: 'Audio URL is required for audio transcript responses',
+        code: 'MISSING_AUDIO_URL',
+      }
+    }
+
+    if (normalizedText.length > 0 && normalizedText.length < 20) {
+      return {
+        valid: false,
+        message:
+          'Transcript text must be at least 20 characters when provided',
+        code: 'TRANSCRIPT_TOO_SHORT',
+      }
+    }
+
+    if (
+      audioMimeType !== undefined &&
+      (!isNonEmptyString(audioMimeType) || !audioMimeType.startsWith('audio/'))
+    ) {
+      return {
+        valid: false,
+        message: 'Audio MIME type must be a valid audio/* value',
+        code: 'INVALID_AUDIO_MIME',
+      }
+    }
+
+    if (
+      audioSizeBytes !== undefined &&
+      (!Number.isFinite(audioSizeBytes) || audioSizeBytes <= 0)
+    ) {
+      return {
+        valid: false,
+        message: 'Audio size must be a positive number of bytes',
+        code: 'INVALID_AUDIO_SIZE',
+      }
+    }
+
+    if (
+      audioDurationSeconds !== undefined &&
+      (!Number.isFinite(audioDurationSeconds) || audioDurationSeconds <= 0)
+    ) {
+      return {
+        valid: false,
+        message: 'Audio duration must be a positive number in seconds',
+        code: 'INVALID_AUDIO_DURATION',
+      }
+    }
+
+    if (
+      transcriptConfidence !== undefined &&
+      (!Number.isFinite(transcriptConfidence) ||
+        transcriptConfidence < 0 ||
+        transcriptConfidence > 1)
+    ) {
+      return {
+        valid: false,
+        message: 'Transcript confidence must be between 0 and 1',
+        code: 'INVALID_TRANSCRIPT_CONFIDENCE',
+      }
+    }
+  }
+
+  return { valid: true }
+}
+
+export function validateAudioPresignRequest(req) {
+  const {
+    sessionId,
+    mimeType,
+    sizeBytes,
+    durationSeconds,
+    responseId,
+    responseType = 'audio_transcript',
+  } = req.body || {}
+
+  if (!isNonEmptyString(sessionId)) {
+    return {
+      valid: false,
+      message: 'Session ID is required',
+      code: 'MISSING_SESSION_ID',
+    }
+  }
+
+  if (!isNonEmptyString(mimeType) || !mimeType.startsWith('audio/')) {
+    return {
+      valid: false,
+      message: 'mimeType must be a valid audio/* value',
+      code: 'INVALID_AUDIO_MIME',
+    }
+  }
+
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+    return {
+      valid: false,
+      message: 'sizeBytes must be a positive number',
+      code: 'INVALID_AUDIO_SIZE',
+    }
+  }
+
+  if (
+    durationSeconds !== undefined &&
+    (!Number.isFinite(durationSeconds) || durationSeconds <= 0)
+  ) {
+    return {
+      valid: false,
+      message: 'durationSeconds must be a positive number',
+      code: 'INVALID_AUDIO_DURATION',
+    }
+  }
+
+  if (
+    responseId !== undefined &&
+    !(typeof responseId === 'string' && responseId.trim().length > 0)
+  ) {
+    return {
+      valid: false,
+      message: 'responseId must be a non-empty string when provided',
+      code: 'INVALID_RESPONSE_ID',
+    }
+  }
+
+  if (!['audio_transcript'].includes(responseType)) {
+    return {
+      valid: false,
+      message: 'responseType must be audio_transcript',
+      code: 'INVALID_RESPONSE_TYPE',
     }
   }
 
@@ -117,4 +287,5 @@ export default {
   validateLoginRequest,
   validateCreateSessionRequest,
   validateSubmitResponseRequest,
+  validateAudioPresignRequest,
 }
