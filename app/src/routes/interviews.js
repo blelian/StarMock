@@ -714,10 +714,15 @@ router.get(
         userId: req.userId,
       })
 
+      const includeText =
+        response.transcriptionStatus === 'ready' ||
+        response.transcriptionStatus === 'review_required'
+
       return res.json({
         response: {
           id: response._id,
           responseType: response.responseType,
+          responseText: includeText ? response.responseText || '' : undefined,
           transcriptionStatus: response.transcriptionStatus,
           transcriptConfidence: response.transcriptConfidence ?? null,
           transcriptProvider: response.transcriptProvider || null,

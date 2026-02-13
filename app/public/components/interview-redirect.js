@@ -8,6 +8,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const startRecordingBtn = document.getElementById('start-recording-btn')
   const stopRecordingBtn = document.getElementById('stop-recording-btn')
   const transcriptWarning = document.getElementById('transcript-warning')
+  const transcribingIndicator = document.getElementById(
+    'transcribing-indicator'
+  )
+  const transcribingStatusText = document.getElementById(
+    'transcribing-status-text'
+  )
   const messageEl = document.getElementById('interview-message')
   const questionMeta = document.getElementById('question-meta')
   const questionPrompt = document.getElementById('question-prompt')
@@ -40,6 +46,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   let uploadedAudioUrl = null
   let uploadedAudioMimeType = null
   let transcriptConfidence = null
+  let submittedResponseId = null
+  let transcriptionPollTimer = null
+  let transcriptReady = false
   let featureFlags = {
     aiRecording: true,
     audioUploads: true,
@@ -127,7 +136,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
-    const confidence = transcriptConfidence ?? estimateTranscriptConfidence(responseInput.value)
+    const confidence =
+      transcriptConfidence ?? estimateTranscriptConfidence(responseInput.value)
     if (confidence < 0.75) {
       transcriptWarning.classList.remove('hidden')
     } else {
@@ -169,6 +179,156 @@ document.addEventListener('DOMContentLoaded', async () => {
     resetRecordingState()
   }
 
+  const showTranscribingIndicator = (text) => {
+    if (transcribingIndicator) {
+      transcribingIndicator.classList.remove('hidden')
+      transcribingIndicator.style.display = 'flex'
+    }
+    if (transcribingStatusText) {
+      transcribingStatusText.textContent = text || 'Transcribing your audio...'
+    }
+  }
+
+  const hideTranscribingIndicator = () => {
+    if (transcribingIndicator) {
+      transcribingIndicator.classList.add('hidden')
+      transcribingIndicator.style.display = 'none'
+    }
+  }
+
+  const stopTranscriptionPolling = () => {
+    if (transcriptionPollTimer) {
+      clearInterval(transcriptionPollTimer)
+      transcriptionPollTimer = null
+    }
+  }
+
+  const pollTranscriptionStatus = () => {
+    if (!sessionId || !submittedResponseId) return
+
+    const pollUrl = `/api/sessions/${sessionId}/responses/${submittedResponseId}/transcription-status`
+    let pollCount = 0
+    const maxPolls = 60 // ~3 minutes at 3s intervals
+
+    showTranscribingIndicator('Transcribing your audio...')
+
+    transcriptionPollTimer = setInterval(async () => {
+      pollCount++
+      if (pollCount > maxPolls) {
+        stopTranscriptionPolling()
+        hideTranscribingIndicator()
+        setMessage(
+          'Transcription is taking longer than expected. You can type your answer manually.',
+          true
+        )
+        responseInput.disabled = false
+        responseInput.focus()
+        updateSubmitState()
+        return
+      }
+
+      try {
+        const result = await apiRequest(pollUrl)
+        if (!result.ok) return
+
+        const status = result.payload?.response?.transcriptionStatus
+        const jobStatus = result.payload?.transcriptionJob?.status
+
+        if (status === 'transcribing' || jobStatus === 'transcribing') {
+          showTranscribingIndicator('Transcribing... almost done')
+        }
+
+        if (status === 'ready' || status === 'review_required') {
+          stopTranscriptionPolling()
+          hideTranscribingIndicator()
+
+          const transcriptText = result.payload?.response?.responseText || ''
+          transcriptConfidence =
+            result.payload?.response?.transcriptConfidence ?? null
+
+          if (transcriptText) {
+            responseInput.value = transcriptText
+          }
+
+          responseInput.disabled = false
+          responseInput.focus()
+          transcriptReady = true
+          updateSubmitState()
+
+          if (status === 'review_required') {
+            setMessage(
+              'Transcript ready but confidence is low. Please review and edit before submitting.'
+            )
+          } else {
+            setMessage(
+              'Transcript ready! Review the text below and submit when satisfied.'
+            )
+          }
+        }
+
+        if (status === 'failed') {
+          stopTranscriptionPolling()
+          hideTranscribingIndicator()
+          setMessage(
+            'Auto-transcription failed. Please type your response manually.',
+            true
+          )
+          responseInput.disabled = false
+          responseInput.focus()
+          updateSubmitState()
+        }
+      } catch {
+        // Silently retry on network errors
+      }
+    }, 3000)
+  }
+
+  const autoSubmitForTranscription = async () => {
+    if (!sessionId || !currentQuestion?.id || !uploadedAudioUrl) return
+
+    setMessage('Starting auto-transcription...')
+
+    const payload = {
+      questionId: currentQuestion.id,
+      responseText: '',
+      responseType: 'audio_transcript',
+      audioUrl: uploadedAudioUrl,
+      audioMimeType: uploadedAudioMimeType || 'audio/webm',
+      audioDurationSeconds: Number(recordingDurationSeconds.toFixed(1)),
+      transcriptConfidence: 0,
+    }
+
+    const result = await apiRequest(`/api/sessions/${sessionId}/responses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    if (!result.ok) {
+      setMessage(
+        result.payload?.error?.message ||
+          'Failed to start transcription. Type your answer manually.',
+        true
+      )
+      responseInput.disabled = false
+      responseInput.focus()
+      return
+    }
+
+    submittedResponseId = result.payload?.response?.id
+    if (!submittedResponseId) {
+      setMessage(
+        'Transcription request failed. Type your answer manually.',
+        true
+      )
+      responseInput.disabled = false
+      responseInput.focus()
+      return
+    }
+
+    pollTranscriptionStatus()
+  }
+
   const uploadAudioBlob = async (audioBlob) => {
     if (!sessionId) {
       throw new Error('Session ID is required before audio upload')
@@ -199,7 +359,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       method: uploadDescriptor.method || 'PUT',
       headers: {
         'Content-Type':
-          uploadDescriptor.headers?.['Content-Type'] || mimeType || 'audio/webm',
+          uploadDescriptor.headers?.['Content-Type'] ||
+          mimeType ||
+          'audio/webm',
       },
       body: audioBlob,
     })
@@ -213,11 +375,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!uploadResponse.ok) {
       throw new Error(
-        uploadPayload?.error?.message || 'Audio upload failed. Please try again.'
+        uploadPayload?.error?.message ||
+          'Audio upload failed. Please try again.'
       )
     }
 
-    uploadedAudioUrl = uploadPayload?.audioUrl || uploadDescriptor.audioUrl || null
+    uploadedAudioUrl =
+      uploadPayload?.audioUrl || uploadDescriptor.audioUrl || null
     uploadedAudioMimeType = mimeType
     transcriptConfidence = estimateTranscriptConfidence(responseInput.value)
     updateTranscriptWarning()
@@ -262,12 +426,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           const audioType = mediaRecorder?.mimeType || 'audio/webm'
           const audioBlob = new Blob(recordedChunks, { type: audioType })
           await uploadAudioBlob(audioBlob)
-          recordingText.textContent = 'Audio uploaded. Review transcript before submit.'
+          recordingText.textContent = 'Audio uploaded. Transcribing...'
           recordingEmoji.classList.remove('hidden')
-          setMessage(
-            'Audio uploaded. Edit the transcript below before submitting your answer.'
-          )
-          updateSubmitState()
+
+          // Auto-submit with empty text to trigger backend transcription
+          responseInput.disabled = true
+          startRecordingBtn.disabled = true
+          stopRecordingBtn.disabled = true
+          await autoSubmitForTranscription()
         } catch (error) {
           uploadedAudioUrl = null
           setMessage(error.message || 'Audio upload failed', true)
@@ -290,7 +456,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       cleanupMedia()
       setMessage(
-        error.message || 'Unable to access microphone. Check browser permissions.',
+        error.message ||
+          'Unable to access microphone. Check browser permissions.',
         true
       )
     }
@@ -423,49 +590,74 @@ document.addEventListener('DOMContentLoaded', async () => {
     responseInput.disabled = true
     startRecordingBtn.disabled = true
     stopRecordingBtn.disabled = true
-    setMessage('Submitting your response...')
+    stopTranscriptionPolling()
 
-    const payload = {
-      questionId: currentQuestion.id,
-      responseText,
-      responseType: uploadedAudioUrl ? 'audio_transcript' : 'text',
-    }
-
-    if (uploadedAudioUrl) {
-      payload.audioUrl = uploadedAudioUrl
-      payload.audioMimeType = uploadedAudioMimeType || 'audio/webm'
-      payload.audioDurationSeconds = Number(recordingDurationSeconds.toFixed(1))
-      payload.transcriptConfidence =
-        transcriptConfidence ?? estimateTranscriptConfidence(responseText)
-    }
-
-    const submitResponseResult = await apiRequest(
-      `/api/sessions/${sessionId}/responses`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }
-    )
-
-    if (!submitResponseResult.ok) {
-      responseInput.disabled = false
-      submitBtn.disabled = false
-      if (isAudioRecordingEnabled()) {
-        startRecordingBtn.disabled = false
-      }
-      setMessage(
-        submitResponseResult.payload?.error?.message ||
-          'Failed to submit response.',
-        true
+    // Audio mode: response already auto-submitted, save transcript edits via PATCH
+    if (submittedResponseId && uploadedAudioUrl) {
+      setMessage('Saving your reviewed transcript...')
+      const patchResult = await apiRequest(
+        `/api/sessions/${sessionId}/responses/${submittedResponseId}/transcript`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            responseText,
+            transcriptEdited: true,
+          }),
+        }
       )
-      return
+
+      if (!patchResult.ok) {
+        responseInput.disabled = false
+        submitBtn.disabled = false
+        setMessage(
+          patchResult.payload?.error?.message ||
+            'Failed to save transcript. Please try again.',
+          true
+        )
+        return
+      }
+    } else {
+      // Text-only mode: submit response normally
+      setMessage('Submitting your response...')
+
+      const payload = {
+        questionId: currentQuestion.id,
+        responseText,
+        responseType: 'text',
+      }
+
+      const submitResponseResult = await apiRequest(
+        `/api/sessions/${sessionId}/responses`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      )
+
+      if (!submitResponseResult.ok) {
+        responseInput.disabled = false
+        submitBtn.disabled = false
+        if (isAudioRecordingEnabled()) {
+          startRecordingBtn.disabled = false
+        }
+        setMessage(
+          submitResponseResult.payload?.error?.message ||
+            'Failed to submit response.',
+          true
+        )
+        return
+      }
     }
 
     setMessage('Completing session...')
-    const completeResult = await apiRequest(`/api/sessions/${sessionId}/complete`, {
-      method: 'POST',
-    })
+    const completeResult = await apiRequest(
+      `/api/sessions/${sessionId}/complete`,
+      {
+        method: 'POST',
+      }
+    )
 
     if (!completeResult.ok) {
       responseInput.disabled = false
@@ -488,6 +680,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   window.addEventListener('beforeunload', () => {
     cleanupMedia()
+    stopTranscriptionPolling()
   })
 
   await loadFeatureFlags()

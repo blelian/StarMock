@@ -1,168 +1,225 @@
-<!DOCTYPE html>
+<!doctype html>
 <html class="dark" lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>StarMock - Mission Control</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StarMock - Mission Control</title>
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons+Round"
+      rel="stylesheet"
+    />
 
-  <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 
-  <!-- Shared Tailwind Config -->
-  <script src="/components/tailwind-config.js"></script>
+    <!-- Shared Tailwind Config -->
+    <script src="/components/tailwind-config.js"></script>
 
-  <!-- Global Styles -->
-  <link href="/styles/global.css" rel="stylesheet"/>
-</head>
+    <!-- Global Styles -->
+    <link href="/styles/global.css" rel="stylesheet" />
+  </head>
 
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display">
+  <body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display"
+  >
+    <!-- Background Grid -->
+    <div class="fixed inset-0 grid-bg pointer-events-none opacity-40"></div>
 
-  <!-- Background Grid -->
-  <div class="fixed inset-0 grid-bg pointer-events-none opacity-40"></div>
+    <!-- Header -->
+    <div id="site-header"></div>
 
-  <!-- Header -->
-  <div id="site-header"></div>
+    <!-- Spacer -->
+    <div class="h-12 w-full"></div>
 
-  <!-- Spacer -->
-  <div class="h-12 w-full"></div>
+    <!-- Main Content -->
+    <main class="flex-1 px-5 py-6 relative z-10 max-w-6xl mx-auto w-full">
+      <section class="mb-8">
+        <h2 class="text-2xl font-bold mb-1">Mission Control</h2>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">
+          Ready to level up your interview performance?
+        </p>
+      </section>
 
-  <!-- Main Content -->
-  <main class="flex-1 px-5 py-6 relative z-10 max-w-6xl mx-auto w-full">
-
-    <section class="mb-8">
-      <h2 class="text-2xl font-bold mb-1">Mission Control</h2>
-      <p class="text-slate-500 dark:text-slate-400 text-sm">
-        Ready to level up your interview performance?
-      </p>
-    </section>
-
-    <section>
-      <div class="flex items-center justify-between mb-5">
-        <h3 class="text-lg font-bold flex items-center gap-2">
-          Recommended
-          <span class="text-primary text-xs bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
-            For You
-          </span>
-        </h3>
-      </div>
-
-      <div class="space-y-4">
-        <!-- Question Card -->
-        <div class="question-card bg-card-bg dark:bg-card-bg rounded-3xl p-6 border border-slate-800 shadow-xl shadow-black/5">
-          <div class="flex justify-between items-start mb-4">
+      <section>
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold flex items-center gap-2">
+            Recommended
             <span
-              id="question-meta"
-              class="px-3 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-bold uppercase tracking-widest rounded-full"
+              class="text-primary text-xs bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider"
             >
-              Loading Question
+              For You
             </span>
-          </div>
+          </h3>
+        </div>
 
-          <h4 id="question-prompt" class="text-lg font-semibold leading-snug mb-6">
-            Loading interview prompt...
-          </h4>
+        <div class="space-y-4">
+          <!-- Question Card -->
+          <div
+            class="question-card bg-card-bg dark:bg-card-bg rounded-3xl p-6 border border-slate-800 shadow-xl shadow-black/5"
+          >
+            <div class="flex justify-between items-start mb-4">
+              <span
+                id="question-meta"
+                class="px-3 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-bold uppercase tracking-widest rounded-full"
+              >
+                Loading Question
+              </span>
+            </div>
 
-          <!-- Start Button -->
-          <div class="flex items-center justify-between pt-4 border-t border-slate-800">
-            <button
-              id="start-interview-btn"
-              class="start-btn bg-primary hover:opacity-90 transition-opacity text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2"
-              disabled
+            <h4
+              id="question-prompt"
+              class="text-lg font-semibold leading-snug mb-6"
             >
-              Start <span class="material-icons-round text-base">play_arrow</span>
-            </button>
-          </div>
+              Loading interview prompt...
+            </h4>
 
-          <!-- Recording Indicator -->
-          <div class="recording mt-4 flex items-center gap-3">
-            <span id="recording-emoji" class="recording-emoji text-xl hidden">🎤</span>
-            <p id="recording-text" class="recording-text text-sm font-semibold text-red-500">
-              Awaiting start
+            <!-- Start Button -->
+            <div
+              class="flex items-center justify-between pt-4 border-t border-slate-800"
+            >
+              <button
+                id="start-interview-btn"
+                class="start-btn bg-primary hover:opacity-90 transition-opacity text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2"
+                disabled
+              >
+                Start
+                <span class="material-icons-round text-base">play_arrow</span>
+              </button>
+            </div>
+
+            <!-- Recording Indicator -->
+            <div class="recording mt-4 flex items-center gap-3">
+              <span id="recording-emoji" class="recording-emoji text-xl hidden"
+                >🎤</span
+              >
+              <p
+                id="recording-text"
+                class="recording-text text-sm font-semibold text-red-500"
+              >
+                Awaiting start
+              </p>
+              <p id="recording-duration" class="text-xs text-slate-400 hidden">
+                00:00
+              </p>
+            </div>
+
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button
+                id="start-recording-btn"
+                class="hidden bg-rose-500 hover:bg-rose-500/90 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide"
+              >
+                Start Recording
+              </button>
+              <button
+                id="stop-recording-btn"
+                class="hidden bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide"
+                disabled
+              >
+                Stop Recording
+              </button>
+            </div>
+
+            <!-- Answer Input -->
+            <textarea
+              id="response-input"
+              class="answer-input hidden mt-4 w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-100"
+              placeholder="Review or type your STAR answer transcript here..."
+            ></textarea>
+            <div
+              id="transcribing-indicator"
+              class="hidden mt-3 items-center gap-2"
+            >
+              <svg
+                class="animate-spin h-4 w-4 text-primary"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                ></path>
+              </svg>
+              <span
+                id="transcribing-status-text"
+                class="text-xs text-primary font-semibold"
+              >
+                Transcribing your audio...
+              </span>
+            </div>
+            <p
+              id="transcript-warning"
+              class="hidden mt-2 text-xs text-amber-400"
+            >
+              Transcript confidence is low. Review and edit before submitting.
             </p>
-            <p id="recording-duration" class="text-xs text-slate-400 hidden">
-              00:00
+            <div class="mt-4 flex items-center gap-3">
+              <button
+                id="submit-response-btn"
+                class="submit-btn hidden bg-primary hover:bg-primary/90 text-background-dark px-5 py-2 rounded-xl font-bold"
+                disabled
+              >
+                Submit Answer
+              </button>
+              <p id="interview-message" class="text-sm text-slate-400"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-8 mb-24">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-slate-800/50 rounded-2xl p-4">
+            <p
+              class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1"
+            >
+              Avg Score
             </p>
+            <div class="flex items-baseline gap-2">
+              <span class="text-2xl font-bold">82%</span>
+              <span class="text-[10px] text-primary font-bold">+5%</span>
+            </div>
           </div>
 
-          <div class="mt-3 flex flex-wrap gap-2">
-            <button
-              id="start-recording-btn"
-              class="hidden bg-rose-500 hover:bg-rose-500/90 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide"
+          <div class="bg-slate-800/50 rounded-2xl p-4">
+            <p
+              class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1"
             >
-              Start Recording
-            </button>
-            <button
-              id="stop-recording-btn"
-              class="hidden bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide"
-              disabled
-            >
-              Stop Recording
-            </button>
-          </div>
-
-          <!-- Answer Input -->
-          <textarea
-            id="response-input"
-            class="answer-input hidden mt-4 w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-100"
-            placeholder="Review or type your STAR answer transcript here..."
-          ></textarea>
-          <p id="transcript-warning" class="hidden mt-2 text-xs text-amber-400">
-            Transcript confidence is low. Review and edit before submitting.
-          </p>
-          <div class="mt-4 flex items-center gap-3">
-            <button
-              id="submit-response-btn"
-              class="submit-btn hidden bg-primary hover:bg-primary/90 text-background-dark px-5 py-2 rounded-xl font-bold"
-              disabled
-            >
-              Submit Answer
-            </button>
-            <p id="interview-message" class="text-sm text-slate-400"></p>
+              Time Spent
+            </p>
+            <div class="flex items-baseline gap-2">
+              <span class="text-2xl font-bold">12.5h</span>
+              <span class="text-[10px] text-primary font-bold">+2h</span>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
 
-    <section class="mt-8 mb-24">
-      <div class="grid grid-cols-2 gap-4">
-        <div class="bg-slate-800/50 rounded-2xl p-4">
-          <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">
-            Avg Score
-          </p>
-          <div class="flex items-baseline gap-2">
-            <span class="text-2xl font-bold">82%</span>
-            <span class="text-[10px] text-primary font-bold">+5%</span>
-          </div>
-        </div>
+    <!-- Footer -->
+    <div id="site-footer"></div>
 
-        <div class="bg-slate-800/50 rounded-2xl p-4">
-          <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">
-            Time Spent
-          </p>
-          <div class="flex items-baseline gap-2">
-            <span class="text-2xl font-bold">12.5h</span>
-            <span class="text-[10px] text-primary font-bold">+2h</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Footer -->
-  <div id="site-footer"></div>
-
-  <!-- JS Components -->
-  <script src="/components/auth-check.js" defer></script>
-  <script src="/components/header.js" defer></script>
-  <script src="/components/footer.js" defer></script>
-  <script src="/components/interview-redirect.js" defer></script>
-
-</body>
+    <!-- JS Components -->
+    <script src="/components/auth-check.js" defer></script>
+    <script src="/components/header.js" defer></script>
+    <script src="/components/footer.js" defer></script>
+    <script src="/components/interview-redirect.js" defer></script>
+  </body>
 </html>
