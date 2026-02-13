@@ -249,11 +249,21 @@ test.describe('AI recording interview flows', () => {
         }
       }
       ;(window as any).MediaRecorder = MockMediaRecorder
-      ;(navigator as any).mediaDevices = {
-        getUserMedia: () => ({
-          getTracks: () => [{ stop: () => {} }],
-        }),
+
+      const fakeStream = {
+        getTracks: () => [{ stop: () => {}, kind: 'audio' }],
+        getAudioTracks: () => [{ stop: () => {}, kind: 'audio' }],
+        active: true,
       }
+      const fakeDevices = {
+        getUserMedia: () => Promise.resolve(fakeStream),
+        enumerateDevices: () => Promise.resolve([]),
+      }
+      Object.defineProperty(navigator, 'mediaDevices', {
+        value: fakeDevices,
+        writable: true,
+        configurable: true,
+      })
     })
 
     const payloads: Array<Record<string, unknown>> = []
@@ -264,8 +274,9 @@ test.describe('AI recording interview flows', () => {
 
     await page.goto('/interview.html')
     await page.getByRole('button', { name: /start/i }).click()
+    const stopBtn = page.getByRole('button', { name: /stop recording/i })
     await page.getByRole('button', { name: /start recording/i }).click()
-    await page.getByRole('button', { name: /stop recording/i }).click()
+    await stopBtn.click({ timeout: 10000 })
 
     await page
       .locator('#response-input')
