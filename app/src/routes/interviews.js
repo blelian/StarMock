@@ -337,6 +337,7 @@ router.post(
         audioSizeBytes = null,
         audioDurationSeconds = null,
         transcriptConfidence = null,
+        transcriptProvider: clientTranscriptProvider = null,
       } = req.body
       const normalizedResponseText =
         typeof responseText === 'string' ? responseText.trim() : ''
@@ -446,7 +447,7 @@ router.post(
         transcriptProvider:
           responseType === 'audio_transcript' &&
           normalizedResponseText.length > 0
-            ? 'manual'
+            ? clientTranscriptProvider || 'manual'
             : undefined,
         transcriptEdited:
           responseType === 'audio_transcript' &&

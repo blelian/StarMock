@@ -1,3 +1,4 @@
+/* global webkitSpeechRecognition */
 document.addEventListener('DOMContentLoaded', async () => {
   const startBtn = document.getElementById('start-interview-btn')
   const submitBtn = document.getElementById('submit-response-btn')
@@ -8,12 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const startRecordingBtn = document.getElementById('start-recording-btn')
   const stopRecordingBtn = document.getElementById('stop-recording-btn')
   const transcriptWarning = document.getElementById('transcript-warning')
-  const transcribingIndicator = document.getElementById(
-    'transcribing-indicator'
-  )
-  const transcribingStatusText = document.getElementById(
-    'transcribing-status-text'
-  )
   const messageEl = document.getElementById('interview-message')
   const questionMeta = document.getElementById('question-meta')
   const questionPrompt = document.getElementById('question-prompt')
@@ -35,6 +30,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     return
   }
 
+  const liveTranscriptIndicator = document.getElementById(
+    'live-transcript-indicator'
+  )
+  const liveTranscriptStatus = document.getElementById('live-transcript-status')
+
   let currentQuestion = null
   let sessionId = null
   let mediaRecorder = null
@@ -46,14 +46,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   let uploadedAudioUrl = null
   let uploadedAudioMimeType = null
   let transcriptConfidence = null
-  let submittedResponseId = null
-  let transcriptionPollTimer = null
-  let transcriptReady = false
   let featureFlags = {
     aiRecording: true,
     audioUploads: true,
     transcription: true,
   }
+
+  // Browser-native speech recognition (Web Speech API)
+  let speechRecognition = null
+  let liveTranscriptParts = [] // accumulates finalized sentences
+  let interimTranscript = '' // current in-progress phrase
+
+  const SpeechRecognitionAPI =
+    typeof webkitSpeechRecognition !== 'undefined'
+      ? webkitSpeechRecognition
+      : typeof SpeechRecognition !== 'undefined'
+        ? SpeechRecognition
+        : null
+
+  const hasSpeechRecognitionSupport = !!SpeechRecognitionAPI
 
   const hasMediaRecorderSupport =
     typeof MediaRecorder !== 'undefined' &&
@@ -151,12 +162,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
-    // Block submit while transcription is still in progress
-    if (uploadedAudioUrl && submittedResponseId && !transcriptReady) {
-      submitBtn.disabled = true
-      return
-    }
-
     const minLength = uploadedAudioUrl ? 20 : 50
     submitBtn.disabled = responseInput.value.trim().length < minLength
     updateTranscriptWarning()
@@ -185,154 +190,108 @@ document.addEventListener('DOMContentLoaded', async () => {
     resetRecordingState()
   }
 
-  const showTranscribingIndicator = (text) => {
-    if (transcribingIndicator) {
-      transcribingIndicator.classList.remove('hidden')
-      transcribingIndicator.style.display = 'flex'
+  const showLiveTranscriptIndicator = (text) => {
+    if (liveTranscriptIndicator) {
+      liveTranscriptIndicator.classList.remove('hidden')
+      liveTranscriptIndicator.style.display = 'flex'
     }
-    if (transcribingStatusText) {
-      transcribingStatusText.textContent = text || 'Transcribing your audio...'
-    }
-  }
-
-  const hideTranscribingIndicator = () => {
-    if (transcribingIndicator) {
-      transcribingIndicator.classList.add('hidden')
-      transcribingIndicator.style.display = 'none'
+    if (liveTranscriptStatus) {
+      liveTranscriptStatus.textContent = text || 'Listening... speak clearly'
     }
   }
 
-  const stopTranscriptionPolling = () => {
-    if (transcriptionPollTimer) {
-      clearInterval(transcriptionPollTimer)
-      transcriptionPollTimer = null
+  const hideLiveTranscriptIndicator = () => {
+    if (liveTranscriptIndicator) {
+      liveTranscriptIndicator.classList.add('hidden')
+      liveTranscriptIndicator.style.display = 'none'
     }
   }
 
-  const pollTranscriptionStatus = () => {
-    if (!sessionId || !submittedResponseId) return
+  const updateLiveTranscript = () => {
+    const finalized = liveTranscriptParts.join(' ')
+    const combined = interimTranscript
+      ? `${finalized} ${interimTranscript}`.trim()
+      : finalized.trim()
+    if (combined) {
+      responseInput.value = combined
+      updateSubmitState()
+    }
+  }
 
-    const pollUrl = `/api/sessions/${sessionId}/responses/${submittedResponseId}/transcription-status`
-    let pollCount = 0
-    const maxPolls = 60 // ~3 minutes at 3s intervals
+  const startSpeechRecognition = () => {
+    if (!SpeechRecognitionAPI) return
 
-    showTranscribingIndicator('Transcribing your audio...')
+    liveTranscriptParts = []
+    interimTranscript = ''
 
-    transcriptionPollTimer = setInterval(async () => {
-      pollCount++
-      if (pollCount > maxPolls) {
-        stopTranscriptionPolling()
-        hideTranscribingIndicator()
-        setMessage(
-          'Transcription is taking longer than expected. You can type your answer manually.',
-          true
-        )
-        responseInput.disabled = false
-        responseInput.focus()
-        updateSubmitState()
-        return
+    speechRecognition = new SpeechRecognitionAPI()
+    speechRecognition.continuous = true
+    speechRecognition.interimResults = true
+    speechRecognition.lang = 'en-US'
+    speechRecognition.maxAlternatives = 1
+
+    speechRecognition.onresult = (event) => {
+      let finalChunk = ''
+      let tempInterim = ''
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i]
+        if (result.isFinal) {
+          finalChunk += result[0].transcript
+        } else {
+          tempInterim += result[0].transcript
+        }
       }
 
+      if (finalChunk) {
+        liveTranscriptParts.push(finalChunk.trim())
+      }
+      interimTranscript = tempInterim
+      updateLiveTranscript()
+    }
+
+    speechRecognition.onerror = (event) => {
+      if (event.error === 'no-speech') return // benign, keep listening
+      if (event.error === 'aborted') return // we stopped it
+      console.warn('Speech recognition error:', event.error)
+    }
+
+    // Auto-restart if browser ends recognition while still recording
+    speechRecognition.onend = () => {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        try {
+          speechRecognition.start()
+        } catch {
+          // already started or disposed
+        }
+      }
+    }
+
+    try {
+      speechRecognition.start()
+      showLiveTranscriptIndicator('Listening... speak clearly')
+    } catch {
+      console.warn('Could not start speech recognition')
+    }
+  }
+
+  const stopSpeechRecognition = () => {
+    hideLiveTranscriptIndicator()
+    if (speechRecognition) {
       try {
-        const result = await apiRequest(pollUrl)
-        if (!result.ok) return
-
-        const status = result.payload?.response?.transcriptionStatus
-        const jobStatus = result.payload?.transcriptionJob?.status
-
-        if (status === 'transcribing' || jobStatus === 'transcribing') {
-          showTranscribingIndicator('Transcribing... almost done')
-        }
-
-        if (status === 'ready' || status === 'review_required') {
-          stopTranscriptionPolling()
-          hideTranscribingIndicator()
-
-          const transcriptText = result.payload?.response?.responseText || ''
-          transcriptConfidence =
-            result.payload?.response?.transcriptConfidence ?? null
-
-          if (transcriptText) {
-            responseInput.value = transcriptText
-          }
-
-          responseInput.disabled = false
-          responseInput.focus()
-          transcriptReady = true
-          updateSubmitState()
-
-          if (status === 'review_required') {
-            setMessage(
-              'Transcript ready but confidence is low. Please review and edit before submitting.'
-            )
-          } else {
-            setMessage(
-              'Transcript ready! Review the text below and submit when satisfied.'
-            )
-          }
-        }
-
-        if (status === 'failed') {
-          stopTranscriptionPolling()
-          hideTranscribingIndicator()
-          setMessage(
-            'Auto-transcription failed. Please type your response manually.',
-            true
-          )
-          responseInput.disabled = false
-          responseInput.focus()
-          updateSubmitState()
-        }
+        speechRecognition.onend = null // prevent auto-restart
+        speechRecognition.stop()
       } catch {
-        // Silently retry on network errors
+        // already stopped
       }
-    }, 3000)
-  }
-
-  const autoSubmitForTranscription = async () => {
-    if (!sessionId || !currentQuestion?.id || !uploadedAudioUrl) return
-
-    setMessage('Starting auto-transcription...')
-
-    const payload = {
-      questionId: currentQuestion.id,
-      responseText: '',
-      responseType: 'audio_transcript',
-      audioUrl: uploadedAudioUrl,
-      audioMimeType: uploadedAudioMimeType || 'audio/webm',
-      audioDurationSeconds: Number(recordingDurationSeconds.toFixed(1)),
-      transcriptConfidence: 0,
+      speechRecognition = null
     }
-
-    const result = await apiRequest(`/api/sessions/${sessionId}/responses`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-
-    if (!result.ok) {
-      setMessage(
-        result.payload?.error?.message ||
-          'Failed to start transcription. Type your answer manually.',
-        true
-      )
-      responseInput.disabled = false
-      responseInput.focus()
-      return
+    // Finalize any remaining interim text
+    if (interimTranscript) {
+      liveTranscriptParts.push(interimTranscript.trim())
+      interimTranscript = ''
     }
-
-    submittedResponseId = result.payload?.response?.id
-    if (!submittedResponseId) {
-      setMessage(
-        'Transcription request failed. Type your answer manually.',
-        true
-      )
-      responseInput.disabled = false
-      responseInput.focus()
-      return
-    }
-
-    pollTranscriptionStatus()
+    updateLiveTranscript()
   }
 
   const uploadAudioBlob = async (audioBlob) => {
@@ -428,22 +387,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       mediaRecorder.onstop = async () => {
+        stopSpeechRecognition()
         try {
           const audioType = mediaRecorder?.mimeType || 'audio/webm'
           const audioBlob = new Blob(recordedChunks, { type: audioType })
           await uploadAudioBlob(audioBlob)
-          recordingText.textContent = 'Audio uploaded. Transcribing...'
+          recordingText.textContent = 'Audio uploaded'
           recordingEmoji.classList.remove('hidden')
 
-          // Auto-submit with empty text to trigger backend transcription
-          responseInput.disabled = true
-          startRecordingBtn.disabled = true
-          stopRecordingBtn.disabled = true
-          await autoSubmitForTranscription()
+          // Transcript was captured live by SpeechRecognition
+          // User can now review and edit before submitting
+          responseInput.disabled = false
+          responseInput.focus()
+          transcriptConfidence = estimateTranscriptConfidence(
+            responseInput.value
+          )
+          updateSubmitState()
+
+          if (responseInput.value.trim().length > 0) {
+            setMessage(
+              'Transcript ready! Review the text below and submit when satisfied.'
+            )
+          } else {
+            setMessage(
+              'Audio uploaded. Browser speech recognition did not capture text — please type your response.',
+              true
+            )
+          }
         } catch (error) {
           uploadedAudioUrl = null
           setMessage(error.message || 'Audio upload failed', true)
           recordingText.textContent = 'Upload failed'
+          responseInput.disabled = false
         } finally {
           cleanupMedia()
         }
@@ -458,7 +433,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       stopRecordingBtn.disabled = false
       recordingText.textContent = 'Recording in progress'
       recordingEmoji.classList.remove('hidden')
-      setMessage('Recording... Speak clearly, then stop to upload.')
+
+      // Start browser speech-to-text in parallel
+      startSpeechRecognition()
+
+      setMessage(
+        hasSpeechRecognitionSupport
+          ? 'Recording... Your words will appear below in real time.'
+          : 'Recording... Speak clearly, then stop to type your response.'
+      )
     } catch (error) {
       cleanupMedia()
       setMessage(
@@ -473,6 +456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!mediaRecorder || mediaRecorder.state !== 'recording') {
       return
     }
+    stopSpeechRecognition()
     mediaRecorder.stop()
     recordingText.textContent = 'Processing recording...'
     setMessage('Finalizing recording...')
@@ -596,65 +580,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     responseInput.disabled = true
     startRecordingBtn.disabled = true
     stopRecordingBtn.disabled = true
-    stopTranscriptionPolling()
+    stopSpeechRecognition()
 
-    // Audio mode: response already auto-submitted, save transcript edits via PATCH
-    if (submittedResponseId && uploadedAudioUrl) {
-      setMessage('Saving your reviewed transcript...')
-      const patchResult = await apiRequest(
-        `/api/sessions/${sessionId}/responses/${submittedResponseId}/transcript`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            responseText,
-            transcriptEdited: true,
-          }),
-        }
+    // Submit response (text or audio+transcript)
+    setMessage('Submitting your response...')
+
+    const payload = {
+      questionId: currentQuestion.id,
+      responseText,
+      responseType: uploadedAudioUrl ? 'audio_transcript' : 'text',
+    }
+
+    if (uploadedAudioUrl) {
+      payload.audioUrl = uploadedAudioUrl
+      payload.audioMimeType = uploadedAudioMimeType || 'audio/webm'
+      payload.audioDurationSeconds = Number(recordingDurationSeconds.toFixed(1))
+      payload.transcriptConfidence =
+        transcriptConfidence ?? estimateTranscriptConfidence(responseText)
+      payload.transcriptProvider = 'browser'
+    }
+
+    const submitResponseResult = await apiRequest(
+      `/api/sessions/${sessionId}/responses`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }
+    )
+
+    if (!submitResponseResult.ok) {
+      responseInput.disabled = false
+      submitBtn.disabled = false
+      if (isAudioRecordingEnabled()) {
+        startRecordingBtn.disabled = false
+      }
+      setMessage(
+        submitResponseResult.payload?.error?.message ||
+          'Failed to submit response.',
+        true
       )
-
-      if (!patchResult.ok) {
-        responseInput.disabled = false
-        submitBtn.disabled = false
-        setMessage(
-          patchResult.payload?.error?.message ||
-            'Failed to save transcript. Please try again.',
-          true
-        )
-        return
-      }
-    } else {
-      // Text-only mode: submit response normally
-      setMessage('Submitting your response...')
-
-      const payload = {
-        questionId: currentQuestion.id,
-        responseText,
-        responseType: 'text',
-      }
-
-      const submitResponseResult = await apiRequest(
-        `/api/sessions/${sessionId}/responses`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }
-      )
-
-      if (!submitResponseResult.ok) {
-        responseInput.disabled = false
-        submitBtn.disabled = false
-        if (isAudioRecordingEnabled()) {
-          startRecordingBtn.disabled = false
-        }
-        setMessage(
-          submitResponseResult.payload?.error?.message ||
-            'Failed to submit response.',
-          true
-        )
-        return
-      }
+      return
     }
 
     setMessage('Completing session...')
@@ -686,7 +652,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   window.addEventListener('beforeunload', () => {
     cleanupMedia()
-    stopTranscriptionPolling()
+    stopSpeechRecognition()
   })
 
   await loadFeatureFlags()

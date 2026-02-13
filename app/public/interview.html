@@ -133,6 +133,26 @@
               class="answer-input hidden mt-4 w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-100"
               placeholder="Review or type your STAR answer transcript here..."
             ></textarea>
+            <!-- Live transcript indicator (browser speech-to-text) -->
+            <div
+              id="live-transcript-indicator"
+              class="hidden mt-3 items-center gap-2"
+            >
+              <span class="relative flex h-3 w-3">
+                <span
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"
+                ></span>
+                <span
+                  class="relative inline-flex rounded-full h-3 w-3 bg-red-500"
+                ></span>
+              </span>
+              <span
+                id="live-transcript-status"
+                class="text-xs text-red-400 font-semibold"
+              >
+                Listening... speak clearly
+              </span>
+            </div>
             <div
               id="transcribing-indicator"
               class="hidden mt-3 items-center gap-2"
