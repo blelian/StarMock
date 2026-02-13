@@ -46,6 +46,20 @@
         <p class="text-slate-500 dark:text-slate-400 text-sm">
           Ready to level up your interview performance?
         </p>
+        <div
+          id="career-context-badge"
+          class="hidden mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide"
+        >
+          <span>AIR</span>
+          <span id="career-context-text" class="normal-case font-semibold"></span>
+          <button
+            id="career-context-edit-btn"
+            type="button"
+            class="normal-case font-semibold underline underline-offset-2 hover:opacity-80"
+          >
+            Edit
+          </button>
+        </div>
       </section>
 
       <section>
@@ -232,6 +246,132 @@
         </div>
       </section>
     </main>
+
+    <div
+      id="career-profile-overlay"
+      class="hidden fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm px-4 py-6"
+    >
+      <div
+        class="max-w-xl mx-auto bg-card-bg border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl mt-10"
+      >
+        <div class="mb-5">
+          <p
+            class="text-[10px] text-primary uppercase tracking-[0.2em] font-bold mb-2"
+          >
+            AIR Setup
+          </p>
+          <h3 class="text-xl font-bold mb-2">Set your target interview role</h3>
+          <p class="text-sm text-slate-400">
+            Add your role focus so interview prompts and AI feedback are more
+            relevant.
+          </p>
+        </div>
+
+        <form id="career-profile-form" class="space-y-4">
+          <div>
+            <label
+              for="career-job-title"
+              class="block text-xs uppercase tracking-wide text-slate-400 font-bold mb-1"
+            >
+              Job Title
+            </label>
+            <input
+              id="career-job-title"
+              type="text"
+              class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2.5 text-sm"
+              placeholder="Software Engineer"
+              maxlength="120"
+              required
+            />
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label
+                for="career-industry"
+                class="block text-xs uppercase tracking-wide text-slate-400 font-bold mb-1"
+              >
+                Industry
+              </label>
+              <select
+                id="career-industry"
+                class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2.5 text-sm"
+                required
+              >
+                <option value="">Select industry</option>
+                <option value="technology">Technology</option>
+                <option value="finance">Finance</option>
+                <option value="healthcare">Healthcare</option>
+                <option value="education">Education</option>
+                <option value="retail">Retail</option>
+                <option value="manufacturing">Manufacturing</option>
+                <option value="government">Government</option>
+                <option value="consulting">Consulting</option>
+                <option value="media">Media</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                for="career-seniority"
+                class="block text-xs uppercase tracking-wide text-slate-400 font-bold mb-1"
+              >
+                Seniority
+              </label>
+              <select
+                id="career-seniority"
+                class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2.5 text-sm"
+                required
+              >
+                <option value="">Select level</option>
+                <option value="entry">Entry</option>
+                <option value="mid">Mid</option>
+                <option value="senior">Senior</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label
+              for="career-job-description"
+              class="block text-xs uppercase tracking-wide text-slate-400 font-bold mb-1"
+            >
+              Job Description (Optional)
+            </label>
+            <textarea
+              id="career-job-description"
+              class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2.5 text-sm min-h-[96px]"
+              placeholder="Paste key responsibilities to tailor interview prompts..."
+              maxlength="3000"
+            ></textarea>
+          </div>
+
+          <p
+            id="career-profile-message"
+            class="hidden text-sm text-red-400"
+            role="alert"
+          ></p>
+
+          <div class="flex flex-wrap items-center gap-2 pt-2">
+            <button
+              id="career-profile-submit-btn"
+              type="submit"
+              class="bg-primary hover:bg-primary/90 text-background-dark px-4 py-2 rounded-xl font-bold text-sm"
+            >
+              Save and continue
+            </button>
+            <button
+              id="career-profile-skip-btn"
+              type="button"
+              class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl font-bold text-sm"
+            >
+              Skip for now
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- Footer -->
     <div id="site-footer"></div>

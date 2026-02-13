@@ -35,6 +35,28 @@ const interviewSessionSchema = new mongoose.Schema(
     metadata: {
       userAgent: String,
       ipAddress: String,
+      airMode: {
+        type: Boolean,
+        default: false,
+      },
+      airContextVersion: {
+        type: String,
+      },
+      airContext: {
+        version: String,
+        targetJobTitle: String,
+        industry: String,
+        seniority: String,
+        jobDescriptionText: String,
+        role: {
+          id: String,
+          label: String,
+          source: String,
+          confidence: String,
+        },
+        competencies: [String],
+        contextKey: String,
+      },
     },
   },
   {

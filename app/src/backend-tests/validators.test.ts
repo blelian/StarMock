@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   validateAudioPresignRequest,
+  validateCareerProfileRequest,
   validateCreateSessionRequest,
   validateLoginRequest,
   validateSignupRequest,
@@ -63,6 +64,47 @@ describe('API validators', () => {
     const valid = validateCreateSessionRequest({
       body: {
         questionIds: ['q-1', 'q-2'],
+      },
+    } as any)
+
+    expect(valid).toEqual({ valid: true })
+  })
+
+  it('validates air-enabled create-session payloads', () => {
+    const missingContext = validateCreateSessionRequest({
+      body: {
+        questionIds: ['q-1'],
+        airMode: true,
+      },
+    } as any)
+
+    expect(missingContext.valid).toBe(false)
+    expect(missingContext.code).toBe('MISSING_AIR_CONTEXT')
+
+    const invalidContext = validateCreateSessionRequest({
+      body: {
+        questionIds: ['q-1'],
+        airMode: true,
+        airContext: {
+          targetJobTitle: 'Backend Engineer',
+          industry: 'space',
+          seniority: 'mid',
+        },
+      },
+    } as any)
+
+    expect(invalidContext.valid).toBe(false)
+    expect(invalidContext.code).toBe('INVALID_INDUSTRY')
+
+    const valid = validateCreateSessionRequest({
+      body: {
+        questionIds: ['q-1'],
+        airMode: true,
+        airContext: {
+          targetJobTitle: 'Backend Engineer',
+          industry: 'technology',
+          seniority: 'mid',
+        },
       },
     } as any)
 
@@ -134,6 +176,41 @@ describe('API validators', () => {
         mimeType: 'audio/webm',
         sizeBytes: 1024,
         durationSeconds: 9.3,
+      },
+    } as any)
+
+    expect(valid).toEqual({ valid: true })
+  })
+
+  it('validates career profile payloads', () => {
+    const missing = validateCareerProfileRequest({
+      body: {
+        targetJobTitle: '',
+        industry: 'technology',
+        seniority: 'entry',
+      },
+    } as any)
+
+    expect(missing.valid).toBe(false)
+    expect(missing.code).toBe('MISSING_TARGET_JOB_TITLE')
+
+    const invalidIndustry = validateCareerProfileRequest({
+      body: {
+        targetJobTitle: 'Software Engineer',
+        industry: 'space',
+        seniority: 'entry',
+      },
+    } as any)
+
+    expect(invalidIndustry.valid).toBe(false)
+    expect(invalidIndustry.code).toBe('INVALID_INDUSTRY')
+
+    const valid = validateCareerProfileRequest({
+      body: {
+        targetJobTitle: 'Software Engineer',
+        industry: 'technology',
+        seniority: 'mid',
+        jobDescriptionText: 'Building resilient backend services.',
       },
     } as any)
 

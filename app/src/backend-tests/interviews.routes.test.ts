@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   FeedbackReport,
   FeedbackJob,
+  InterviewQuestion,
   InterviewResponse,
   InterviewSession,
   TranscriptionJob,
@@ -138,6 +139,62 @@ describe('interview route validation guards', () => {
     })
   })
 
+  it('rejects AIR question requests with unsupported industry', async () => {
+    const res = await runRouteHandlers(getQuestionsHandlers, {
+      ...createAuthenticatedRequest(),
+      query: {
+        airMode: 'true',
+        targetJobTitle: 'Software Engineer',
+        industry: 'space',
+        seniority: 'mid',
+      },
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.body).toMatchObject({
+      error: {
+        code: 'INVALID_INDUSTRY',
+      },
+    })
+  })
+
+  it('returns AIR metadata when AIR question request is valid', async () => {
+    vi.spyOn(InterviewQuestion, 'aggregate').mockResolvedValue([
+      {
+        _id: 'question-1',
+        type: 'behavioral',
+        difficulty: 'medium',
+        category: 'leadership',
+        title: 'Incident Leadership',
+        description: 'Describe leading incident resolution.',
+      },
+    ] as never)
+
+    const res = await runRouteHandlers(getQuestionsHandlers, {
+      ...createAuthenticatedRequest(),
+      query: {
+        airMode: 'true',
+        targetJobTitle: 'Backend Engineer',
+        industry: 'technology',
+        seniority: 'mid',
+        limit: '1',
+      },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toMatchObject({
+      mode: 'air',
+      airContext: {
+        industry: 'technology',
+        seniority: 'mid',
+      },
+      sourceBreakdown: {
+        roleMatched: 1,
+      },
+      count: 1,
+    })
+  })
+
   it('rejects history status outside allowed values', async () => {
     const res = await runRouteHandlers(getHistoryHandlers, {
       ...createAuthenticatedRequest(),
@@ -178,6 +235,23 @@ describe('interview route validation guards', () => {
     expect(res.body).toMatchObject({
       error: {
         code: 'DUPLICATE_QUESTIONS',
+      },
+    })
+  })
+
+  it('rejects create-session payload when airMode is invalid', async () => {
+    const res = await runRouteHandlers(createSessionHandlers, {
+      ...createAuthenticatedRequest(),
+      body: {
+        questionIds: ['question-1'],
+        airMode: 'true',
+      },
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.body).toMatchObject({
+      error: {
+        code: 'INVALID_AIR_MODE',
       },
     })
   })

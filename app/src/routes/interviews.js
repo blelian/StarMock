@@ -14,6 +14,11 @@ import {
   validateSubmitResponseRequest,
 } from '../validators/api.js'
 import { isFeatureEnabled } from '../config/featureFlags.js'
+import {
+  isSupportedIndustry,
+  isSupportedSeniority,
+} from '../config/airProfiles.js'
+import { resolveAirContext } from '../services/air/index.js'
 
 const router = express.Router()
 const ALLOWED_QUESTION_TYPES = new Set([
@@ -30,6 +35,86 @@ const ALLOWED_SESSION_STATUSES = new Set([
 ])
 const MAX_QUESTION_LIMIT = 20
 const MAX_HISTORY_LIMIT = 50
+
+function parseBooleanFlag(value) {
+  if (typeof value === 'boolean') return value
+  if (typeof value !== 'string') return false
+  return ['true', '1', 'yes', 'on'].includes(value.trim().toLowerCase())
+}
+
+function normalizeAirQueryString(value) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function serializeAirContext(context) {
+  if (!context || typeof context !== 'object') {
+    return null
+  }
+
+  const role = context.role || {}
+  return {
+    version: context.version || null,
+    targetJobTitle: context.targetJobTitle || null,
+    industry: context.industry || null,
+    seniority: context.seniority || null,
+    jobDescriptionText: context.jobDescriptionText || '',
+    role: {
+      id: role.id || 'custom_role',
+      label: role.label || context.targetJobTitle || 'Custom Role',
+      source: role.source || 'custom',
+      confidence: role.confidence || 'low',
+    },
+    competencies: Array.isArray(context.competencies)
+      ? context.competencies
+      : [],
+    contextKey: context.contextKey || null,
+  }
+}
+
+async function sampleQuestions(filter, limit) {
+  if (limit <= 0) return []
+  return InterviewQuestion.aggregate([{ $match: filter }, { $sample: { size: limit } }])
+}
+
+async function getQuestionsForAirContext(baseFilter, parsedLimit, airContext) {
+  const roleId = airContext?.role?.id || 'custom_role'
+  const roleMatched = await sampleQuestions(
+    {
+      ...baseFilter,
+      'airProfile.industries': airContext.industry,
+      'airProfile.seniority': airContext.seniority,
+      $or: [{ 'airProfile.roles': roleId }, { 'airProfile.roles': 'generic' }],
+    },
+    parsedLimit
+  )
+
+  if (roleMatched.length >= parsedLimit) {
+    return {
+      questions: roleMatched,
+      sourceBreakdown: {
+        roleMatched: roleMatched.length,
+        fallback: 0,
+      },
+    }
+  }
+
+  const remaining = parsedLimit - roleMatched.length
+  const fallback = await sampleQuestions(
+    {
+      ...baseFilter,
+      _id: { $nin: roleMatched.map((question) => question._id) },
+    },
+    remaining
+  )
+
+  return {
+    questions: [...roleMatched, ...fallback],
+    sourceBreakdown: {
+      roleMatched: roleMatched.length,
+      fallback: fallback.length,
+    },
+  }
+}
 
 function getQuestionText(question) {
   if (!question) return 'Question not found'
@@ -132,11 +217,66 @@ router.get('/questions', requireAuth, async (req, res) => {
       filter.difficulty = difficulty
     }
 
-    // Get random questions
-    const questions = await InterviewQuestion.aggregate([
-      { $match: filter },
-      { $sample: { size: parsedLimit } },
-    ])
+    const isAirMode = parseBooleanFlag(req.query.airMode)
+    let airContext = null
+    let sourceBreakdown = {
+      roleMatched: 0,
+      fallback: 0,
+    }
+    let questions = []
+
+    if (isAirMode) {
+      const industry = normalizeAirQueryString(req.query.industry)
+      const seniority = normalizeAirQueryString(req.query.seniority)
+      const targetJobTitle = normalizeAirQueryString(req.query.targetJobTitle)
+      const jobDescriptionText = normalizeAirQueryString(
+        req.query.jobDescriptionText
+      )
+
+      if (!targetJobTitle) {
+        return res.status(400).json({
+          error: {
+            message: 'targetJobTitle is required when airMode is enabled',
+            code: 'MISSING_TARGET_JOB_TITLE',
+          },
+        })
+      }
+
+      if (!industry || !isSupportedIndustry(industry)) {
+        return res.status(400).json({
+          error: {
+            message: 'Invalid or unsupported industry for AIR mode',
+            code: 'INVALID_INDUSTRY',
+          },
+        })
+      }
+
+      if (!seniority || !isSupportedSeniority(seniority)) {
+        return res.status(400).json({
+          error: {
+            message: 'Invalid or unsupported seniority for AIR mode',
+            code: 'INVALID_SENIORITY',
+          },
+        })
+      }
+
+      airContext = resolveAirContext({
+        targetJobTitle,
+        industry,
+        seniority,
+        jobDescriptionText,
+      })
+
+      const airSelection = await getQuestionsForAirContext(
+        filter,
+        parsedLimit,
+        airContext
+      )
+      questions = airSelection.questions
+      sourceBreakdown = airSelection.sourceBreakdown
+    } else {
+      questions = await sampleQuestions(filter, parsedLimit)
+    }
 
     res.json({
       questions: questions.map((q) => ({
@@ -150,6 +290,9 @@ router.get('/questions', requireAuth, async (req, res) => {
         starGuidelines: q.starGuidelines,
       })),
       count: questions.length,
+      mode: isAirMode ? 'air' : 'generic',
+      airContext: serializeAirContext(airContext),
+      sourceBreakdown,
     })
   } catch (error) {
     console.error('Get questions error:', error)
@@ -215,7 +358,8 @@ router.post(
   validateRequest(validateCreateSessionRequest),
   async (req, res) => {
     try {
-      const { questionIds } = req.body
+      const { questionIds, airMode = false, airContext: requestedAirContext } =
+        req.body
       const uniqueQuestionIds = [...new Set(questionIds)]
 
       if (uniqueQuestionIds.length !== questionIds.length) {
@@ -242,12 +386,24 @@ router.post(
         })
       }
 
+      let resolvedAirContext = null
+      if (airMode === true && requestedAirContext) {
+        resolvedAirContext = resolveAirContext(requestedAirContext)
+      }
+
       // Create interview session
       const session = new InterviewSession({
         userId: req.userId,
         questions: uniqueQuestionIds,
         status: 'in_progress',
         startedAt: new Date(),
+        metadata: {
+          userAgent: req.get('user-agent') || null,
+          ipAddress: req.ip || null,
+          airMode: Boolean(resolvedAirContext),
+          airContextVersion: resolvedAirContext?.version || null,
+          airContext: serializeAirContext(resolvedAirContext),
+        },
       })
 
       await session.save()
@@ -259,6 +415,8 @@ router.post(
           status: session.status,
           questionCount: session.questions.length,
           startedAt: session.startedAt,
+          airMode: Boolean(session.metadata?.airMode),
+          airContext: session.metadata?.airContext || null,
         },
       })
     } catch (error) {
@@ -302,6 +460,8 @@ router.get('/sessions/:id', requireAuth, async (req, res) => {
         startedAt: session.startedAt,
         completedAt: session.completedAt,
         duration: session.duration,
+        airMode: Boolean(session.metadata?.airMode),
+        airContext: session.metadata?.airContext || null,
       },
     })
   } catch (error) {
@@ -943,6 +1103,8 @@ router.get('/history', requireAuth, async (req, res) => {
         startedAt: s.startedAt,
         completedAt: s.completedAt,
         duration: s.duration,
+        airMode: Boolean(s.metadata?.airMode),
+        airContext: s.metadata?.airContext || null,
       })),
       pagination: {
         currentPage: parsedPage,

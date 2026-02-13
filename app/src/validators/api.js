@@ -1,3 +1,8 @@
+import {
+  SUPPORTED_INDUSTRIES,
+  SUPPORTED_SENIORITY_LEVELS,
+} from '../config/airProfiles.js'
+
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0
 }
@@ -5,6 +10,9 @@ function isNonEmptyString(value) {
 function isValidEmail(value) {
   return /^\S+@\S+\.\S+$/.test(value)
 }
+
+const ALLOWED_INDUSTRIES = new Set(SUPPORTED_INDUSTRIES)
+const ALLOWED_SENIORITY_LEVELS = new Set(SUPPORTED_SENIORITY_LEVELS)
 
 export function validateSignupRequest(req) {
   const { email, password, firstName, lastName } = req.body || {}
@@ -67,8 +75,85 @@ export function validateLoginRequest(req) {
   return { valid: true }
 }
 
+export function validateCareerProfileRequest(req) {
+  const {
+    targetJobTitle,
+    industry,
+    seniority,
+    jobDescriptionText = '',
+  } = req.body || {}
+
+  const normalizedJobTitle =
+    typeof targetJobTitle === 'string' ? targetJobTitle.trim() : ''
+  const normalizedIndustry =
+    typeof industry === 'string' ? industry.trim().toLowerCase() : ''
+  const normalizedSeniority =
+    typeof seniority === 'string' ? seniority.trim().toLowerCase() : ''
+
+  if (!normalizedJobTitle) {
+    return {
+      valid: false,
+      message: 'Target job title is required',
+      code: 'MISSING_TARGET_JOB_TITLE',
+    }
+  }
+
+  if (normalizedJobTitle.length > 120) {
+    return {
+      valid: false,
+      message: 'Target job title must be 120 characters or fewer',
+      code: 'INVALID_TARGET_JOB_TITLE',
+    }
+  }
+
+  if (!normalizedIndustry) {
+    return {
+      valid: false,
+      message: 'Industry is required',
+      code: 'MISSING_INDUSTRY',
+    }
+  }
+
+  if (!ALLOWED_INDUSTRIES.has(normalizedIndustry)) {
+    return {
+      valid: false,
+      message: 'Industry is not supported',
+      code: 'INVALID_INDUSTRY',
+    }
+  }
+
+  if (!normalizedSeniority) {
+    return {
+      valid: false,
+      message: 'Seniority is required',
+      code: 'MISSING_SENIORITY',
+    }
+  }
+
+  if (!ALLOWED_SENIORITY_LEVELS.has(normalizedSeniority)) {
+    return {
+      valid: false,
+      message: 'Seniority level is not supported',
+      code: 'INVALID_SENIORITY',
+    }
+  }
+
+  if (
+    typeof jobDescriptionText !== 'string' ||
+    jobDescriptionText.trim().length > 3000
+  ) {
+    return {
+      valid: false,
+      message: 'Job description must be a string of at most 3000 characters',
+      code: 'INVALID_JOB_DESCRIPTION',
+    }
+  }
+
+  return { valid: true }
+}
+
 export function validateCreateSessionRequest(req) {
-  const { questionIds } = req.body || {}
+  const { questionIds, airMode, airContext } = req.body || {}
 
   if (!questionIds || !Array.isArray(questionIds) || questionIds.length === 0) {
     return {
@@ -84,6 +169,43 @@ export function validateCreateSessionRequest(req) {
       valid: false,
       message: 'Each question ID must be a valid string',
       code: 'INVALID_QUESTION_ID',
+    }
+  }
+
+  if (airMode !== undefined && typeof airMode !== 'boolean') {
+    return {
+      valid: false,
+      message: 'airMode must be a boolean value when provided',
+      code: 'INVALID_AIR_MODE',
+    }
+  }
+
+  if (airContext !== undefined && (!airContext || typeof airContext !== 'object')) {
+    return {
+      valid: false,
+      message: 'airContext must be an object when provided',
+      code: 'INVALID_AIR_CONTEXT',
+    }
+  }
+
+  if (airMode === true) {
+    if (!airContext || typeof airContext !== 'object') {
+      return {
+        valid: false,
+        message: 'airContext is required when airMode is enabled',
+        code: 'MISSING_AIR_CONTEXT',
+      }
+    }
+
+    const profileValidation = validateCareerProfileRequest({
+      body: airContext,
+    })
+    if (!profileValidation.valid) {
+      return {
+        valid: false,
+        message: profileValidation.message,
+        code: profileValidation.code,
+      }
     }
   }
 

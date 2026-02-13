@@ -87,6 +87,7 @@ export const sessionHelpers = {
       firstName: userData.firstName,
       lastName: userData.lastName,
       role: userData.role,
+      profileComplete: Boolean(userData.profileComplete),
     }
     req.session.loginTime = new Date().toISOString()
   },

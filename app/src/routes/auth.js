@@ -4,6 +4,7 @@ import { sessionHelpers } from '../config/session.js'
 import { requireAuth, requireGuest } from '../middleware/auth.js'
 import { validateRequest } from '../middleware/validate.js'
 import {
+  validateCareerProfileRequest,
   validateSignupRequest,
   validateLoginRequest,
 } from '../validators/api.js'
@@ -17,6 +18,55 @@ function getSessionCookieOptions() {
     secure: isProduction,
     sameSite: isProduction ? 'strict' : 'lax',
     path: '/',
+  }
+}
+
+function serializeCareerProfile(profile) {
+  const normalizedProfile = profile || {}
+  const targetJobTitle =
+    typeof normalizedProfile.targetJobTitle === 'string'
+      ? normalizedProfile.targetJobTitle.trim()
+      : ''
+  const industry =
+    typeof normalizedProfile.industry === 'string'
+      ? normalizedProfile.industry.trim()
+      : ''
+  const seniority =
+    typeof normalizedProfile.seniority === 'string'
+      ? normalizedProfile.seniority.trim()
+      : ''
+  const jobDescriptionText =
+    typeof normalizedProfile.jobDescriptionText === 'string'
+      ? normalizedProfile.jobDescriptionText.trim()
+      : ''
+
+  return {
+    targetJobTitle: targetJobTitle || null,
+    industry: industry || null,
+    seniority: seniority || null,
+    jobDescriptionText,
+    updatedAt: normalizedProfile.updatedAt || null,
+  }
+}
+
+function isCareerProfileComplete(profile) {
+  return Boolean(profile.targetJobTitle && profile.industry && profile.seniority)
+}
+
+function buildUserResponse(user) {
+  const careerProfile = serializeCareerProfile(user.careerProfile)
+  return {
+    id: user._id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    fullName: user.getFullName(),
+    role: user.role,
+    isActive: user.isActive,
+    lastLogin: user.lastLogin,
+    createdAt: user.createdAt,
+    careerProfile,
+    profileComplete: isCareerProfileComplete(careerProfile),
   }
 }
 
@@ -63,6 +113,7 @@ router.post(
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        profileComplete: false,
       })
       await sessionHelpers.saveSession(req)
 
@@ -72,13 +123,7 @@ router.post(
 
       res.status(201).json({
         message: 'User registered successfully',
-        user: {
-          id: user._id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-        },
+        user: buildUserResponse(user),
       })
     } catch (error) {
       console.error('Signup error:', error)
@@ -152,6 +197,7 @@ router.post(
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        profileComplete: user.hasCompleteCareerProfile(),
       })
       await sessionHelpers.saveSession(req)
 
@@ -161,14 +207,7 @@ router.post(
 
       res.json({
         message: 'Login successful',
-        user: {
-          id: user._id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-          fullName: user.getFullName(),
-        },
+        user: buildUserResponse(user),
       })
     } catch (error) {
       console.error('Login error:', error)
@@ -225,17 +264,7 @@ router.get('/me', requireAuth, async (req, res) => {
     }
 
     res.json({
-      user: {
-        id: user._id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.getFullName(),
-        role: user.role,
-        isActive: user.isActive,
-        lastLogin: user.lastLogin,
-        createdAt: user.createdAt,
-      },
+      user: buildUserResponse(user),
     })
   } catch (error) {
     console.error('Get user error:', error)
@@ -247,6 +276,106 @@ router.get('/me', requireAuth, async (req, res) => {
     })
   }
 })
+
+/**
+ * @route   GET /api/auth/profile
+ * @desc    Get current user's career profile
+ * @access  Private
+ */
+router.get('/profile', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId)
+
+    if (!user) {
+      return res.status(404).json({
+        error: {
+          message: 'User not found',
+          code: 'USER_NOT_FOUND',
+        },
+      })
+    }
+
+    const careerProfile = serializeCareerProfile(user.careerProfile)
+
+    return res.json({
+      careerProfile,
+      profileComplete: isCareerProfileComplete(careerProfile),
+    })
+  } catch (error) {
+    console.error('Get profile error:', error)
+    return res.status(500).json({
+      error: {
+        message: 'Failed to get career profile',
+        code: 'GET_PROFILE_ERROR',
+      },
+    })
+  }
+})
+
+/**
+ * @route   PATCH /api/auth/profile
+ * @desc    Create or update current user's career profile
+ * @access  Private
+ */
+router.patch(
+  '/profile',
+  requireAuth,
+  validateRequest(validateCareerProfileRequest),
+  async (req, res) => {
+    try {
+      const user = await User.findById(req.userId)
+
+      if (!user) {
+        return res.status(404).json({
+          error: {
+            message: 'User not found',
+            code: 'USER_NOT_FOUND',
+          },
+        })
+      }
+
+      const {
+        targetJobTitle,
+        industry,
+        seniority,
+        jobDescriptionText = '',
+      } = req.body || {}
+
+      user.careerProfile = {
+        targetJobTitle: targetJobTitle.trim(),
+        industry: industry.trim().toLowerCase(),
+        seniority: seniority.trim().toLowerCase(),
+        jobDescriptionText:
+          typeof jobDescriptionText === 'string'
+            ? jobDescriptionText.trim()
+            : '',
+        updatedAt: new Date(),
+      }
+
+      await user.save()
+
+      if (req.session?.user) {
+        req.session.user.profileComplete = true
+        await sessionHelpers.saveSession(req)
+      }
+
+      const careerProfile = serializeCareerProfile(user.careerProfile)
+      return res.json({
+        message: 'Career profile saved successfully',
+        careerProfile,
+        profileComplete: isCareerProfileComplete(careerProfile),
+      })
+    } catch (error) {
+      console.error('Update profile error:', error)
+      return res.status(500).json({
+        error: {
+          message: 'Failed to update career profile',
+          code: 'UPDATE_PROFILE_ERROR',
+        },
+      })
+    }
+  }
+)
 
 /**
  * @route   GET /api/auth/status

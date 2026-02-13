@@ -42,6 +42,36 @@ async function mockInterviewApis(
       return
     }
 
+    if (pathname === '/api/auth/profile' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          profileComplete: true,
+          careerProfile: {
+            targetJobTitle: 'Software Engineer',
+            industry: 'technology',
+            seniority: 'mid',
+            jobDescriptionText: '',
+          },
+        }),
+      })
+      return
+    }
+
+    if (pathname === '/api/auth/profile' && method === 'PATCH') {
+      const body = request.postDataJSON() as Record<string, unknown>
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          profileComplete: true,
+          careerProfile: body,
+        }),
+      })
+      return
+    }
+
     if (pathname === '/api/questions' && method === 'GET') {
       await route.fulfill({
         status: 200,

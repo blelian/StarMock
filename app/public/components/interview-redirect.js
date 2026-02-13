@@ -12,6 +12,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   const messageEl = document.getElementById('interview-message')
   const questionMeta = document.getElementById('question-meta')
   const questionPrompt = document.getElementById('question-prompt')
+  const careerProfileOverlay = document.getElementById('career-profile-overlay')
+  const careerProfileForm = document.getElementById('career-profile-form')
+  const careerProfileMessage = document.getElementById('career-profile-message')
+  const careerProfileSubmitBtn = document.getElementById(
+    'career-profile-submit-btn'
+  )
+  const careerProfileSkipBtn = document.getElementById('career-profile-skip-btn')
+  const careerJobTitleInput = document.getElementById('career-job-title')
+  const careerIndustrySelect = document.getElementById('career-industry')
+  const careerSenioritySelect = document.getElementById('career-seniority')
+  const careerJobDescriptionInput = document.getElementById(
+    'career-job-description'
+  )
+  const careerContextBadge = document.getElementById('career-context-badge')
+  const careerContextText = document.getElementById('career-context-text')
+  const careerContextEditBtn = document.getElementById('career-context-edit-btn')
 
   if (
     !startBtn ||
@@ -46,6 +62,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let uploadedAudioUrl = null
   let uploadedAudioMimeType = null
   let transcriptConfidence = null
+  let careerProfile = null
+  let isAirMode = false
   let featureFlags = {
     aiRecording: true,
     audioUploads: true,
@@ -80,6 +98,104 @@ document.addEventListener('DOMContentLoaded', async () => {
     messageEl.classList.add(isError ? 'text-red-400' : 'text-slate-400')
   }
 
+  const toNonEmptyString = (value) =>
+    typeof value === 'string' && value.trim().length > 0 ? value.trim() : ''
+
+  const toTitleCase = (value) =>
+    value
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((token) => token[0].toUpperCase() + token.slice(1))
+      .join(' ')
+
+  const normalizeCareerProfile = (profile) => {
+    if (!profile || typeof profile !== 'object') {
+      return null
+    }
+
+    const targetJobTitle = toNonEmptyString(profile.targetJobTitle)
+    const industry = toNonEmptyString(profile.industry).toLowerCase()
+    const seniority = toNonEmptyString(profile.seniority).toLowerCase()
+    const jobDescriptionText = toNonEmptyString(profile.jobDescriptionText)
+
+    return {
+      targetJobTitle,
+      industry,
+      seniority,
+      jobDescriptionText,
+      updatedAt: profile.updatedAt || null,
+    }
+  }
+
+  const isCareerProfileComplete = (profile) =>
+    Boolean(profile?.targetJobTitle && profile?.industry && profile?.seniority)
+
+  const toggleCareerProfileOverlay = (visible) => {
+    if (!careerProfileOverlay) return
+    careerProfileOverlay.classList.toggle('hidden', !visible)
+  }
+
+  const setCareerProfileMessage = (message, isError = true) => {
+    if (!careerProfileMessage) return
+    careerProfileMessage.textContent = message
+    careerProfileMessage.classList.remove('hidden', 'text-red-400', 'text-primary')
+    careerProfileMessage.classList.add(isError ? 'text-red-400' : 'text-primary')
+  }
+
+  const clearCareerProfileMessage = () => {
+    if (!careerProfileMessage) return
+    careerProfileMessage.textContent = ''
+    careerProfileMessage.classList.add('hidden')
+    careerProfileMessage.classList.remove('text-red-400', 'text-primary')
+  }
+
+  const setCareerProfileSubmitting = (isSubmitting) => {
+    if (careerProfileSubmitBtn) {
+      careerProfileSubmitBtn.disabled = isSubmitting
+    }
+    if (careerProfileSkipBtn) {
+      careerProfileSkipBtn.disabled = isSubmitting
+    }
+  }
+
+  const renderCareerContext = () => {
+    if (!careerContextBadge || !careerContextText) return
+
+    if (!isAirMode || !isCareerProfileComplete(careerProfile)) {
+      careerContextBadge.classList.add('hidden')
+      careerContextText.textContent = ''
+      return
+    }
+
+    const industry = toTitleCase(careerProfile.industry)
+    const seniority = toTitleCase(careerProfile.seniority)
+    careerContextText.textContent = `${careerProfile.targetJobTitle} • ${industry} • ${seniority}`
+    careerContextBadge.classList.remove('hidden')
+  }
+
+  const fillCareerProfileInputs = (profile) => {
+    if (!profile) return
+    if (careerJobTitleInput) {
+      careerJobTitleInput.value = profile.targetJobTitle || ''
+    }
+    if (careerIndustrySelect) {
+      careerIndustrySelect.value = profile.industry || ''
+    }
+    if (careerSenioritySelect) {
+      careerSenioritySelect.value = profile.seniority || ''
+    }
+    if (careerJobDescriptionInput) {
+      careerJobDescriptionInput.value = profile.jobDescriptionText || ''
+    }
+  }
+
+  const readCareerProfileFromInputs = () => ({
+    targetJobTitle: toNonEmptyString(careerJobTitleInput?.value),
+    industry: toNonEmptyString(careerIndustrySelect?.value).toLowerCase(),
+    seniority: toNonEmptyString(careerSenioritySelect?.value).toLowerCase(),
+    jobDescriptionText: toNonEmptyString(careerJobDescriptionInput?.value),
+  })
+
   const setPrompt = (question) => {
     const type = question.type || 'general'
     const difficulty = question.difficulty || 'unknown'
@@ -87,7 +203,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const questionText =
       question.questionText || question.description || question.title || ''
 
-    questionMeta.textContent = `${type} • ${difficulty} • ${category}`
+    const modeLabel = isAirMode ? 'AIR' : 'Generic'
+    questionMeta.textContent = `${modeLabel} • ${type} • ${difficulty} • ${category}`
     questionPrompt.textContent = questionText || 'Question unavailable.'
   }
 
@@ -462,9 +579,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     setMessage('Finalizing recording...')
   }
 
+  const buildQuestionUrl = () => {
+    const params = new URLSearchParams({ limit: '1' })
+
+    if (isAirMode && isCareerProfileComplete(careerProfile)) {
+      params.set('airMode', 'true')
+      params.set('industry', careerProfile.industry)
+      params.set('seniority', careerProfile.seniority)
+      params.set('targetJobTitle', careerProfile.targetJobTitle)
+    }
+
+    return `/api/questions?${params.toString()}`
+  }
+
   const loadQuestion = async () => {
     setMessage('Fetching a practice question...')
-    const questionResult = await apiRequest('/api/questions?limit=1')
+    const questionResult = await apiRequest(buildQuestionUrl())
 
     if (!questionResult.ok || !questionResult.payload?.questions?.length) {
       setMessage(
@@ -494,6 +624,167 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  const loadCareerProfile = async () => {
+    const result = await apiRequest('/api/auth/profile')
+    if (!result.ok) {
+      return {
+        ok: false,
+        error:
+          result.payload?.error?.message ||
+          'Unable to load your AIR career profile.',
+        status: result.status,
+      }
+    }
+
+    const profile = normalizeCareerProfile(result.payload?.careerProfile)
+    return {
+      ok: true,
+      profile,
+      profileComplete:
+        result.payload?.profileComplete === true &&
+        isCareerProfileComplete(profile),
+    }
+  }
+
+  const saveCareerProfile = async (profileInput) => {
+    const result = await apiRequest('/api/auth/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileInput),
+    })
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        error:
+          result.payload?.error?.message ||
+          'Unable to save your AIR career profile.',
+      }
+    }
+
+    const profile = normalizeCareerProfile(result.payload?.careerProfile)
+    return {
+      ok: true,
+      profile,
+      profileComplete:
+        result.payload?.profileComplete === true &&
+        isCareerProfileComplete(profile),
+    }
+  }
+
+  const startGenericMode = async () => {
+    isAirMode = false
+    careerProfile = null
+    toggleCareerProfileOverlay(false)
+    renderCareerContext()
+    clearCareerProfileMessage()
+    setMessage('Generic mode enabled. Fetching a practice question...')
+    await loadQuestion()
+  }
+
+  const startAirMode = async (profile) => {
+    careerProfile = normalizeCareerProfile(profile)
+    if (!isCareerProfileComplete(careerProfile)) {
+      await startGenericMode()
+      return
+    }
+
+    isAirMode = true
+    toggleCareerProfileOverlay(false)
+    renderCareerContext()
+    clearCareerProfileMessage()
+    setMessage(
+      `AIR mode enabled for ${careerProfile.targetJobTitle}. Fetching your question...`
+    )
+    await loadQuestion()
+  }
+
+  const initializeCareerProfileFlow = async () => {
+    const profileResult = await loadCareerProfile()
+
+    if (!profileResult.ok) {
+      // Keep interview usable if profile API is unavailable.
+      await startGenericMode()
+      return
+    }
+
+    fillCareerProfileInputs(profileResult.profile)
+
+    if (profileResult.profileComplete) {
+      await startAirMode(profileResult.profile)
+      return
+    }
+
+    if (!careerProfileOverlay) {
+      await startGenericMode()
+      return
+    }
+
+    toggleCareerProfileOverlay(true)
+    setMessage(
+      'Set your target role to enable AIR prompts, or skip to continue in generic mode.'
+    )
+  }
+
+  if (careerProfileForm) {
+    careerProfileForm.addEventListener('submit', async (event) => {
+      event.preventDefault()
+      clearCareerProfileMessage()
+
+      const profileInput = readCareerProfileFromInputs()
+      if (!isCareerProfileComplete(profileInput)) {
+        setCareerProfileMessage(
+          'Job title, industry, and seniority are required for AIR mode.'
+        )
+        return
+      }
+
+      setCareerProfileSubmitting(true)
+      try {
+        const saveResult = await saveCareerProfile(profileInput)
+        if (!saveResult.ok || !saveResult.profileComplete) {
+          setCareerProfileMessage(
+            saveResult.error || 'Could not save profile. Try again.'
+          )
+          return
+        }
+
+        await startAirMode(saveResult.profile)
+      } finally {
+        setCareerProfileSubmitting(false)
+      }
+    })
+  }
+
+  if (careerProfileSkipBtn) {
+    careerProfileSkipBtn.addEventListener('click', async () => {
+      clearCareerProfileMessage()
+      setCareerProfileSubmitting(true)
+      try {
+        await startGenericMode()
+      } finally {
+        setCareerProfileSubmitting(false)
+      }
+    })
+  }
+
+  if (careerContextEditBtn) {
+    careerContextEditBtn.addEventListener('click', () => {
+      if (sessionId) {
+        setMessage(
+          'Finish the current session before changing your AIR role profile.',
+          true
+        )
+        return
+      }
+
+      fillCareerProfileInputs(careerProfile)
+      clearCareerProfileMessage()
+      toggleCareerProfileOverlay(true)
+      setMessage('Update your role profile and save to refresh AIR prompts.')
+    })
+  }
+
   startBtn.addEventListener('click', async () => {
     if (!currentQuestion?.id) {
       setMessage('Question is not ready yet. Please wait a moment.', true)
@@ -503,10 +794,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     startBtn.disabled = true
     setMessage('Creating interview session...')
 
+    const createSessionPayload = { questionIds: [currentQuestion.id] }
+    if (isAirMode && isCareerProfileComplete(careerProfile)) {
+      createSessionPayload.airMode = true
+      createSessionPayload.airContext = {
+        targetJobTitle: careerProfile.targetJobTitle,
+        industry: careerProfile.industry,
+        seniority: careerProfile.seniority,
+        jobDescriptionText: careerProfile.jobDescriptionText || '',
+      }
+    }
+
     const createResult = await apiRequest('/api/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questionIds: [currentQuestion.id] }),
+      body: JSON.stringify(createSessionPayload),
     })
 
     if (!createResult.ok || !createResult.payload?.session?.id) {
@@ -656,5 +958,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   })
 
   await loadFeatureFlags()
-  await loadQuestion()
+  await initializeCareerProfileFlow()
 })

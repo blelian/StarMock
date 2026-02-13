@@ -1,11 +1,39 @@
 import dotenv from 'dotenv'
 import connectDB from '../config/database.js'
 import { InterviewQuestion } from '../models/index.js'
+import { AIR_CONTEXT_VERSION } from '../config/airProfiles.js'
 
 dotenv.config()
 
+const DEFAULT_AIR_PROFILE = {
+  contextVersion: AIR_CONTEXT_VERSION,
+  industries: ['technology', 'finance', 'healthcare'],
+  roles: [
+    'software_engineer',
+    'frontend_developer',
+    'backend_developer',
+    'data_analyst',
+    'data_scientist',
+    'product_manager',
+    'project_manager',
+    'business_analyst',
+  ],
+  seniority: ['entry', 'mid', 'senior'],
+  competencies: ['communication', 'problem-solving', 'execution'],
+}
+
+function withAirProfile(question, profile = {}) {
+  return {
+    ...question,
+    airProfile: {
+      ...DEFAULT_AIR_PROFILE,
+      ...profile,
+    },
+  }
+}
+
 const seedQuestions = [
-  {
+  withAirProfile({
     title: 'Tell me about a time you worked on a challenging team project',
     description:
       "Describe a situation where you had to collaborate with a diverse team to achieve a common goal. Focus on your specific role, the challenges faced, and how you contributed to the team's success.",
@@ -20,8 +48,8 @@ const seedQuestions = [
         'What steps did you take to contribute? How did you handle challenges?',
       result: 'What was the outcome? What did you learn about teamwork?',
     },
-  },
-  {
+  }),
+  withAirProfile({
     title: 'Describe a time when you had to meet a tight deadline',
     description:
       'Share an example of when you were under significant time pressure to deliver results. Explain how you prioritized, managed your time, and ensured quality despite the constraints.',
@@ -35,8 +63,8 @@ const seedQuestions = [
       action: 'How did you organize your work? What strategies did you use?',
       result: 'Did you meet the deadline? What was the quality of your work?',
     },
-  },
-  {
+  }),
+  withAirProfile({
     title: 'Give me an example of when you had to solve a difficult problem',
     description:
       'Discuss a complex problem you encountered and how you approached finding a solution. Emphasize your analytical thinking, creativity, and persistence.',
@@ -50,8 +78,8 @@ const seedQuestions = [
       action: 'What approach did you take? What alternatives did you consider?',
       result: 'What was the solution? What impact did it have?',
     },
-  },
-  {
+  }),
+  withAirProfile({
     title: 'Tell me about a time you had to adapt to a significant change',
     description:
       'Describe a situation where you faced unexpected changes and had to adjust your plans or approach. Show your flexibility and resilience.',
@@ -65,8 +93,8 @@ const seedQuestions = [
       action: 'How did you adapt? What steps did you take?',
       result: 'What was the outcome of your adaptation?',
     },
-  },
-  {
+  }),
+  withAirProfile({
     title: 'Describe a situation where you took the initiative',
     description:
       'Share an example of when you identified an opportunity or problem and took action without being asked. Highlight your proactive approach and leadership qualities.',
@@ -80,8 +108,8 @@ const seedQuestions = [
       action: 'What steps did you take on your own initiative?',
       result: 'What was the impact of your initiative?',
     },
-  },
-  {
+  }),
+  withAirProfile({
     title:
       'Tell me about a time you had to resolve a conflict with a colleague',
     description:
@@ -96,8 +124,8 @@ const seedQuestions = [
       action: 'What approach did you take to address the conflict?',
       result: 'How was the conflict resolved? What did you learn?',
     },
-  },
-  {
+  }),
+  withAirProfile({
     title: 'Give an example of when you demonstrated leadership',
     description:
       'Share a situation where you led a team, project, or initiative. Discuss your leadership style, how you motivated others, and the results you achieved.',
@@ -111,8 +139,8 @@ const seedQuestions = [
       action: 'How did you lead? What was your approach?',
       result: 'What were the outcomes? How did your team respond?',
     },
-  },
-  {
+  }),
+  withAirProfile({
     title: 'Describe a time when you had to learn something new quickly',
     description:
       'Tell about a situation where you needed to acquire new skills or knowledge under time pressure. Show your learning agility and resourcefulness.',
@@ -126,7 +154,7 @@ const seedQuestions = [
       action: 'How did you approach learning? What resources did you use?',
       result: 'Were you able to apply what you learned successfully?',
     },
-  },
+  }),
 ]
 
 async function seedDatabase() {

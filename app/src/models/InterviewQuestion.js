@@ -1,4 +1,9 @@
 import mongoose from 'mongoose'
+import {
+  AIR_CONTEXT_VERSION,
+  SUPPORTED_INDUSTRIES,
+  SUPPORTED_SENIORITY_LEVELS,
+} from '../config/airProfiles.js'
 
 const interviewQuestionSchema = new mongoose.Schema(
   {
@@ -65,6 +70,43 @@ const interviewQuestionSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    airProfile: {
+      contextVersion: {
+        type: String,
+        trim: true,
+        default: AIR_CONTEXT_VERSION,
+      },
+      industries: [
+        {
+          type: String,
+          enum: SUPPORTED_INDUSTRIES,
+          lowercase: true,
+          trim: true,
+        },
+      ],
+      roles: [
+        {
+          type: String,
+          lowercase: true,
+          trim: true,
+        },
+      ],
+      seniority: [
+        {
+          type: String,
+          enum: SUPPORTED_SENIORITY_LEVELS,
+          lowercase: true,
+          trim: true,
+        },
+      ],
+      competencies: [
+        {
+          type: String,
+          lowercase: true,
+          trim: true,
+        },
+      ],
+    },
   },
   {
     timestamps: true,
@@ -75,6 +117,9 @@ const interviewQuestionSchema = new mongoose.Schema(
 interviewQuestionSchema.index({ type: 1, difficulty: 1 })
 interviewQuestionSchema.index({ category: 1 })
 interviewQuestionSchema.index({ isActive: 1 })
+interviewQuestionSchema.index({ 'airProfile.industries': 1 })
+interviewQuestionSchema.index({ 'airProfile.roles': 1 })
+interviewQuestionSchema.index({ 'airProfile.seniority': 1 })
 
 const InterviewQuestion = mongoose.model(
   'InterviewQuestion',
