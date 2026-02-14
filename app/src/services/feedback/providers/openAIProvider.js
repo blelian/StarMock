@@ -161,7 +161,10 @@ function normalizeEvaluation(payload, modelName, usage, airContext) {
       : normalizedScores.overall)
   const competencyCoverage =
     expectedCompetencies.length > 0
-      ? clampScore((Object.keys(competencyScores).length / expectedCompetencies.length) * 100)
+      ? clampScore(
+          (Object.keys(competencyScores).length / expectedCompetencies.length) *
+            100
+        )
       : null
   const roleFitSummary =
     typeof rawAnalysis.roleFitSummary === 'string' &&
@@ -340,7 +343,12 @@ export const openAIFeedbackProvider = {
       prompt,
     })
 
-    return normalizeEvaluation(payload, resolvedModel || model, usage, airContext)
+    return normalizeEvaluation(
+      payload,
+      resolvedModel || model,
+      usage,
+      airContext
+    )
   },
 }
 

@@ -180,7 +180,10 @@ export function validateCreateSessionRequest(req) {
     }
   }
 
-  if (airContext !== undefined && (!airContext || typeof airContext !== 'object')) {
+  if (
+    airContext !== undefined &&
+    (!airContext || typeof airContext !== 'object')
+  ) {
     return {
       valid: false,
       message: 'airContext must be an object when provided',

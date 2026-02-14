@@ -74,14 +74,19 @@ function serializeAirContext(context) {
 
 async function sampleQuestions(filter, limit) {
   if (limit <= 0) return []
-  return InterviewQuestion.aggregate([{ $match: filter }, { $sample: { size: limit } }])
+  return InterviewQuestion.aggregate([
+    { $match: filter },
+    { $sample: { size: limit } },
+  ])
 }
 
 function normalizeGenerationError(error) {
   if (error instanceof Error) {
     return error
   }
-  return new Error(typeof error === 'string' ? error : 'Unknown AIR generation error')
+  return new Error(
+    typeof error === 'string' ? error : 'Unknown AIR generation error'
+  )
 }
 
 async function getQuestionsForAirContext(
@@ -293,7 +298,9 @@ async function buildFeedbackSummary({ session, feedbackReports, userId }) {
     feedbackReports,
     normalizedExpectedCompetencies
   )
-  const roleFitScore = average(feedbackReports.map((item) => getRoleFitScore(item)))
+  const roleFitScore = average(
+    feedbackReports.map((item) => getRoleFitScore(item))
+  )
   const coveredCount = normalizedExpectedCompetencies.filter((competencyKey) =>
     competencyScores.some((item) => item.key === competencyKey)
   ).length
@@ -519,7 +526,8 @@ router.get('/questions', requireAuth, async (req, res) => {
         {
           allowAiGeneration,
           preferredType: typeof type === 'string' ? type : null,
-          preferredDifficulty: typeof difficulty === 'string' ? difficulty : null,
+          preferredDifficulty:
+            typeof difficulty === 'string' ? difficulty : null,
         }
       )
       questions = airSelection.questions
@@ -610,8 +618,11 @@ router.post(
   validateRequest(validateCreateSessionRequest),
   async (req, res) => {
     try {
-      const { questionIds, airMode = false, airContext: requestedAirContext } =
-        req.body
+      const {
+        questionIds,
+        airMode = false,
+        airContext: requestedAirContext,
+      } = req.body
       const uniqueQuestionIds = [...new Set(questionIds)]
 
       if (uniqueQuestionIds.length !== questionIds.length) {

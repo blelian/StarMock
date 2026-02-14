@@ -233,7 +233,7 @@ Implementation status (current):
 - ✅ `history.js` — history rows now surface AIR status + role metrics (`Role fit`, `Coverage`, `Trend`) when available, with per-session `data-session-id` hooks for e2e assertions.
 - ✅ `ai-recording.spec.ts` — added Playwright coverage for AIR metrics rendering on feedback page and AIR trend surfacing in history rows.
 - ✅ Backend test: `'returns AIR summary metrics when competency scores are present'` verifies full `roleMetrics` shape including strongest/weakest competency and coverage.
-- ⏳ Remaining: execute AIR e2e suite in CI-compatible browser runtime and finalize rollout playbook.
+- ⏳ Remaining: execute AIR e2e suite in CI-compatible browser runtime (blocked locally — no dev server / sandbox restriction).
 
 Primary files:
 - `app/public/interview.html`
@@ -311,9 +311,69 @@ Acceptance criteria:
   - 12-14 working days
   - approximately 3 weeks calendar including QA and rollout checks
 
+## AIR Feature-Flag Rollout Playbook
+
+### Feature flag reference
+| Flag | File | Default | Controls |
+|---|---|---|---|
+| `airQuestionGeneration` | `src/config/featureFlags.js` | `0` (off) | AIR question generation via OpenAI. When off, sessions use curated DB questions only. |
+
+### Staged rollout plan
+
+#### Stage 1 — Canary (10%)
+1. Set `airQuestionGeneration` rollout percentage to `10` in `featureFlags.js` (or via environment override `FF_AIR_QUESTION_GENERATION=10`).
+2. Deploy to production.
+3. **Monitor for 48 hours:**
+   - OpenAI error rate in logs (`[AIR-QGen]` prefix).
+   - Fallback rate — how often sessions degrade to curated questions.
+   - Feedback latency p95 — should stay under 8 s.
+   - `429` (rate limit) count from OpenAI.
+4. **Gate:** Proceed to Stage 2 only if fallback rate < 5% and no unresolved errors.
+
+#### Stage 2 — Partial (50%)
+1. Set rollout to `50`.
+2. Deploy.
+3. **Monitor for 72 hours:**
+   - Same metrics as Stage 1.
+   - User-facing: verify competency scores and role-fit values look reasonable (spot-check 10 sessions).
+   - Token spend — confirm monthly projection is within budget.
+4. **Gate:** Proceed to Stage 3 only if quality spot-check passes and cost is acceptable.
+
+#### Stage 3 — General Availability (100%)
+1. Set rollout to `100`.
+2. Deploy.
+3. Continue monitoring for 1 week.
+4. After stable period, consider removing the feature flag wrapper (keep the flag definition for future use).
+
+### Rollback procedure
+1. Set `airQuestionGeneration` rollout to `0` (or set env `FF_AIR_QUESTION_GENERATION=0`).
+2. Deploy. No migration needed — sessions already created with AIR context retain their data; new sessions simply won't use AIR question generation.
+3. Existing AIR feedback reports remain intact (they carry `evaluatorMetadata.airMode` and `airContextKey` for auditability).
+4. The feedback UI gracefully hides the AIR metrics panel when `summary.airMode` is false, so no UI breakage.
+
+### Observability checklist
+- [ ] `[AIR-QGen]` log lines include `airContextKey`, prompt version, and latency.
+- [ ] `[FeedbackEval]` log lines include `airMode`, `roleFitScore`, and competency count.
+- [ ] Feature flag evaluation is logged at debug level with userId hash for audit.
+- [ ] OpenAI API errors are captured with retry count and final status.
+- [ ] Dashboard or alert for: fallback rate > 10%, p95 latency > 10 s, error rate > 2%.
+
+### E2E validation in CI
+The Playwright E2E specs in `app/e2e/ai-recording.spec.ts` cover:
+- AIR metrics panel visible when `summary.airMode=true` (feedback page).
+- AIR metrics panel hidden for generic sessions (feedback page).
+- AIR trend details rendered in history rows.
+
+These tests use API-level mocking (`page.route`) and do not require a live OpenAI key. They require a running dev server — configure `playwright.config.ts` `webServer` or start the server in CI before running:
+```bash
+npm run dev &          # start Vite dev server
+npx playwright test    # run E2E suite
+```
+
 ## Definition of Done
 - AIR profile capture is available at interview entry with fallback mode.
 - AIR sessions get role-aware questions and feedback.
 - Feedback includes STAR + role competency metrics with versioned metadata.
 - Stats and UI messaging are dynamic and AIR-based.
 - Tests, feature flags, observability, and rollback controls are in place.
+- Rollout playbook documented with staged gates and rollback procedure.

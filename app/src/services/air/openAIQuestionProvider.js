@@ -70,7 +70,9 @@ function normalizeQuestionType(value, fallback) {
       return normalized
     }
   }
-  return fallback && ALLOWED_QUESTION_TYPES.has(fallback) ? fallback : 'behavioral'
+  return fallback && ALLOWED_QUESTION_TYPES.has(fallback)
+    ? fallback
+    : 'behavioral'
 }
 
 function normalizeDifficulty(value, fallback) {
@@ -208,7 +210,13 @@ function normalizeGeneratedQuestions({
   return normalized
 }
 
-function buildPrompt({ airContext, count, type, difficulty, existingQuestions }) {
+function buildPrompt({
+  airContext,
+  count,
+  type,
+  difficulty,
+  existingQuestions,
+}) {
   const competencies = Array.isArray(airContext.competencies)
     ? airContext.competencies.join(', ')
     : ''
@@ -328,7 +336,9 @@ async function requestOpenAI({ apiKey, model, prompt, timeoutMs, maxTokens }) {
     }
   } catch (error) {
     if (error?.name === 'AbortError') {
-      throw new Error(`OpenAI AIR question request timed out after ${timeoutMs}ms`)
+      throw new Error(
+        `OpenAI AIR question request timed out after ${timeoutMs}ms`
+      )
     }
     throw error
   } finally {

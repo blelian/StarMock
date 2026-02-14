@@ -50,7 +50,9 @@ function serializeCareerProfile(profile) {
 }
 
 function isCareerProfileComplete(profile) {
-  return Boolean(profile.targetJobTitle && profile.industry && profile.seniority)
+  return Boolean(
+    profile.targetJobTitle && profile.industry && profile.seniority
+  )
 }
 
 function buildUserResponse(user) {

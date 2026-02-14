@@ -96,13 +96,15 @@ export function getFeatureFlagsForUser(userId) {
     aiRecording: isFeatureEnabled('aiRecording', { userId }),
     audioUploads: isFeatureEnabled('audioUploads', { userId }),
     transcription: isFeatureEnabled('transcription', { userId }),
-    airQuestionGeneration: isFeatureEnabled('airQuestionGeneration', { userId }),
+    airQuestionGeneration: isFeatureEnabled('airQuestionGeneration', {
+      userId,
+    }),
     rollout: {
       aiRecording: readFlagConfig('aiRecording').rolloutPercent,
       audioUploads: readFlagConfig('audioUploads').rolloutPercent,
       transcription: readFlagConfig('transcription').rolloutPercent,
-      airQuestionGeneration:
-        readFlagConfig('airQuestionGeneration').rolloutPercent,
+      airQuestionGeneration: readFlagConfig('airQuestionGeneration')
+        .rolloutPercent,
     },
   }
 }

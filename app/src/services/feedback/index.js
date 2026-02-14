@@ -59,7 +59,12 @@ function normalizeProviderError(error) {
   return new Error(typeof error === 'string' ? error : 'Unknown provider error')
 }
 
-async function evaluateWithPolicy(provider, responseText, question, options = {}) {
+async function evaluateWithPolicy(
+  provider,
+  responseText,
+  question,
+  options = {}
+) {
   const retries = providerRetries()
   const timeoutMs = providerTimeoutMs()
   const startedAt = Date.now()
@@ -68,7 +73,9 @@ async function evaluateWithPolicy(provider, responseText, question, options = {}
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
       const rawEvaluation = await runWithTimeout(
-        Promise.resolve(provider.evaluate({ responseText, question, ...options })),
+        Promise.resolve(
+          provider.evaluate({ responseText, question, ...options })
+        ),
         timeoutMs,
         provider.id
       )

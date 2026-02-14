@@ -173,7 +173,10 @@ function scoreRoleMatch(normalizedTitle, role) {
       bestScore = Math.max(bestScore, 80)
       continue
     }
-    if (normalizedAlias.includes(normalizedTitle) && normalizedTitle.length > 3) {
+    if (
+      normalizedAlias.includes(normalizedTitle) &&
+      normalizedTitle.length > 3
+    ) {
       bestScore = Math.max(bestScore, 70)
     }
   }
@@ -219,7 +222,9 @@ export function resolveRoleFromJobTitle(targetJobTitle) {
 
 export function getIndustryCompetencies(industry) {
   const normalizedIndustry = normalizeText(industry)
-  return INDUSTRY_COMPETENCIES[normalizedIndustry] || INDUSTRY_COMPETENCIES.other
+  return (
+    INDUSTRY_COMPETENCIES[normalizedIndustry] || INDUSTRY_COMPETENCIES.other
+  )
 }
 
 export function normalizeIndustry(industry) {

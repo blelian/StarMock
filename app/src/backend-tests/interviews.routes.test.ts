@@ -208,61 +208,63 @@ describe('interview route validation guards', () => {
     const generateAirQuestionsSpy = vi
       .spyOn(openAIQuestionProvider, 'generateAirQuestions')
       .mockResolvedValue({
-      questions: [
+        questions: [
+          {
+            title: 'Scaling APIs under pressure',
+            description:
+              'Tell me about a time you improved backend reliability during a high-traffic incident.',
+            type: 'technical',
+            difficulty: 'medium',
+            category: 'problem-solving',
+            tags: ['ai-generated', 'air'],
+            starGuidelines: {
+              situation: 'Set context',
+              task: 'Define ownership',
+              action: 'Describe actions',
+              result: 'Quantify outcome',
+            },
+            airProfile: {
+              contextVersion: 'air-context.v1',
+              industries: ['technology'],
+              roles: ['backend_developer'],
+              seniority: ['mid'],
+              competencies: ['api-design', 'reliability'],
+            },
+          },
+        ],
+        metadata: {
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          promptVersion: 'air-questions.v1',
+          attempts: 1,
+          retries: 1,
+          latencyMs: 120,
+          tokenUsage: {
+            promptTokens: 100,
+            completionTokens: 60,
+            totalTokens: 160,
+          },
+        },
+      } as never)
+    const insertManySpy = vi
+      .spyOn(InterviewQuestion, 'insertMany')
+      .mockResolvedValue([
         {
-          title: 'Scaling APIs under pressure',
-          description:
-            'Tell me about a time you improved backend reliability during a high-traffic incident.',
+          _id: 'generated-1',
           type: 'technical',
           difficulty: 'medium',
           category: 'problem-solving',
-          tags: ['ai-generated', 'air'],
+          title: 'Scaling APIs under pressure',
+          description:
+            'Tell me about a time you improved backend reliability during a high-traffic incident.',
           starGuidelines: {
             situation: 'Set context',
             task: 'Define ownership',
             action: 'Describe actions',
             result: 'Quantify outcome',
           },
-          airProfile: {
-            contextVersion: 'air-context.v1',
-            industries: ['technology'],
-            roles: ['backend_developer'],
-            seniority: ['mid'],
-            competencies: ['api-design', 'reliability'],
-          },
         },
-      ],
-      metadata: {
-        provider: 'openai',
-        model: 'gpt-4o-mini',
-        promptVersion: 'air-questions.v1',
-        attempts: 1,
-        retries: 1,
-        latencyMs: 120,
-        tokenUsage: {
-          promptTokens: 100,
-          completionTokens: 60,
-          totalTokens: 160,
-        },
-      },
-    } as never)
-    const insertManySpy = vi.spyOn(InterviewQuestion, 'insertMany').mockResolvedValue([
-      {
-        _id: 'generated-1',
-        type: 'technical',
-        difficulty: 'medium',
-        category: 'problem-solving',
-        title: 'Scaling APIs under pressure',
-        description:
-          'Tell me about a time you improved backend reliability during a high-traffic incident.',
-        starGuidelines: {
-          situation: 'Set context',
-          task: 'Define ownership',
-          action: 'Describe actions',
-          result: 'Quantify outcome',
-        },
-      },
-    ] as never)
+      ] as never)
 
     const res = await runRouteHandlers(getQuestionsHandlers, {
       ...createAuthenticatedRequest(),

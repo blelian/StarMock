@@ -132,24 +132,26 @@ describe('feedback provider abstraction', () => {
   })
 
   it('forwards AIR context to provider evaluation call', async () => {
-    const evaluateSpy = vi.spyOn(openAIFeedbackProvider, 'evaluate').mockResolvedValue({
-      scores: {
-        situation: 74,
-        task: 72,
-        action: 83,
-        result: 80,
-        detail: 70,
-        overall: 78,
-      },
-      rating: 'good',
-      strengths: ['Clear role-specific example'],
-      suggestions: ['Add more quantified impact'],
-      analysis: {
-        provider: 'openai',
-        model: 'gpt-4o-mini',
-        promptVersion: 'star-eval.v1',
-      },
-    } as never)
+    const evaluateSpy = vi
+      .spyOn(openAIFeedbackProvider, 'evaluate')
+      .mockResolvedValue({
+        scores: {
+          situation: 74,
+          task: 72,
+          action: 83,
+          result: 80,
+          detail: 70,
+          overall: 78,
+        },
+        rating: 'good',
+        strengths: ['Clear role-specific example'],
+        suggestions: ['Add more quantified impact'],
+        analysis: {
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          promptVersion: 'star-eval.v1',
+        },
+      } as never)
 
     const airContext = {
       contextKey: 'technology:mid:backend_developer',
