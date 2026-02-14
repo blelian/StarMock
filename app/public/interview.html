@@ -95,7 +95,17 @@
               Loading interview prompt...
             </h4>
 
-            <!-- Start Button -->
+            <!-- Read Aloud (Text-to-Speech) -->
+            <button
+              id="read-aloud-btn"
+              type="button"
+              class="hidden mb-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60"
+              aria-label="Read question aloud"
+              aria-live="polite"
+            >
+              <span class="material-icons-round text-base" aria-hidden="true">volume_up</span>
+              <span id="read-aloud-label">Read Aloud</span>
+            </button>
             <div
               class="flex items-center justify-between pt-4 border-t border-slate-800"
             >

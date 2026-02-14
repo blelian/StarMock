@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const careerContextBadge = document.getElementById('career-context-badge')
   const careerContextText = document.getElementById('career-context-text')
   const careerContextEditBtn = document.getElementById('career-context-edit-btn')
+  const readAloudBtn = document.getElementById('read-aloud-btn')
+  const readAloudLabel = document.getElementById('read-aloud-label')
 
   if (
     !startBtn ||
@@ -83,6 +85,61 @@ document.addEventListener('DOMContentLoaded', async () => {
         : null
 
   const hasSpeechRecognitionSupport = !!SpeechRecognitionAPI
+
+  // ---------- Text-to-Speech (question read-aloud) ----------
+  const synth = typeof speechSynthesis !== 'undefined' ? speechSynthesis : null
+  let ttsUtterance = null
+  let isSpeaking = false
+
+  const stopSpeaking = () => {
+    if (synth) synth.cancel()
+    isSpeaking = false
+    ttsUtterance = null
+    if (readAloudBtn && readAloudLabel) {
+      readAloudLabel.textContent = 'Read Aloud'
+      readAloudBtn.setAttribute('aria-label', 'Read question aloud')
+      const icon = readAloudBtn.querySelector('.material-icons-round')
+      if (icon) icon.textContent = 'volume_up'
+    }
+  }
+
+  const speakQuestion = () => {
+    if (!synth || !questionPrompt) return
+    const text = (questionPrompt.textContent || '').trim()
+    if (!text || text === 'Loading interview prompt...') return
+
+    if (isSpeaking) {
+      stopSpeaking()
+      return
+    }
+
+    ttsUtterance = new SpeechSynthesisUtterance(text)
+    ttsUtterance.rate = 0.95
+    ttsUtterance.pitch = 1
+    ttsUtterance.lang = document.documentElement.lang || 'en'
+
+    ttsUtterance.onstart = () => {
+      isSpeaking = true
+      if (readAloudLabel) readAloudLabel.textContent = 'Stop'
+      if (readAloudBtn) {
+        readAloudBtn.setAttribute('aria-label', 'Stop reading')
+        const icon = readAloudBtn.querySelector('.material-icons-round')
+        if (icon) icon.textContent = 'stop'
+      }
+    }
+
+    ttsUtterance.onend = () => stopSpeaking()
+    ttsUtterance.onerror = () => stopSpeaking()
+
+    synth.speak(ttsUtterance)
+  }
+
+  if (readAloudBtn) {
+    readAloudBtn.addEventListener('click', speakQuestion)
+  }
+
+  // Cancel TTS when the page is unloaded to avoid orphaned speech
+  window.addEventListener('beforeunload', () => stopSpeaking())
 
   const hasMediaRecorderSupport =
     typeof MediaRecorder !== 'undefined' &&
@@ -206,6 +263,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modeLabel = isAirMode ? 'AIR' : 'Generic'
     questionMeta.textContent = `${modeLabel} • ${type} • ${difficulty} • ${category}`
     questionPrompt.textContent = questionText || 'Question unavailable.'
+
+    // Stop any ongoing speech and show/hide Read Aloud button
+    stopSpeaking()
+    if (readAloudBtn && synth && questionText) {
+      readAloudBtn.classList.remove('hidden')
+    }
   }
 
   const apiRequest = async (url, options = {}) => {
@@ -797,6 +860,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
+    // Stop TTS so it doesn't talk over the user's recording
+    stopSpeaking()
+
     startBtn.disabled = true
     setMessage('Creating interview session...')
 
@@ -834,6 +900,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     submitBtn.disabled = true
     responseInput.disabled = false
     responseInput.focus()
+
+    // Hide Read Aloud once the user is answering
+    if (readAloudBtn) readAloudBtn.classList.add('hidden')
 
     if (isAudioRecordingEnabled()) {
       startRecordingBtn.classList.remove('hidden')
