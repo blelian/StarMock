@@ -150,8 +150,9 @@ const InterviewPage = () => {
                     className={`flex gap-3 max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                   >
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-accent' : 'bg-primary'
-                        }`}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        msg.role === 'user' ? 'bg-accent' : 'bg-primary'
+                      }`}
                     >
                       {msg.role === 'user' ? (
                         <User size={16} />
@@ -160,10 +161,11 @@ const InterviewPage = () => {
                       )}
                     </div>
                     <div
-                      className={`p-4 rounded-2xl ${msg.role === 'user'
+                      className={`p-4 rounded-2xl ${
+                        msg.role === 'user'
                           ? 'bg-primary text-white rounded-tr-none'
                           : 'bg-bg-card border border-glass-border rounded-tl-none'
-                        }`}
+                      }`}
                     >
                       <p className="text-sm md:text-base leading-relaxed">
                         {msg.content}
@@ -210,10 +212,11 @@ const InterviewPage = () => {
 
               <button
                 onClick={toggleMic}
-                className={`p-3 rounded-xl transition-all ${isListening
+                className={`p-3 rounded-xl transition-all ${
+                  isListening
                     ? 'bg-error text-white scale-110'
                     : 'bg-bg-card hover:bg-primary/20 text-text-muted hover:text-primary'
-                  }`}
+                }`}
               >
                 {isListening ? <MicOff size={24} /> : <Mic size={24} />}
                 {isListening && (
