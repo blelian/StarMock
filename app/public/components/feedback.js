@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const airCompetencyBreakdownEl = document.getElementById(
     'air-competency-breakdown'
   );
+  const questionRollupSummaryEl = document.getElementById(
+    'question-rollup-summary'
+  );
+  const questionMetricsListEl = document.getElementById('question-metrics-list');
 
   if (
     !messageEl ||
@@ -103,6 +107,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   const formatDelta = (delta) => {
     if (!Number.isFinite(delta)) return '--';
     return `${delta >= 0 ? '+' : ''}${Math.round(delta)} pts`;
+  };
+
+  const renderQuestionMetrics = (summary) => {
+    if (!questionRollupSummaryEl || !questionMetricsListEl) {
+      return;
+    }
+
+    const sessionMetrics = summary?.sessionMetrics || null;
+    const questionMetrics = Array.isArray(summary?.questionMetrics)
+      ? summary.questionMetrics
+      : [];
+
+    if (!sessionMetrics || !questionMetrics.length) {
+      questionRollupSummaryEl.textContent = 'No retries';
+      questionMetricsListEl.innerHTML =
+        '<li>No question-attempt rollup is available for this session.</li>';
+      return;
+    }
+
+    questionRollupSummaryEl.textContent = `${sessionMetrics.questionCount || questionMetrics.length} questions • ${sessionMetrics.totalAttempts || questionMetrics.length} attempts`;
+    questionMetricsListEl.innerHTML = questionMetrics
+      .slice(0, 8)
+      .map((item, index) => {
+        const bestScore = toPercent(item?.bestAttempt?.overallScore);
+        const latestScore = toPercent(item?.latestAttempt?.overallScore);
+        const improvement = item?.improvement?.overallDelta;
+        const improvementLabel =
+          Number.isFinite(improvement) && improvement !== 0
+            ? `${improvement > 0 ? '+' : ''}${Math.round(improvement)} pts`
+            : 'No change';
+        const questionLabel =
+          typeof item?.questionText === 'string' && item.questionText.trim()
+            ? item.questionText.trim()
+            : `Question ${index + 1}`;
+        const attemptCount = Number(item?.attemptCount || 0);
+
+        return `
+          <li class="rounded-xl border border-white/10 bg-white/5 p-3">
+            <p class="font-semibold">${escapeHtml(questionLabel)}</p>
+            <p class="text-xs mt-1">
+              Attempts: ${attemptCount} • Best: ${bestScore ?? '--'}% • Latest: ${
+                latestScore ?? '--'
+              }% • Delta: ${escapeHtml(improvementLabel)}
+            </p>
+          </li>
+        `;
+      })
+      .join('');
   };
 
   const renderAirMetrics = (summary) => {
@@ -344,6 +396,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderBreakdown(aggregateScores);
   renderSuggestions(feedbackItems);
   renderAirMetrics(summary);
+  renderQuestionMetrics(summary);
 
   messageEl.textContent = `Feedback loaded for session ${sessionId.slice(-6)}.`;
 });

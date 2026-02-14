@@ -220,6 +220,7 @@ export function validateSubmitResponseRequest(req) {
     questionId,
     responseText,
     responseType = 'text',
+    allowRepeat,
     audioUrl,
     audioMimeType,
     audioSizeBytes,
@@ -240,6 +241,14 @@ export function validateSubmitResponseRequest(req) {
       valid: false,
       message: 'Response type must be text or audio_transcript',
       code: 'INVALID_RESPONSE_TYPE',
+    }
+  }
+
+  if (allowRepeat !== undefined && typeof allowRepeat !== 'boolean') {
+    return {
+      valid: false,
+      message: 'allowRepeat must be a boolean value when provided',
+      code: 'INVALID_ALLOW_REPEAT',
     }
   }
 

@@ -110,6 +110,35 @@ async function mockInterviewApis(
           session: {
             id: 'session-1',
             status: 'in_progress',
+            questionCount: 1,
+            questions: [
+              {
+                id: 'question-1',
+                type: 'behavioral',
+                difficulty: 'medium',
+                category: 'leadership',
+                questionText:
+                  'Tell me about a time you resolved a critical production issue.',
+                order: 1,
+              },
+            ],
+            progress: {
+              totalQuestions: 1,
+              answeredQuestions: 0,
+              remainingQuestions: 1,
+              totalAttempts: 0,
+              repeatedQuestions: 0,
+              extraAttempts: 0,
+              isComplete: false,
+              questions: [
+                {
+                  questionId: 'question-1',
+                  attempts: 0,
+                  answered: false,
+                  repeated: false,
+                },
+              ],
+            },
           },
         }),
       })
@@ -159,9 +188,34 @@ async function mockInterviewApis(
         body: JSON.stringify({
           response: {
             id: 'response-1',
+            questionId: 'question-1',
+            attemptNumber: 1,
             responseType: body.responseType,
             transcriptionStatus:
               body.responseType === 'audio_transcript' ? 'ready' : 'none',
+          },
+          questionProgress: {
+            questionId: 'question-1',
+            attempts: 1,
+            answered: true,
+            repeated: false,
+          },
+          progress: {
+            totalQuestions: 1,
+            answeredQuestions: 1,
+            remainingQuestions: 0,
+            totalAttempts: 1,
+            repeatedQuestions: 0,
+            extraAttempts: 0,
+            isComplete: true,
+            questions: [
+              {
+                questionId: 'question-1',
+                attempts: 1,
+                answered: true,
+                repeated: false,
+              },
+            ],
           },
         }),
       })
@@ -333,6 +387,7 @@ test.describe('AI recording interview flows', () => {
         'Situation: production incident impacted customers. Task: I needed to restore service quickly. Action: I coordinated incident response, identified the bottleneck, and implemented a rollback plan. Result: uptime recovered in under 10 minutes and we added preventive monitoring.'
       )
     await page.getByRole('button', { name: /submit answer/i }).click()
+    await page.getByRole('button', { name: /complete session/i }).click()
 
     await expect(page).toHaveURL(/feedback\.html\?sessionId=session-1/)
     expect(payloads).toHaveLength(1)
@@ -505,6 +560,7 @@ test.describe('AI recording interview flows', () => {
     )
 
     await page.getByRole('button', { name: /submit answer/i }).click()
+    await page.getByRole('button', { name: /complete session/i }).click()
 
     await expect(page).toHaveURL(/feedback\.html\?sessionId=session-1/)
     expect(payloads).toHaveLength(1)
@@ -537,6 +593,7 @@ test.describe('AI recording interview flows', () => {
         'Situation: I managed both spoken and written updates for a critical release. Task: keep stakeholders aligned. Action: I used a recorded walkthrough then refined the transcript with exact metrics. Result: faster approvals and better team clarity.'
       )
     await page.getByRole('button', { name: /submit answer/i }).click()
+    await page.getByRole('button', { name: /complete session/i }).click()
 
     await expect(page).toHaveURL(/feedback\.html\?sessionId=session-1/)
     expect(payloads).toHaveLength(1)

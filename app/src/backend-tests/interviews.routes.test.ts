@@ -388,15 +388,20 @@ describe('interview completion route', () => {
     const session = {
       _id: 'session-1',
       status: 'in_progress',
+      questions: ['question-1', 'question-2', 'question-3'],
       completedAt: null,
       duration: 120,
       save,
     }
 
     vi.spyOn(InterviewSession, 'findOne').mockResolvedValue(session as never)
-    vi.spyOn(InterviewResponse, 'countDocuments')
-      .mockResolvedValueOnce(3 as never)
-      .mockResolvedValueOnce(0 as never)
+    vi.spyOn(InterviewResponse, 'find').mockReturnValue({
+      select: vi.fn().mockResolvedValue([
+        { questionId: 'question-1', responseType: 'text' },
+        { questionId: 'question-2', responseType: 'text' },
+        { questionId: 'question-3', responseType: 'text' },
+      ]),
+    } as never)
     vi.spyOn(feedbackJobModel, 'findOrCreateForSession').mockResolvedValue({
       job: {
         _id: 'job-1',
@@ -440,15 +445,20 @@ describe('interview completion route', () => {
     const session = {
       _id: 'session-1',
       status: 'completed',
+      questions: ['question-1', 'question-2', 'question-3'],
       completedAt,
       duration: 120,
       save,
     }
 
     vi.spyOn(InterviewSession, 'findOne').mockResolvedValue(session as never)
-    vi.spyOn(InterviewResponse, 'countDocuments')
-      .mockResolvedValueOnce(3 as never)
-      .mockResolvedValueOnce(0 as never)
+    vi.spyOn(InterviewResponse, 'find').mockReturnValue({
+      select: vi.fn().mockResolvedValue([
+        { questionId: 'question-1', responseType: 'text' },
+        { questionId: 'question-2', responseType: 'text' },
+        { questionId: 'question-3', responseType: 'text' },
+      ]),
+    } as never)
     vi.spyOn(feedbackJobModel, 'findOrCreateForSession').mockResolvedValue({
       job: {
         _id: 'job-1',
@@ -484,6 +494,7 @@ describe('interview completion route', () => {
     const session = {
       _id: 'session-1',
       status: 'in_progress',
+      questions: ['question-1', 'question-2', 'question-3'],
       completedAt: null,
       duration: 120,
       save,
@@ -500,9 +511,16 @@ describe('interview completion route', () => {
         },
         created: true,
       } as never)
-    vi.spyOn(InterviewResponse, 'countDocuments')
-      .mockResolvedValueOnce(3 as never)
-      .mockResolvedValueOnce(1 as never)
+    vi.spyOn(InterviewResponse, 'find').mockReturnValue({
+      select: vi.fn().mockResolvedValue([
+        { questionId: 'question-1', responseType: 'text' },
+        {
+          questionId: 'question-2',
+          responseType: 'audio_transcript',
+          transcriptionStatus: 'uploaded',
+        },
+      ]),
+    } as never)
 
     const res = await runRouteHandlers(completeSessionHandlers, {
       ...createAuthenticatedRequest(),
@@ -517,6 +535,54 @@ describe('interview completion route', () => {
       pendingTranscriptions: 1,
     })
     expect(enqueueSpy).not.toHaveBeenCalled()
+  })
+
+  it('returns bad request when not all questions are answered', async () => {
+    const save = vi.fn().mockResolvedValue(undefined)
+    const session = {
+      _id: 'session-1',
+      status: 'in_progress',
+      questions: ['question-1', 'question-2', 'question-3'],
+      completedAt: null,
+      duration: 120,
+      save,
+    }
+
+    vi.spyOn(InterviewSession, 'findOne').mockResolvedValue(session as never)
+    const enqueueSpy = vi
+      .spyOn(feedbackJobModel, 'findOrCreateForSession')
+      .mockResolvedValue({
+        job: {
+          _id: 'job-1',
+          status: 'queued',
+          attempts: 0,
+        },
+        created: true,
+      } as never)
+    vi.spyOn(InterviewResponse, 'find').mockReturnValue({
+      select: vi.fn().mockResolvedValue([
+        { questionId: 'question-1', responseType: 'text' },
+      ]),
+    } as never)
+
+    const res = await runRouteHandlers(completeSessionHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-1' },
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.body).toMatchObject({
+      error: {
+        code: 'SESSION_INCOMPLETE',
+      },
+      progress: {
+        totalQuestions: 3,
+        answeredQuestions: 1,
+        remainingQuestions: 2,
+      },
+    })
+    expect(enqueueSpy).not.toHaveBeenCalled()
+    expect(save).not.toHaveBeenCalled()
   })
 })
 
@@ -639,6 +705,150 @@ describe('feedback status routes', () => {
     })
   })
 
+  it('rolls up repeated attempts using best attempt per question', async () => {
+    const feedbackRows = [
+      {
+        _id: 'report-1',
+        responseId: {
+          _id: 'response-1',
+          attemptNumber: 1,
+          questionId: { _id: 'question-1', questionText: 'Question one?' },
+        },
+        scores: {
+          situation: 55,
+          task: 58,
+          action: 62,
+          result: 65,
+          overall: 60,
+        },
+        rating: 'fair',
+        evaluatorType: 'ai_model',
+        analysis: {},
+        createdAt: new Date('2026-02-10T00:00:00.000Z'),
+      },
+      {
+        _id: 'report-2',
+        responseId: {
+          _id: 'response-2',
+          attemptNumber: 2,
+          questionId: { _id: 'question-1', questionText: 'Question one?' },
+        },
+        scores: {
+          situation: 75,
+          task: 78,
+          action: 82,
+          result: 85,
+          overall: 80,
+        },
+        rating: 'good',
+        evaluatorType: 'ai_model',
+        analysis: {},
+        createdAt: new Date('2026-02-11T00:00:00.000Z'),
+      },
+      {
+        _id: 'report-3',
+        responseId: {
+          _id: 'response-3',
+          attemptNumber: 1,
+          questionId: { _id: 'question-2', questionText: 'Question two?' },
+        },
+        scores: {
+          situation: 68,
+          task: 70,
+          action: 72,
+          result: 74,
+          overall: 70,
+        },
+        rating: 'good',
+        evaluatorType: 'ai_model',
+        analysis: {},
+        createdAt: new Date('2026-02-11T01:00:00.000Z'),
+      },
+    ]
+
+    vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
+      _id: 'session-1',
+      status: 'completed',
+      questions: ['question-1', 'question-2'],
+      metadata: { airMode: false },
+      completedAt: new Date('2026-02-11T02:00:00.000Z'),
+    } as never)
+    vi.spyOn(feedbackReportModel, 'find').mockReturnValue({
+      populate: vi.fn().mockResolvedValue(feedbackRows),
+    } as never)
+
+    const res = await runRouteHandlers(feedbackHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-1' },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toMatchObject({
+      summary: {
+        starScores: {
+          overall: 75,
+        },
+        sessionMetrics: {
+          questionCount: 2,
+          totalAttempts: 3,
+          extraAttempts: 1,
+          retriedQuestionCount: 1,
+          averageImprovement: 20,
+        },
+        questionMetrics: [
+          {
+            questionId: 'question-1',
+            questionText: 'Question one?',
+            attemptCount: 2,
+            bestAttempt: {
+              attemptNumber: 2,
+              overallScore: 80,
+              roleFitScore: 80,
+            },
+            firstAttempt: {
+              attemptNumber: 1,
+              overallScore: 60,
+              roleFitScore: 60,
+            },
+            latestAttempt: {
+              attemptNumber: 2,
+              overallScore: 80,
+              roleFitScore: 80,
+            },
+            improvement: {
+              overallDelta: 20,
+              roleFitDelta: 20,
+            },
+          },
+          {
+            questionId: 'question-2',
+            questionText: 'Question two?',
+            attemptCount: 1,
+            bestAttempt: {
+              attemptNumber: 1,
+              overallScore: 70,
+              roleFitScore: 70,
+            },
+            firstAttempt: {
+              attemptNumber: 1,
+              overallScore: 70,
+              roleFitScore: 70,
+            },
+            latestAttempt: {
+              attemptNumber: 1,
+              overallScore: 70,
+              roleFitScore: 70,
+            },
+            improvement: {
+              overallDelta: 0,
+              roleFitDelta: 0,
+            },
+          },
+        ],
+      },
+    })
+  })
+
   it('returns AIR summary metrics when competency scores are present', async () => {
     const feedbackRows = [
       {
@@ -738,7 +948,18 @@ describe('audio response and transcription routes', () => {
       status: 'in_progress',
       questions: ['question-1'],
     } as never)
-    vi.spyOn(InterviewResponse, 'findOne').mockResolvedValue(null)
+    vi.spyOn(InterviewResponse, 'findOne').mockReturnValue({
+      sort: vi.fn().mockResolvedValue(null),
+    } as never)
+    vi.spyOn(InterviewResponse, 'find').mockReturnValue({
+      select: vi.fn().mockResolvedValue([
+        {
+          questionId: 'question-1',
+          responseType: 'audio_transcript',
+          transcriptionStatus: 'uploaded',
+        },
+      ]),
+    } as never)
     vi.spyOn(InterviewResponse.prototype, 'save').mockResolvedValue(
       undefined as never
     )
@@ -770,13 +991,78 @@ describe('audio response and transcription routes', () => {
     expect(res.statusCode).toBe(201)
     expect(res.body).toMatchObject({
       response: {
+        attemptNumber: 1,
         responseType: 'audio_transcript',
         transcriptionStatus: 'uploaded',
+      },
+      progress: {
+        totalQuestions: 1,
+        answeredQuestions: 1,
+        remainingQuestions: 0,
       },
       transcriptionJob: {
         id: 'transcription-job-1',
         status: 'uploaded',
         created: true,
+      },
+    })
+  })
+
+  it('accepts repeat attempts when allowRepeat is true', async () => {
+    vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
+      _id: 'session-1',
+      status: 'in_progress',
+      questions: ['507f1f77bcf86cd799439011'], // Valid ObjectId format
+    } as never)
+    vi.spyOn(InterviewResponse, 'findOne').mockReturnValue({
+      sort: vi.fn().mockResolvedValue({
+        _id: 'response-1',
+        attemptNumber: 1,
+      }),
+    } as never)
+    vi.spyOn(InterviewResponse, 'find').mockReturnValue({
+      select: vi.fn().mockResolvedValue([
+        { questionId: '507f1f77bcf86cd799439011', responseType: 'text', transcriptionStatus: 'none' },
+        { questionId: '507f1f77bcf86cd799439011', responseType: 'text', transcriptionStatus: 'none' },
+      ]),
+    } as never)
+
+    // Mock save to set _id and createdAt, then return the instance
+    /* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/require-await */
+    vi.spyOn(InterviewResponse.prototype, 'save').mockImplementation(
+      async function (this: any) {
+        if (!this._id) this._id = 'response-2'
+        if (!this.createdAt) this.createdAt = new Date()
+        return this
+      }
+    )
+    /* eslint-enable @typescript-eslint/no-misused-promises, @typescript-eslint/require-await */
+
+    const res = await runRouteHandlers(submitResponseHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-1' },
+      body: {
+        questionId: '507f1f77bcf86cd799439011', // Valid ObjectId format
+        responseType: 'text',
+        allowRepeat: true,
+        responseText:
+          'Situation: we had recurring production incidents. Task: I needed to improve stability quickly. Action: I created a runbook, added alerts, and coached the team through postmortems. Result: incident volume dropped and MTTR improved by 38%.',
+      },
+    })
+
+    expect(res.statusCode).toBe(201)
+    expect(res.body).toMatchObject({
+      response: {
+        questionId: '507f1f77bcf86cd799439011',
+        attemptNumber: 2,
+        isRepeatAttempt: true,
+        responseType: 'text',
+      },
+      questionProgress: {
+        questionId: '507f1f77bcf86cd799439011',
+        attempts: 2,
+        answered: true,
+        repeated: true,
       },
     })
   })

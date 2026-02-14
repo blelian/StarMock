@@ -131,6 +131,18 @@ describe('API validators', () => {
     } as any)
 
     expect(valid).toEqual({ valid: true })
+
+    const invalidRepeatFlag = validateSubmitResponseRequest({
+      body: {
+        questionId: 'q-1',
+        responseText:
+          'Situation: I had to stabilize the release process. Task: I owned the incident response timeline. Action: I coordinated triage and rollout gates. Result: downtime dropped and release confidence improved.',
+        allowRepeat: 'yes',
+      },
+    } as any)
+
+    expect(invalidRepeatFlag.valid).toBe(false)
+    expect(invalidRepeatFlag.code).toBe('INVALID_ALLOW_REPEAT')
   })
 
   it('validates audio transcript response payloads', () => {

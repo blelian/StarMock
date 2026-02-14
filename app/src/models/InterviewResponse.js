@@ -18,6 +18,12 @@ const interviewResponseSchema = new mongoose.Schema(
       ref: 'InterviewQuestion',
       required: true,
     },
+    attemptNumber: {
+      type: Number,
+      min: 1,
+      default: 1,
+      required: true,
+    },
     responseText: {
       type: String,
       default: '',
@@ -113,6 +119,12 @@ const interviewResponseSchema = new mongoose.Schema(
 // Indexes for faster queries
 interviewResponseSchema.index({ userId: 1 })
 interviewResponseSchema.index({ sessionId: 1, questionId: 1, userId: 1 })
+interviewResponseSchema.index({
+  sessionId: 1,
+  questionId: 1,
+  userId: 1,
+  attemptNumber: -1,
+})
 
 // Calculate word count before saving
 interviewResponseSchema.pre('save', function () {

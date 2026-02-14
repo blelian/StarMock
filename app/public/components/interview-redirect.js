@@ -1,6 +1,10 @@
 /* global webkitSpeechRecognition */
 document.addEventListener('DOMContentLoaded', async () => {
   const startBtn = document.getElementById('start-interview-btn')
+  const repeatQuestionBtn = document.getElementById('repeat-question-btn')
+  const nextQuestionBtn = document.getElementById('next-question-btn')
+  const completeSessionBtn = document.getElementById('complete-session-btn')
+  const newSessionBtn = document.getElementById('new-session-btn')
   const submitBtn = document.getElementById('submit-response-btn')
   const responseInput = document.getElementById('response-input')
   const recordingEmoji = document.getElementById('recording-emoji')
@@ -12,6 +16,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const messageEl = document.getElementById('interview-message')
   const questionMeta = document.getElementById('question-meta')
   const questionPrompt = document.getElementById('question-prompt')
+  const questionProgressText = document.getElementById('question-progress-text')
+  const questionAttemptLabel = document.getElementById('question-attempt-label')
+  const sessionProgressPill = document.getElementById('session-progress-pill')
+  const sessionAnsweredValue = document.getElementById('session-answered-value')
+  const sessionAnsweredDelta = document.getElementById('session-answered-delta')
+  const sessionAttemptsValue = document.getElementById('session-attempts-value')
+  const sessionRetriesDelta = document.getElementById('session-retries-delta')
+  const srAnnouncer = document.getElementById('sr-announcer')
   const careerProfileOverlay = document.getElementById('career-profile-overlay')
   const careerProfileForm = document.getElementById('career-profile-form')
   const careerProfileMessage = document.getElementById('career-profile-message')
@@ -53,8 +65,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   )
   const liveTranscriptStatus = document.getElementById('live-transcript-status')
 
+  const DEFAULT_SESSION_QUESTION_COUNT = 3
   let currentQuestion = null
+  let preparedQuestions = []
+  let sessionQuestions = []
+  let currentQuestionIndex = 0
   let sessionId = null
+  let sessionProgress = null
   let mediaRecorder = null
   let mediaStream = null
   let recordingStartTime = null
@@ -90,6 +107,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   const synth = typeof speechSynthesis !== 'undefined' ? speechSynthesis : null
   let ttsUtterance = null
   let isSpeaking = false
+  let preferredVoice = null
+
+  const pickPreferredVoice = () => {
+    if (!synth) return null
+    const voices = synth.getVoices()
+    if (!Array.isArray(voices) || voices.length === 0) return null
+
+    const englishVoices = voices.filter((voice) =>
+      String(voice.lang || '').toLowerCase().startsWith('en')
+    )
+    const voicePool = englishVoices.length > 0 ? englishVoices : voices
+    const localCandidate = voicePool.find((voice) => voice.localService)
+    const naturalCandidate = voicePool.find((voice) =>
+      /(natural|neural|enhanced|premium)/i.test(String(voice.name || ''))
+    )
+    return naturalCandidate || localCandidate || voicePool[0] || null
+  }
+
+  if (synth) {
+    preferredVoice = pickPreferredVoice()
+    if (typeof synth.onvoiceschanged !== 'undefined') {
+      synth.onvoiceschanged = () => {
+        preferredVoice = pickPreferredVoice()
+      }
+    }
+  }
 
   const stopSpeaking = () => {
     if (synth) synth.cancel()
@@ -114,9 +157,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     ttsUtterance = new SpeechSynthesisUtterance(text)
-    ttsUtterance.rate = 0.95
+    ttsUtterance.rate = 0.98
     ttsUtterance.pitch = 1
-    ttsUtterance.lang = document.documentElement.lang || 'en'
+    ttsUtterance.lang = document.documentElement.lang || 'en-US'
+    if (preferredVoice) {
+      ttsUtterance.voice = preferredVoice
+      ttsUtterance.lang = preferredVoice.lang || ttsUtterance.lang
+    }
 
     ttsUtterance.onstart = () => {
       isSpeaking = true
@@ -126,10 +173,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const icon = readAloudBtn.querySelector('.material-icons-round')
         if (icon) icon.textContent = 'stop'
       }
+      announce('Reading question aloud.')
     }
 
-    ttsUtterance.onend = () => stopSpeaking()
-    ttsUtterance.onerror = () => stopSpeaking()
+    ttsUtterance.onend = () => {
+      stopSpeaking()
+      announce('Finished reading question.')
+    }
+    ttsUtterance.onerror = () => {
+      stopSpeaking()
+      setMessage('Question readout is unavailable in this browser session.', true)
+    }
 
     synth.speak(ttsUtterance)
   }
@@ -149,10 +203,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     featureFlags.aiRecording !== false &&
     featureFlags.audioUploads !== false
 
+  const announce = (message) => {
+    if (!srAnnouncer) return
+    srAnnouncer.textContent = ''
+    window.requestAnimationFrame(() => {
+      srAnnouncer.textContent = message
+    })
+  }
+
   const setMessage = (message, isError = false) => {
     messageEl.textContent = message
     messageEl.classList.remove('text-red-400', 'text-slate-400')
     messageEl.classList.add(isError ? 'text-red-400' : 'text-slate-400')
+    announce(message)
   }
 
   const toNonEmptyString = (value) =>
@@ -253,6 +316,120 @@ document.addEventListener('DOMContentLoaded', async () => {
     jobDescriptionText: toNonEmptyString(careerJobDescriptionInput?.value),
   })
 
+  const toQuestionId = (question) => {
+    if (!question) return ''
+    if (typeof question === 'string') return question
+    return String(question.id || question._id || '')
+  }
+
+  const createEmptyProgress = () => ({
+    totalQuestions: sessionQuestions.length || preparedQuestions.length || 0,
+    answeredQuestions: 0,
+    remainingQuestions: sessionQuestions.length || preparedQuestions.length || 0,
+    totalAttempts: 0,
+    repeatedQuestions: 0,
+    extraAttempts: 0,
+    isComplete: false,
+    questions: [],
+  })
+
+  const getQuestionProgress = (questionId) => {
+    const normalizedId = toQuestionId(questionId)
+    const progressList = Array.isArray(sessionProgress?.questions)
+      ? sessionProgress.questions
+      : []
+    return (
+      progressList.find((item) => String(item?.questionId || '') === normalizedId) ||
+      { questionId: normalizedId, attempts: 0, answered: false, repeated: false }
+    )
+  }
+
+  const updateSessionStats = () => {
+    const fallbackTotal = sessionQuestions.length || preparedQuestions.length || 0
+    const progress = sessionProgress || createEmptyProgress()
+    const totalQuestions =
+      Number.isFinite(progress.totalQuestions) && progress.totalQuestions >= 0
+        ? progress.totalQuestions
+        : fallbackTotal
+    const answeredQuestions =
+      Number.isFinite(progress.answeredQuestions) && progress.answeredQuestions >= 0
+        ? progress.answeredQuestions
+        : 0
+    const totalAttempts =
+      Number.isFinite(progress.totalAttempts) && progress.totalAttempts >= 0
+        ? progress.totalAttempts
+        : 0
+    const retries =
+      Number.isFinite(progress.extraAttempts) && progress.extraAttempts >= 0
+        ? progress.extraAttempts
+        : Math.max(totalAttempts - answeredQuestions, 0)
+
+    if (sessionAnsweredValue) {
+      sessionAnsweredValue.textContent = `${answeredQuestions}/${totalQuestions}`
+    }
+    if (sessionAnsweredDelta) {
+      sessionAnsweredDelta.textContent =
+        sessionId && totalQuestions > 0
+          ? `${Math.max(totalQuestions - answeredQuestions, 0)} remaining`
+          : 'Session idle'
+    }
+    if (sessionAttemptsValue) {
+      sessionAttemptsValue.textContent = String(totalAttempts)
+    }
+    if (sessionRetriesDelta) {
+      sessionRetriesDelta.textContent = `Retries ${retries}`
+    }
+
+    if (sessionProgressPill) {
+      if (!sessionId) {
+        sessionProgressPill.textContent = 'Session idle'
+      } else if (progress.isComplete) {
+        sessionProgressPill.textContent = 'Ready to complete'
+      } else {
+        sessionProgressPill.textContent = `${answeredQuestions}/${totalQuestions} answered`
+      }
+    }
+  }
+
+  const updateQuestionProgressText = () => {
+    const totalQuestions = sessionQuestions.length || preparedQuestions.length || 0
+    const currentNumber = totalQuestions > 0 ? currentQuestionIndex + 1 : 0
+    const currentQuestionId = toQuestionId(currentQuestion)
+    const progressForQuestion = getQuestionProgress(currentQuestionId)
+    const attempts = Number(progressForQuestion.attempts || 0)
+    const nextAttempt = Math.max(attempts + 1, 1)
+
+    if (questionProgressText) {
+      if (!currentQuestion) {
+        questionProgressText.textContent = 'Question progress will appear here.'
+      } else {
+        questionProgressText.textContent = `Question ${currentNumber} of ${totalQuestions} • ${attempts} submitted`
+      }
+    }
+
+    if (questionAttemptLabel) {
+      questionAttemptLabel.textContent = `Attempt ${nextAttempt}`
+    }
+  }
+
+  const setControlVisibility = (element, visible) => {
+    if (!element) return
+    element.classList.toggle('hidden', !visible)
+  }
+
+  const syncProgress = (progress) => {
+    if (progress && typeof progress === 'object') {
+      sessionProgress = progress
+    } else {
+      sessionProgress = createEmptyProgress()
+    }
+    updateSessionStats()
+    updateQuestionProgressText()
+    if (typeof refreshSessionControls === 'function') {
+      refreshSessionControls()
+    }
+  }
+
   const setPrompt = (question) => {
     const type = question.type || 'general'
     const difficulty = question.difficulty || 'unknown'
@@ -266,9 +443,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Stop any ongoing speech and show/hide Read Aloud button
     stopSpeaking()
-    if (readAloudBtn && synth && questionText) {
-      readAloudBtn.classList.remove('hidden')
+    if (readAloudBtn) {
+      readAloudBtn.classList.toggle('hidden', !(synth && questionText))
     }
+    updateQuestionProgressText()
   }
 
   const apiRequest = async (url, options = {}) => {
@@ -337,14 +515,61 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const updateSubmitState = () => {
-    if (!sessionId) {
+    const hasActiveSession = Boolean(sessionId && currentQuestion)
+    if (!hasActiveSession) {
       submitBtn.disabled = true
+      if (startRecordingBtn) startRecordingBtn.disabled = true
+      if (stopRecordingBtn) stopRecordingBtn.disabled = true
+      if (nextQuestionBtn) nextQuestionBtn.disabled = true
+      if (repeatQuestionBtn) repeatQuestionBtn.disabled = true
+      if (completeSessionBtn) completeSessionBtn.disabled = true
+      refreshSessionControls()
       return
     }
 
     const minLength = uploadedAudioUrl ? 20 : 50
     submitBtn.disabled = responseInput.value.trim().length < minLength
+    if (startRecordingBtn && isAudioRecordingEnabled()) {
+      startRecordingBtn.disabled = false
+    }
     updateTranscriptWarning()
+    refreshSessionControls()
+  }
+
+  const refreshSessionControls = () => {
+    const hasActiveSession = Boolean(sessionId)
+    const currentQuestionId = toQuestionId(currentQuestion)
+    const currentProgress = getQuestionProgress(currentQuestionId)
+    const hasAnsweredCurrent = Boolean(currentProgress.answered)
+    const isRecordingActive =
+      Boolean(mediaRecorder && mediaRecorder.state === 'recording')
+    const hasNextQuestion =
+      Array.isArray(sessionQuestions) &&
+      currentQuestionIndex < sessionQuestions.length - 1
+
+    setControlVisibility(startBtn, !hasActiveSession)
+    setControlVisibility(
+      repeatQuestionBtn,
+      hasActiveSession && Boolean(currentQuestion)
+    )
+    setControlVisibility(
+      nextQuestionBtn,
+      hasActiveSession && Boolean(currentQuestion) && sessionQuestions.length > 1
+    )
+    setControlVisibility(completeSessionBtn, hasActiveSession)
+    setControlVisibility(newSessionBtn, !hasActiveSession)
+
+    if (repeatQuestionBtn) {
+      repeatQuestionBtn.disabled = !hasAnsweredCurrent || isRecordingActive
+    }
+    if (nextQuestionBtn) {
+      nextQuestionBtn.disabled =
+        !hasAnsweredCurrent || !hasNextQuestion || isRecordingActive
+    }
+    if (completeSessionBtn) {
+      completeSessionBtn.disabled =
+        !sessionProgress?.isComplete || isRecordingActive
+    }
   }
 
   const resetRecordingState = () => {
@@ -370,13 +595,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     resetRecordingState()
   }
 
+  const discardActiveRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      try {
+        mediaRecorder.ondataavailable = null
+        mediaRecorder.onstop = null
+        mediaRecorder.stop()
+      } catch {
+        // ignore teardown race conditions
+      }
+    }
+  }
+
+  const resetResponseDraft = (clearText = true) => {
+    stopSpeaking()
+    stopSpeechRecognition()
+    discardActiveRecording()
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((track) => track.stop())
+      mediaStream = null
+    }
+    mediaRecorder = null
+    recordedChunks = []
+    uploadedAudioUrl = null
+    uploadedAudioMimeType = null
+    transcriptConfidence = null
+    if (clearText) {
+      responseInput.value = ''
+    }
+    responseInput.disabled = !sessionId
+    resetRecordingState()
+    updateTranscriptWarning()
+    updateSubmitState()
+  }
+
   const showLiveTranscriptIndicator = (text) => {
     if (liveTranscriptIndicator) {
       liveTranscriptIndicator.classList.remove('hidden')
       liveTranscriptIndicator.style.display = 'flex'
     }
     if (liveTranscriptStatus) {
-      liveTranscriptStatus.textContent = text || 'Listening... speak clearly'
+      liveTranscriptStatus.textContent = text || 'Listening... speak naturally'
     }
   }
 
@@ -449,7 +708,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       speechRecognition.start()
-      showLiveTranscriptIndicator('Listening... speak clearly')
+      showLiveTranscriptIndicator('Listening... speak naturally')
+      announce('Live transcript started.')
     } catch {
       console.warn('Could not start speech recognition')
     }
@@ -472,6 +732,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       interimTranscript = ''
     }
     updateLiveTranscript()
+    announce('Live transcript stopped.')
   }
 
   const uploadAudioBlob = async (audioBlob) => {
@@ -543,6 +804,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const startRecording = async () => {
+    if (!sessionId || !currentQuestion?.id) {
+      setMessage('Start a session before recording a response.', true)
+      return
+    }
+
     if (!isAudioRecordingEnabled()) {
       setMessage(
         'Audio recording is unavailable right now. Continue with text response.',
@@ -601,6 +867,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           responseInput.disabled = false
         } finally {
           cleanupMedia()
+          refreshSessionControls()
         }
       }
 
@@ -613,6 +880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       stopRecordingBtn.disabled = false
       recordingText.textContent = 'Recording in progress'
       recordingEmoji.classList.remove('hidden')
+      refreshSessionControls()
 
       // Start browser speech-to-text in parallel
       startSpeechRecognition()
@@ -640,10 +908,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     mediaRecorder.stop()
     recordingText.textContent = 'Processing recording...'
     setMessage('Finalizing recording...')
+    refreshSessionControls()
   }
 
-  const buildQuestionUrl = () => {
-    const params = new URLSearchParams({ limit: '1' })
+  const normalizeQuestion = (question, index) => ({
+    id: toQuestionId(question),
+    type: question?.type || 'behavioral',
+    difficulty: question?.difficulty || 'medium',
+    category: question?.category || question?.type || 'general',
+    title: question?.title || '',
+    description: question?.description || '',
+    questionText:
+      question?.questionText || question?.description || question?.title || '',
+    starGuidelines: question?.starGuidelines || null,
+    order: Number(question?.order || index + 1),
+  })
+
+  const buildQuestionUrl = (limit = 1) => {
+    const safeLimit =
+      Number.isFinite(limit) && Number(limit) > 0 ? Math.floor(limit) : 1
+    const params = new URLSearchParams({ limit: String(safeLimit) })
 
     if (isAirMode && isCareerProfileComplete(careerProfile)) {
       params.set('airMode', 'true')
@@ -661,26 +945,74 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `/api/questions?${params.toString()}`
   }
 
-  const loadQuestion = async () => {
-    setMessage('Fetching a practice question...')
-    const questionResult = await apiRequest(buildQuestionUrl())
+  const setCurrentQuestionByIndex = (index, { resetDraft = false } = {}) => {
+    if (!Array.isArray(sessionQuestions) || sessionQuestions.length === 0) {
+      currentQuestion = null
+      questionMeta.textContent = 'Unavailable'
+      questionPrompt.textContent =
+        'No question could be loaded right now. Please try again.'
+      updateQuestionProgressText()
+      refreshSessionControls()
+      return
+    }
+
+    currentQuestionIndex = Math.max(
+      0,
+      Math.min(index, sessionQuestions.length - 1)
+    )
+    currentQuestion = sessionQuestions[currentQuestionIndex]
+    setPrompt(currentQuestion)
+    if (resetDraft) {
+      resetResponseDraft(true)
+    }
+    refreshSessionControls()
+  }
+
+  const prepareSessionQuestions = async () => {
+    setMessage('Fetching practice questions for your next session...')
+    const questionResult = await apiRequest(
+      buildQuestionUrl(DEFAULT_SESSION_QUESTION_COUNT)
+    )
 
     if (!questionResult.ok || !questionResult.payload?.questions?.length) {
       setMessage(
         questionResult.payload?.error?.message ||
-          'Unable to load interview question.',
+          'Unable to load interview questions.',
         true
       )
       questionMeta.textContent = 'Unavailable'
       questionPrompt.textContent =
-        'No question could be loaded right now. Please try again.'
+        'No questions could be loaded right now. Please try again.'
+      preparedQuestions = []
+      sessionQuestions = []
+      currentQuestion = null
+      sessionProgress = createEmptyProgress()
+      syncProgress(sessionProgress)
+      startBtn.disabled = true
+      refreshSessionControls()
       return
     }
 
-    currentQuestion = questionResult.payload.questions[0]
-    setPrompt(currentQuestion)
-    startBtn.disabled = false
-    setMessage('Question ready. Press Start to begin your session.')
+    preparedQuestions = questionResult.payload.questions.map((question, index) =>
+      normalizeQuestion(question, index)
+    )
+    sessionQuestions = [...preparedQuestions]
+    currentQuestionIndex = 0
+    currentQuestion = sessionQuestions[0]
+    sessionProgress = createEmptyProgress()
+    syncProgress(sessionProgress)
+
+    setCurrentQuestionByIndex(0)
+    startBtn.disabled = !currentQuestion
+    responseInput.classList.add('hidden')
+    submitBtn.classList.add('hidden')
+    startRecordingBtn.classList.add('hidden')
+    stopRecordingBtn.classList.add('hidden')
+    recordingEmoji.classList.add('hidden')
+    recordingText.textContent = 'Awaiting session start'
+    setMessage(
+      `Session plan ready with ${sessionQuestions.length} question${sessionQuestions.length === 1 ? '' : 's'}. Press Start Session when ready.`
+    )
   }
 
   const loadFeatureFlags = async () => {
@@ -747,8 +1079,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggleCareerProfileOverlay(false)
     renderCareerContext()
     clearCareerProfileMessage()
-    setMessage('Generic mode enabled. Fetching a practice question...')
-    await loadQuestion()
+    setMessage('Generic mode enabled. Preparing your next session...')
+    await prepareSessionQuestions()
   }
 
   const startAirMode = async (profile) => {
@@ -763,9 +1095,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderCareerContext()
     clearCareerProfileMessage()
     setMessage(
-      `AIR mode enabled for ${careerProfile.targetJobTitle}. Fetching your question...`
+      `AIR mode enabled for ${careerProfile.targetJobTitle}. Preparing role-biased questions...`
     )
-    await loadQuestion()
+    await prepareSessionQuestions()
   }
 
   const initializeCareerProfileFlow = async () => {
@@ -854,33 +1186,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
   }
 
-  startBtn.addEventListener('click', async () => {
-    if (!currentQuestion?.id) {
-      setMessage('Question is not ready yet. Please wait a moment.', true)
-      return
-    }
-
-    // Stop TTS so it doesn't talk over the user's recording
-    stopSpeaking()
-
-    startBtn.disabled = true
-    setMessage('Creating interview session...')
-
-    const createSessionPayload = { questionIds: [currentQuestion.id] }
+  const buildCreateSessionPayload = () => {
+    const questionIds = preparedQuestions.map((question) => question.id).filter(Boolean)
+    const payload = { questionIds }
     if (isAirMode && isCareerProfileComplete(careerProfile)) {
-      createSessionPayload.airMode = true
-      createSessionPayload.airContext = {
+      payload.airMode = true
+      payload.airContext = {
         targetJobTitle: careerProfile.targetJobTitle,
         industry: careerProfile.industry,
         seniority: careerProfile.seniority,
         jobDescriptionText: careerProfile.jobDescriptionText || '',
       }
     }
+    return payload
+  }
+
+  const startSession = async () => {
+    if (sessionId) {
+      setMessage('A session is already active.', true)
+      return
+    }
+
+    if (!preparedQuestions.length) {
+      await prepareSessionQuestions()
+    }
+
+    if (!preparedQuestions.length) {
+      setMessage('Questions are not ready yet. Please try again.', true)
+      return
+    }
+
+    stopSpeaking()
+    startBtn.disabled = true
+    setMessage('Creating interview session...')
+    const createPayload = buildCreateSessionPayload()
+    if (!Array.isArray(createPayload.questionIds) || !createPayload.questionIds.length) {
+      startBtn.disabled = false
+      setMessage('Question set is invalid. Refresh and try again.', true)
+      return
+    }
 
     const createResult = await apiRequest('/api/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(createSessionPayload),
+      body: JSON.stringify(createPayload),
     })
 
     if (!createResult.ok || !createResult.payload?.session?.id) {
@@ -893,34 +1242,176 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     sessionId = createResult.payload.session.id
-    recordingEmoji.classList.remove('hidden')
-    recordingText.textContent = 'Session started'
+    const sessionFromServer = createResult.payload.session
+    if (Array.isArray(sessionFromServer.questions) && sessionFromServer.questions.length) {
+      sessionQuestions = sessionFromServer.questions.map((question, index) =>
+        normalizeQuestion(question, index)
+      )
+    } else {
+      sessionQuestions = [...preparedQuestions]
+    }
+    currentQuestionIndex = 0
+    currentQuestion = sessionQuestions[0] || null
+    syncProgress(sessionFromServer.progress || createEmptyProgress())
+
     responseInput.classList.remove('hidden')
     submitBtn.classList.remove('hidden')
-    submitBtn.disabled = true
     responseInput.disabled = false
     responseInput.focus()
-
-    // Hide Read Aloud once the user is answering
-    if (readAloudBtn) readAloudBtn.classList.add('hidden')
+    setControlVisibility(startRecordingBtn, isAudioRecordingEnabled())
+    setControlVisibility(stopRecordingBtn, isAudioRecordingEnabled())
+    stopRecordingBtn.disabled = true
+    recordingEmoji.classList.remove('hidden')
+    recordingText.textContent = 'Session started'
+    setCurrentQuestionByIndex(0, { resetDraft: true })
+    refreshSessionControls()
 
     if (isAudioRecordingEnabled()) {
-      startRecordingBtn.classList.remove('hidden')
-      stopRecordingBtn.classList.remove('hidden')
-      stopRecordingBtn.disabled = true
       setMessage(
-        'Session started. Record audio or type a STAR response before submitting.'
+        'Session started. Submit one answer per question, then repeat any question to improve before completion.'
       )
     } else {
       setMessage(
-        'Session started. Audio recording is disabled for your account/browser, so submit a text response.',
-        true
+        'Session started in text mode. Submit one answer per question, then repeat any question to improve before completion.'
       )
     }
-  })
+  }
 
-  startRecordingBtn.addEventListener('click', startRecording)
-  stopRecordingBtn.addEventListener('click', stopRecording)
+  const moveToNextQuestion = () => {
+    if (!sessionId || !currentQuestion) {
+      return
+    }
+
+    const currentProgress = getQuestionProgress(toQuestionId(currentQuestion))
+    if (!currentProgress.answered) {
+      setMessage(
+        'Submit at least one answer for this question before moving to the next one.',
+        true
+      )
+      return
+    }
+
+    if (currentQuestionIndex >= sessionQuestions.length - 1) {
+      setMessage(
+        'This is the final question. Complete the session or repeat this question.',
+        true
+      )
+      return
+    }
+
+    setCurrentQuestionByIndex(currentQuestionIndex + 1, { resetDraft: true })
+    setMessage(
+      `Moved to question ${currentQuestionIndex + 1} of ${sessionQuestions.length}.`
+    )
+    responseInput.focus()
+  }
+
+  const prepareRepeatAttempt = () => {
+    if (!sessionId || !currentQuestion) {
+      setMessage('Start a session first.', true)
+      return
+    }
+
+    const currentProgress = getQuestionProgress(toQuestionId(currentQuestion))
+    if (!currentProgress.answered) {
+      setMessage(
+        'Submit your first attempt before repeating this question.',
+        true
+      )
+      return
+    }
+
+    resetResponseDraft(true)
+    recordingText.textContent = 'Ready for retry'
+    setMessage(
+      `Retrying question ${currentQuestionIndex + 1}. Improve specificity and quantified impact for a higher rating.`
+    )
+    responseInput.focus()
+  }
+
+  const completeCurrentSession = async () => {
+    if (!sessionId) {
+      setMessage('No active session to complete.', true)
+      return
+    }
+
+    if (!sessionProgress?.isComplete) {
+      setMessage(
+        'Answer every question at least once before completing the session.',
+        true
+      )
+      return
+    }
+
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      setMessage('Stop recording before completing the session.', true)
+      return
+    }
+
+    submitBtn.disabled = true
+    responseInput.disabled = true
+    if (startRecordingBtn) startRecordingBtn.disabled = true
+    if (stopRecordingBtn) stopRecordingBtn.disabled = true
+    if (completeSessionBtn) completeSessionBtn.disabled = true
+    stopSpeechRecognition()
+    stopSpeaking()
+
+    setMessage('Completing session...')
+    const completeResult = await apiRequest(`/api/sessions/${sessionId}/complete`, {
+      method: 'POST',
+    })
+
+    if (!completeResult.ok) {
+      responseInput.disabled = false
+      submitBtn.disabled = false
+      if (startRecordingBtn && isAudioRecordingEnabled()) {
+        startRecordingBtn.disabled = false
+      }
+      refreshSessionControls()
+      setMessage(
+        completeResult.payload?.error?.message || 'Failed to complete session.',
+        true
+      )
+      return
+    }
+
+    recordingText.textContent = 'Completed'
+    const completedSessionId = sessionId
+    const nextUrl = `/feedback.html?sessionId=${encodeURIComponent(completedSessionId)}`
+    setMessage('Session completed. Redirecting to feedback...')
+    window.location.href = nextUrl
+  }
+
+  if (startBtn) {
+    startBtn.addEventListener('click', startSession)
+  }
+
+  if (newSessionBtn) {
+    newSessionBtn.addEventListener('click', async () => {
+      if (sessionId) {
+        setMessage('Complete the current session before starting a new one.', true)
+        return
+      }
+      resetResponseDraft(true)
+      await prepareSessionQuestions()
+    })
+  }
+
+  if (startRecordingBtn) {
+    startRecordingBtn.addEventListener('click', startRecording)
+  }
+  if (stopRecordingBtn) {
+    stopRecordingBtn.addEventListener('click', stopRecording)
+  }
+  if (nextQuestionBtn) {
+    nextQuestionBtn.addEventListener('click', moveToNextQuestion)
+  }
+  if (repeatQuestionBtn) {
+    repeatQuestionBtn.addEventListener('click', prepareRepeatAttempt)
+  }
+  if (completeSessionBtn) {
+    completeSessionBtn.addEventListener('click', completeCurrentSession)
+  }
 
   responseInput.addEventListener('input', () => {
     updateSubmitState()
@@ -933,13 +1424,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (uploadedAudioUrl) {
         transcriptConfidence = estimateTranscriptConfidence(responseInput.value)
       }
-      setMessage('Response looks good. You can submit now.')
+      const questionAttempts = getQuestionProgress(toQuestionId(currentQuestion)).attempts
+      if (questionAttempts > 0) {
+        setMessage('Updated attempt looks strong. Submit to improve your score.')
+      } else {
+        setMessage('Response looks good. Submit your first attempt.')
+      }
     }
   })
 
   submitBtn.addEventListener('click', async () => {
     if (!sessionId || !currentQuestion?.id) {
       setMessage('Session has not started correctly. Please retry.', true)
+      return
+    }
+
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      setMessage('Stop recording before submitting your answer.', true)
       return
     }
 
@@ -955,17 +1456,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     submitBtn.disabled = true
     responseInput.disabled = true
-    startRecordingBtn.disabled = true
-    stopRecordingBtn.disabled = true
+    if (startRecordingBtn) startRecordingBtn.disabled = true
+    if (stopRecordingBtn) stopRecordingBtn.disabled = true
     stopSpeechRecognition()
 
-    // Submit response (text or audio+transcript)
     setMessage('Submitting your response...')
-
+    const currentProgress = getQuestionProgress(currentQuestion.id)
     const payload = {
       questionId: currentQuestion.id,
       responseText,
       responseType: uploadedAudioUrl ? 'audio_transcript' : 'text',
+      allowRepeat: Boolean(currentProgress?.answered),
     }
 
     if (uploadedAudioUrl) {
@@ -989,7 +1490,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!submitResponseResult.ok) {
       responseInput.disabled = false
       submitBtn.disabled = false
-      if (isAudioRecordingEnabled()) {
+      if (startRecordingBtn && isAudioRecordingEnabled()) {
         startRecordingBtn.disabled = false
       }
       setMessage(
@@ -1000,37 +1501,51 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
-    setMessage('Completing session...')
-    const completeResult = await apiRequest(
-      `/api/sessions/${sessionId}/complete`,
-      {
-        method: 'POST',
-      }
-    )
+    uploadedAudioUrl = null
+    uploadedAudioMimeType = null
+    transcriptConfidence = null
+    updateTranscriptWarning()
 
-    if (!completeResult.ok) {
-      responseInput.disabled = false
-      submitBtn.disabled = false
-      if (isAudioRecordingEnabled()) {
-        startRecordingBtn.disabled = false
-      }
+    syncProgress(submitResponseResult.payload?.progress)
+    const updatedQuestionProgress =
+      submitResponseResult.payload?.questionProgress ||
+      getQuestionProgress(currentQuestion.id)
+    const attempts = Number(updatedQuestionProgress?.attempts || 1)
+
+    responseInput.value = ''
+    responseInput.disabled = false
+    submitBtn.disabled = false
+    if (startRecordingBtn && isAudioRecordingEnabled()) {
+      startRecordingBtn.disabled = false
+    }
+    recordingText.textContent = `Attempt ${attempts} saved`
+    updateSubmitState()
+
+    if (sessionProgress?.isComplete) {
       setMessage(
-        completeResult.payload?.error?.message || 'Failed to complete session.',
-        true
+        `Attempt ${attempts} saved. All questions are answered. Repeat this question or complete the session.`
       )
-      return
+    } else if (attempts > 1) {
+      setMessage(
+        `Attempt ${attempts} saved. Move on when ready or keep refining this question.`
+      )
+    } else {
+      setMessage(
+        'First attempt saved. You can repeat this question for improvement or continue to the next question.'
+      )
     }
 
-    recordingText.textContent = 'Completed'
-    const nextUrl = `/feedback.html?sessionId=${encodeURIComponent(sessionId)}`
-    setMessage('Session completed. Redirecting to feedback...')
-    window.location.href = nextUrl
+    refreshSessionControls()
+    updateQuestionProgressText()
   })
 
   window.addEventListener('beforeunload', () => {
     cleanupMedia()
     stopSpeechRecognition()
   })
+
+  syncProgress(createEmptyProgress())
+  refreshSessionControls()
 
   await loadFeatureFlags()
   await initializeCareerProfileFlow()

@@ -86,6 +86,12 @@
               >
                 Loading Question
               </span>
+              <span
+                id="session-progress-pill"
+                class="px-3 py-1 bg-slate-700/70 text-slate-200 text-[10px] font-bold uppercase tracking-widest rounded-full"
+              >
+                Session idle
+              </span>
             </div>
 
             <h4
@@ -94,6 +100,9 @@
             >
               Loading interview prompt...
             </h4>
+            <p id="question-progress-text" class="text-xs text-slate-400 mb-3">
+              Question progress will appear here.
+            </p>
 
             <!-- Read Aloud (Text-to-Speech) -->
             <button
@@ -109,14 +118,47 @@
             <div
               class="flex items-center justify-between pt-4 border-t border-slate-800"
             >
-              <button
-                id="start-interview-btn"
-                class="start-btn bg-primary hover:opacity-90 transition-opacity text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2"
-                disabled
-              >
-                Start
-                <span class="material-icons-round text-base">play_arrow</span>
-              </button>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  id="start-interview-btn"
+                  class="start-btn bg-primary hover:opacity-90 transition-opacity text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2"
+                  disabled
+                >
+                  Start Session
+                  <span class="material-icons-round text-base">play_arrow</span>
+                </button>
+                <button
+                  id="repeat-question-btn"
+                  type="button"
+                  class="hidden bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wide"
+                  disabled
+                >
+                  Repeat Question
+                </button>
+                <button
+                  id="next-question-btn"
+                  type="button"
+                  class="hidden bg-primary/20 hover:bg-primary/30 text-primary px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wide"
+                  disabled
+                >
+                  Next Question
+                </button>
+                <button
+                  id="complete-session-btn"
+                  type="button"
+                  class="hidden bg-primary hover:bg-primary/90 text-background-dark px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wide"
+                  disabled
+                >
+                  Complete Session
+                </button>
+                <button
+                  id="new-session-btn"
+                  type="button"
+                  class="hidden bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wide"
+                >
+                  New Session
+                </button>
+              </div>
             </div>
 
             <!-- Recording Indicator -->
@@ -132,6 +174,9 @@
               </p>
               <p id="recording-duration" class="text-xs text-slate-400 hidden">
                 00:00
+              </p>
+              <p id="question-attempt-label" class="text-xs text-slate-400">
+                Attempt 1
               </p>
             </div>
 
@@ -224,6 +269,12 @@
               </button>
               <p id="interview-message" class="text-sm text-slate-400"></p>
             </div>
+            <p
+              id="sr-announcer"
+              class="sr-only"
+              aria-live="polite"
+              aria-atomic="true"
+            ></p>
           </div>
         </div>
       </section>
@@ -234,11 +285,16 @@
             <p
               class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1"
             >
-              Avg Score
+              Questions Answered
             </p>
             <div class="flex items-baseline gap-2">
-              <span class="text-2xl font-bold">82%</span>
-              <span class="text-[10px] text-primary font-bold">+5%</span>
+              <span id="session-answered-value" class="text-2xl font-bold">0/0</span>
+              <span
+                id="session-answered-delta"
+                class="text-[10px] text-primary font-bold"
+              >
+                Session idle
+              </span>
             </div>
           </div>
 
@@ -246,11 +302,16 @@
             <p
               class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1"
             >
-              Time Spent
+              Total Attempts
             </p>
             <div class="flex items-baseline gap-2">
-              <span class="text-2xl font-bold">12.5h</span>
-              <span class="text-[10px] text-primary font-bold">+2h</span>
+              <span id="session-attempts-value" class="text-2xl font-bold">0</span>
+              <span
+                id="session-retries-delta"
+                class="text-[10px] text-primary font-bold"
+              >
+                Retries 0
+              </span>
             </div>
           </div>
         </div>

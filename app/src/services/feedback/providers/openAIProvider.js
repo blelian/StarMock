@@ -5,6 +5,23 @@ const PROMPT_VERSION = process.env.OPENAI_PROMPT_VERSION || 'star-eval.v1'
 const OPENAI_BASE_URL = (
   process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
 ).replace(/\/+$/, '')
+const INDUSTRY_REVIEW_LENSES = {
+  technology: 'system reliability, scalability tradeoffs, and engineering rigor',
+  finance: 'risk controls, compliance rigor, and auditability',
+  healthcare: 'patient safety, privacy obligations, and cross-team coordination',
+  education: 'learner outcomes, accessibility, and instructional effectiveness',
+  retail: 'customer impact, operations quality, and execution under demand spikes',
+  manufacturing: 'process discipline, quality control, and operational resilience',
+  government: 'policy alignment, public accountability, and stakeholder trust',
+  consulting: 'client impact, stakeholder alignment, and structured analysis',
+  media: 'audience impact, editorial judgment, and delivery velocity',
+  other: 'domain-specific constraints, stakeholder impact, and measurable outcomes',
+}
+const SENIORITY_REVIEW_EXPECTATIONS = {
+  entry: 'foundational execution and learning agility',
+  mid: 'independent ownership and cross-functional delivery',
+  senior: 'strategic judgment, leadership, and complex decision-making',
+}
 
 function getQuestionText(question) {
   if (!question) return ''
@@ -205,6 +222,11 @@ function buildAirContextBlock(airContext) {
   if (!summary) {
     return ''
   }
+  const industryLens =
+    INDUSTRY_REVIEW_LENSES[summary.industry] || INDUSTRY_REVIEW_LENSES.other
+  const seniorityExpectation =
+    SENIORITY_REVIEW_EXPECTATIONS[summary.seniority] ||
+    SENIORITY_REVIEW_EXPECTATIONS.mid
 
   return `
 AIR context:
@@ -213,9 +235,13 @@ AIR context:
 - Industry: ${summary.industry || 'Not provided'}
 - Seniority: ${summary.seniority || 'Not provided'}
 - Core competencies: ${summary.competencies.join(', ') || 'Not provided'}
+- Industry review lens: ${industryLens}
+- Seniority expectation: ${seniorityExpectation}
 
 AIR guidance:
-- Evaluate answer quality in the context of this role.
+- Evaluate answer quality in the context of this role and industry.
+- Score stronger when evidence matches the seniority expectation.
+- Penalize generic answers that ignore domain constraints.
 - Keep STAR scoring objective and role-appropriate.
 - Include concise role-fit observations in "analysis".
 `.trim()
@@ -223,6 +249,12 @@ AIR guidance:
 
 function buildPrompt(responseText, question, airContext) {
   const questionText = getQuestionText(question)
+  const questionType =
+    typeof question?.type === 'string' ? question.type : 'unknown'
+  const questionDifficulty =
+    typeof question?.difficulty === 'string' ? question.difficulty : 'unknown'
+  const questionCategory =
+    typeof question?.category === 'string' ? question.category : 'unknown'
   const airContextBlock = buildAirContextBlock(airContext)
   const competencySchema = airContextBlock
     ? `
@@ -258,11 +290,18 @@ Scoring rules:
 ${airContextBlock ? `- Use AIR context when judging role-fit depth.\n` : ''}
 ${airContextBlock ? `- Fill analysis.roleFitScore as 0-100.\n` : ''}
 ${airContextBlock ? `- Fill analysis.competencyScores only with competency keys from AIR context.\n` : ''}
+${airContextBlock ? `- Apply stronger relevance bias to industry/profession context than generic storytelling.\n` : ''}
+${airContextBlock ? `- Reward correct domain terminology and context-aware tradeoffs.\n` : ''}
 
 ${airContextBlock ? `${airContextBlock}\n` : ''}
 
 Question:
 ${questionText || 'Not provided'}
+
+Question metadata:
+- Type: ${questionType}
+- Difficulty: ${questionDifficulty}
+- Category: ${questionCategory}
 
 Candidate response:
 ${responseText}

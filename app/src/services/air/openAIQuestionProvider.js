@@ -32,6 +32,23 @@ const ALLOWED_CATEGORIES = new Set([
   'adaptability',
   'initiative',
 ])
+const INDUSTRY_FOCUS_AREAS = {
+  technology: 'scalability, system reliability, and engineering tradeoffs',
+  finance: 'risk control, compliance constraints, and auditability',
+  healthcare: 'patient safety, privacy requirements, and interdisciplinary care',
+  education: 'learner outcomes, accessibility, and instructional impact',
+  retail: 'customer experience, inventory operations, and peak-load execution',
+  manufacturing: 'process control, quality assurance, and operational continuity',
+  government: 'public accountability, policy compliance, and stakeholder trust',
+  consulting: 'client outcomes, stakeholder alignment, and structured problem solving',
+  media: 'audience engagement, editorial judgment, and delivery speed',
+  other: 'domain constraints, stakeholder impact, and measurable outcomes',
+}
+const SENIORITY_EXPECTATIONS = {
+  entry: 'foundational execution, collaboration, and learning agility',
+  mid: 'independent ownership, prioritization, and cross-functional delivery',
+  senior: 'strategic leadership, mentoring, and complex decision-making',
+}
 
 function toPositiveInteger(value, fallback) {
   const parsed = Number.parseInt(value, 10)
@@ -221,6 +238,11 @@ function buildPrompt({
     ? airContext.competencies.join(', ')
     : ''
   const roleLabel = airContext.role?.label || airContext.targetJobTitle
+  const industryFocus =
+    INDUSTRY_FOCUS_AREAS[airContext.industry] || INDUSTRY_FOCUS_AREAS.other
+  const seniorityExpectation =
+    SENIORITY_EXPECTATIONS[airContext.seniority] ||
+    SENIORITY_EXPECTATIONS.mid
   const exclusions =
     Array.isArray(existingQuestions) && existingQuestions.length > 0
       ? existingQuestions
@@ -265,12 +287,17 @@ AIR context:
 - Industry: ${airContext.industry}
 - Seniority: ${airContext.seniority}
 - Core competencies: ${competencies || 'communication, execution'}
+- Industry interview lens: ${industryFocus}
+- Seniority expectation: ${seniorityExpectation}
 - Job description hints: ${airContext.jobDescriptionText || 'Not provided'}
 
 Rules:
 - Questions must be specific to this role and industry.
 - ${typeRule}
 - ${difficultyRule}
+- Every question must include a concrete industry-relevant constraint or scenario.
+- Every question must probe at least one listed core competency.
+- Align the challenge depth with the seniority expectation.
 - Avoid generic or repeated wording.
 - Use interview prompts that are answerable via STAR.
 - Keep each questionText under 320 characters.

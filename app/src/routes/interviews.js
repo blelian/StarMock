@@ -36,6 +36,94 @@ const ALLOWED_SESSION_STATUSES = new Set([
 ])
 const MAX_QUESTION_LIMIT = 20
 const MAX_HISTORY_LIMIT = 50
+const MAX_REPEAT_ATTEMPTS_PER_QUESTION = 5
+
+function toIdString(value) {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'object' && value._id) return String(value._id)
+  return String(value)
+}
+
+function toAttemptNumber(value, fallback = 1) {
+  const parsed = Number.parseInt(String(value ?? ''), 10)
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return fallback
+  }
+  return parsed
+}
+
+function buildSessionProgressFromResponses(sessionQuestions = [], responses = []) {
+  const orderedQuestionIds = (
+    Array.isArray(sessionQuestions) ? sessionQuestions : []
+  )
+    .map((questionId) => toIdString(questionId))
+    .filter(Boolean)
+  const attemptsByQuestion = new Map(
+    orderedQuestionIds.map((questionId) => [questionId, 0])
+  )
+  let pendingTranscriptions = 0
+
+  for (const response of responses) {
+    const questionId = toIdString(response?.questionId)
+    if (!questionId || !attemptsByQuestion.has(questionId)) continue
+
+    attemptsByQuestion.set(questionId, (attemptsByQuestion.get(questionId) || 0) + 1)
+
+    if (
+      response?.responseType === 'audio_transcript' &&
+      ['uploaded', 'transcribing'].includes(response?.transcriptionStatus)
+    ) {
+      pendingTranscriptions += 1
+    }
+  }
+
+  const questions = orderedQuestionIds.map((questionId) => {
+    const attempts = attemptsByQuestion.get(questionId) || 0
+    return {
+      questionId,
+      attempts,
+      answered: attempts > 0,
+      repeated: attempts > 1,
+    }
+  })
+  const answeredQuestions = questions.filter((item) => item.answered).length
+  const totalQuestions = orderedQuestionIds.length
+  const missingQuestionIds = questions
+    .filter((item) => !item.answered)
+    .map((item) => item.questionId)
+  const totalAttempts = responses.length
+
+  return {
+    totalQuestions,
+    answeredQuestions,
+    remainingQuestions: Math.max(totalQuestions - answeredQuestions, 0),
+    totalAttempts,
+    repeatedQuestions: questions.filter((item) => item.repeated).length,
+    extraAttempts: Math.max(totalAttempts - answeredQuestions, 0),
+    pendingTranscriptions,
+    missingQuestionIds,
+    questions,
+    isComplete: totalQuestions > 0 && missingQuestionIds.length === 0,
+  }
+}
+
+function serializeSessionQuestion(question, progressItem = null, order = null) {
+  return {
+    id: toIdString(question),
+    type: question?.type || null,
+    difficulty: question?.difficulty || null,
+    category: question?.category || null,
+    title: question?.title || null,
+    description: question?.description || null,
+    questionText: getQuestionText(question),
+    starGuidelines: question?.starGuidelines || null,
+    order,
+    attempts: progressItem?.attempts || 0,
+    answered: Boolean(progressItem?.answered),
+    repeated: Boolean(progressItem?.repeated),
+  }
+}
 
 function parseBooleanFlag(value) {
   if (typeof value === 'boolean') return value
@@ -277,13 +365,167 @@ function aggregateCompetencyScores(feedbackReports, expectedCompetencies = []) {
     .sort((a, b) => b.score - a.score)
 }
 
+function compareAttemptOrder(a, b) {
+  if (a.attemptNumber !== b.attemptNumber) {
+    return a.attemptNumber - b.attemptNumber
+  }
+  const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
+  const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
+  return aTime - bTime
+}
+
+function selectBestAttempt(attempts) {
+  let best = null
+
+  for (const attempt of attempts) {
+    if (!best) {
+      best = attempt
+      continue
+    }
+
+    const bestScore = attempt?.overallScore
+    const currentScore = best?.overallScore
+    if (Number.isFinite(bestScore) && !Number.isFinite(currentScore)) {
+      best = attempt
+      continue
+    }
+    if (!Number.isFinite(bestScore)) {
+      continue
+    }
+    if (bestScore > currentScore) {
+      best = attempt
+      continue
+    }
+    if (bestScore === currentScore && attempt.attemptNumber > best.attemptNumber) {
+      best = attempt
+    }
+  }
+
+  return best
+}
+
+function buildQuestionFeedbackRollup(feedbackReports, sessionQuestionOrder = []) {
+  const grouped = new Map()
+
+  for (const report of feedbackReports) {
+    const questionId = toIdString(report?.responseId?.questionId)
+    if (!questionId) continue
+    if (!grouped.has(questionId)) {
+      grouped.set(questionId, {
+        questionId,
+        questionText: getQuestionText(report?.responseId?.questionId),
+        attempts: [],
+      })
+    }
+
+    grouped.get(questionId).attempts.push({
+      report,
+      attemptNumber: toAttemptNumber(report?.responseId?.attemptNumber, 1),
+      overallScore: toOptionalScore(report?.scores?.overall),
+      roleFitScore: getRoleFitScore(report),
+      createdAt: report?.createdAt || null,
+    })
+  }
+
+  const selectedReports = []
+  const questionMetrics = Array.from(grouped.values()).map((entry) => {
+    const sortedAttempts = [...entry.attempts].sort(compareAttemptOrder)
+    const firstAttempt = sortedAttempts[0] || null
+    const latestAttempt = sortedAttempts[sortedAttempts.length - 1] || null
+    const bestAttempt =
+      selectBestAttempt(sortedAttempts) || latestAttempt || firstAttempt
+
+    if (bestAttempt?.report) {
+      selectedReports.push(bestAttempt.report)
+    }
+
+    const overallImprovement =
+      Number.isFinite(firstAttempt?.overallScore) &&
+      Number.isFinite(latestAttempt?.overallScore)
+        ? latestAttempt.overallScore - firstAttempt.overallScore
+        : null
+    const roleFitImprovement =
+      Number.isFinite(firstAttempt?.roleFitScore) &&
+      Number.isFinite(latestAttempt?.roleFitScore)
+        ? latestAttempt.roleFitScore - firstAttempt.roleFitScore
+        : null
+
+    return {
+      questionId: entry.questionId,
+      questionText: entry.questionText,
+      attemptCount: sortedAttempts.length,
+      firstAttempt: firstAttempt
+        ? {
+            attemptNumber: firstAttempt.attemptNumber,
+            overallScore: firstAttempt.overallScore,
+            roleFitScore: firstAttempt.roleFitScore,
+          }
+        : null,
+      latestAttempt: latestAttempt
+        ? {
+            attemptNumber: latestAttempt.attemptNumber,
+            overallScore: latestAttempt.overallScore,
+            roleFitScore: latestAttempt.roleFitScore,
+          }
+        : null,
+      bestAttempt: bestAttempt
+        ? {
+            attemptNumber: bestAttempt.attemptNumber,
+            overallScore: bestAttempt.overallScore,
+            roleFitScore: bestAttempt.roleFitScore,
+          }
+        : null,
+      improvement: {
+        overallDelta: overallImprovement,
+        roleFitDelta: roleFitImprovement,
+      },
+    }
+  })
+
+  if (sessionQuestionOrder.length > 0) {
+    const orderLookup = new Map(
+      sessionQuestionOrder.map((questionId, index) => [questionId, index])
+    )
+    questionMetrics.sort((a, b) => {
+      const aIndex = orderLookup.get(a.questionId)
+      const bIndex = orderLookup.get(b.questionId)
+      if (Number.isFinite(aIndex) && Number.isFinite(bIndex)) {
+        return aIndex - bIndex
+      }
+      if (Number.isFinite(aIndex)) return -1
+      if (Number.isFinite(bIndex)) return 1
+      return a.questionText.localeCompare(b.questionText)
+    })
+  }
+
+  return {
+    selectedReports,
+    questionMetrics,
+    totalAttempts: questionMetrics.reduce(
+      (sum, question) => sum + question.attemptCount,
+      0
+    ),
+  }
+}
+
 async function buildFeedbackSummary({ session, feedbackReports, userId }) {
+  const sessionQuestionOrder = Array.isArray(session?.questions)
+    ? session.questions.map((question) => toIdString(question))
+    : []
+  const questionRollup = buildQuestionFeedbackRollup(
+    feedbackReports,
+    sessionQuestionOrder
+  )
+  const summaryReports =
+    questionRollup.selectedReports.length > 0
+      ? questionRollup.selectedReports
+      : feedbackReports
   const starScores = {
-    situation: average(feedbackReports.map((item) => item?.scores?.situation)),
-    task: average(feedbackReports.map((item) => item?.scores?.task)),
-    action: average(feedbackReports.map((item) => item?.scores?.action)),
-    result: average(feedbackReports.map((item) => item?.scores?.result)),
-    overall: average(feedbackReports.map((item) => item?.scores?.overall)),
+    situation: average(summaryReports.map((item) => item?.scores?.situation)),
+    task: average(summaryReports.map((item) => item?.scores?.task)),
+    action: average(summaryReports.map((item) => item?.scores?.action)),
+    result: average(summaryReports.map((item) => item?.scores?.result)),
+    overall: average(summaryReports.map((item) => item?.scores?.overall)),
   }
 
   const sessionAirContext = session?.metadata?.airContext || null
@@ -295,11 +537,11 @@ async function buildFeedbackSummary({ session, feedbackReports, userId }) {
     .map((competency) => normalizeCompetencyKey(competency))
     .filter(Boolean)
   const competencyScores = aggregateCompetencyScores(
-    feedbackReports,
+    summaryReports,
     normalizedExpectedCompetencies
   )
   const roleFitScore = average(
-    feedbackReports.map((item) => getRoleFitScore(item))
+    summaryReports.map((item) => getRoleFitScore(item))
   )
   const coveredCount = normalizedExpectedCompetencies.filter((competencyKey) =>
     competencyScores.some((item) => item.key === competencyKey)
@@ -328,7 +570,15 @@ async function buildFeedbackSummary({ session, feedbackReports, userId }) {
     })
       .sort({ createdAt: -1 })
       .limit(40)
-      .select('sessionId analysis scores createdAt')
+      .populate({
+        path: 'responseId',
+        select: 'questionId attemptNumber',
+        populate: {
+          path: 'questionId',
+          select: '_id questionText description title',
+        },
+      })
+      .select('sessionId analysis scores createdAt responseId')
 
     const sessionBuckets = new Map()
     const sessionOrder = []
@@ -336,19 +586,25 @@ async function buildFeedbackSummary({ session, feedbackReports, userId }) {
     for (const report of historicalReports) {
       const sessionId = String(report?.sessionId || '')
       if (!sessionId) continue
-      const score = getRoleFitScore(report)
-      if (score === null) continue
 
       if (!sessionBuckets.has(sessionId)) {
         sessionBuckets.set(sessionId, [])
         sessionOrder.push(sessionId)
       }
-      sessionBuckets.get(sessionId).push(score)
+      sessionBuckets.get(sessionId).push(report)
     }
 
     const previousSessionScores = sessionOrder
       .slice(0, 5)
-      .map((sessionId) => average(sessionBuckets.get(sessionId) || []))
+      .map((sessionId) => {
+        const reports = sessionBuckets.get(sessionId) || []
+        const historicalRollup = buildQuestionFeedbackRollup(reports)
+        const selectedReportsForSession =
+          historicalRollup.selectedReports.length > 0
+            ? historicalRollup.selectedReports
+            : reports
+        return average(selectedReportsForSession.map((item) => getRoleFitScore(item)))
+      })
       .filter((score) => Number.isFinite(score))
 
     if (previousSessionScores.length > 0) {
@@ -365,10 +621,29 @@ async function buildFeedbackSummary({ session, feedbackReports, userId }) {
     }
   }
 
+  const retriedQuestions = questionRollup.questionMetrics.filter(
+    (question) => question.attemptCount > 1
+  )
+  const averageImprovement = average(
+    retriedQuestions.map((question) => question?.improvement?.overallDelta)
+  )
+
   return {
     airMode: Boolean(session?.metadata?.airMode),
     airContext: serializedAirContext,
     starScores,
+    sessionMetrics: {
+      scoringModel: 'best_attempt_per_question',
+      questionCount: questionRollup.questionMetrics.length,
+      totalAttempts: questionRollup.totalAttempts,
+      extraAttempts: Math.max(
+        questionRollup.totalAttempts - questionRollup.questionMetrics.length,
+        0
+      ),
+      retriedQuestionCount: retriedQuestions.length,
+      averageImprovement,
+    },
+    questionMetrics: questionRollup.questionMetrics,
     roleMetrics: {
       roleFitScore,
       competencyCoverage,
@@ -384,6 +659,8 @@ function serializeFeedbackReports(feedbackReports) {
   return feedbackReports.map((f) => ({
     id: f._id,
     responseId: f.responseId?._id || null,
+    questionId: toIdString(f.responseId?.questionId) || null,
+    attemptNumber: toAttemptNumber(f.responseId?.attemptNumber, 1),
     questionText: getQuestionText(f.responseId?.questionId),
     scores: f.scores,
     rating: f.rating,
@@ -649,6 +926,13 @@ router.post(
         })
       }
 
+      const questionLookup = new Map(
+        questions.map((question) => [toIdString(question._id), question])
+      )
+      const orderedQuestions = uniqueQuestionIds
+        .map((questionId) => questionLookup.get(toIdString(questionId)))
+        .filter(Boolean)
+
       let resolvedAirContext = null
       if (airMode === true && requestedAirContext) {
         resolvedAirContext = resolveAirContext(requestedAirContext)
@@ -671,15 +955,29 @@ router.post(
 
       await session.save()
 
+      const progress = buildSessionProgressFromResponses(session.questions, [])
+      const progressLookup = new Map(
+        progress.questions.map((item) => [item.questionId, item])
+      )
+      const serializedQuestions = orderedQuestions.map((question, index) =>
+        serializeSessionQuestion(
+          question,
+          progressLookup.get(toIdString(question._id)),
+          index + 1
+        )
+      )
+
       res.status(201).json({
         message: 'Interview session started',
         session: {
           id: session._id,
           status: session.status,
           questionCount: session.questions.length,
+          questions: serializedQuestions,
           startedAt: session.startedAt,
           airMode: Boolean(session.metadata?.airMode),
           airContext: session.metadata?.airContext || null,
+          progress,
         },
       })
     } catch (error) {
@@ -715,16 +1013,32 @@ router.get('/sessions/:id', requireAuth, async (req, res) => {
       })
     }
 
+    const responses = await InterviewResponse.find({
+      sessionId: req.params.id,
+      userId: req.userId,
+    }).select('questionId responseType transcriptionStatus')
+    const progress = buildSessionProgressFromResponses(session.questions, responses)
+    const progressLookup = new Map(
+      progress.questions.map((item) => [item.questionId, item])
+    )
+
     res.json({
       session: {
         id: session._id,
         status: session.status,
-        questions: session.questions,
+        questions: session.questions.map((question, index) =>
+          serializeSessionQuestion(
+            question,
+            progressLookup.get(toIdString(question._id)),
+            index + 1
+          )
+        ),
         startedAt: session.startedAt,
         completedAt: session.completedAt,
         duration: session.duration,
         airMode: Boolean(session.metadata?.airMode),
         airContext: session.metadata?.airContext || null,
+        progress,
       },
     })
   } catch (error) {
@@ -755,6 +1069,7 @@ router.post(
         questionId,
         responseText = '',
         responseType = 'text',
+        allowRepeat = false,
         audioUrl = null,
         audioMimeType = null,
         audioSizeBytes = null,
@@ -812,17 +1127,30 @@ router.post(
         })
       }
 
-      const existingResponse = await InterviewResponse.findOne({
+      const latestResponse = await InterviewResponse.findOne({
         sessionId: req.params.id,
         userId: req.userId,
         questionId,
-      })
+      }).sort({ attemptNumber: -1, createdAt: -1 })
 
-      if (existingResponse) {
+      if (latestResponse && allowRepeat !== true) {
         return res.status(409).json({
           error: {
-            message: 'A response for this question already exists in session',
+            message:
+              'A response already exists for this question. Set allowRepeat=true to submit another attempt.',
             code: 'DUPLICATE_RESPONSE',
+          },
+        })
+      }
+
+      const attemptNumber = latestResponse
+        ? toAttemptNumber(latestResponse.attemptNumber, 1) + 1
+        : 1
+      if (attemptNumber > MAX_REPEAT_ATTEMPTS_PER_QUESTION) {
+        return res.status(400).json({
+          error: {
+            message: `Maximum of ${MAX_REPEAT_ATTEMPTS_PER_QUESTION} attempts reached for this question in the current session`,
+            code: 'MAX_ATTEMPTS_REACHED',
           },
         })
       }
@@ -845,6 +1173,7 @@ router.post(
         sessionId: req.params.id,
         userId: req.userId,
         questionId,
+        attemptNumber,
         responseType,
         responseText: normalizedResponseText,
         audioUrl: responseType === 'audio_transcript' ? audioUrl : undefined,
@@ -907,11 +1236,22 @@ router.post(
         }
       }
 
+      const progressRows = await InterviewResponse.find({
+        sessionId: req.params.id,
+        userId: req.userId,
+      }).select('questionId responseType transcriptionStatus')
+      const progress = buildSessionProgressFromResponses(
+        session.questions,
+        progressRows
+      )
+
       res.status(201).json({
         message: 'Response submitted successfully',
         response: {
           id: response._id,
-          questionId: response.questionId,
+          questionId: toIdString(response.questionId),
+          attemptNumber: response.attemptNumber,
+          isRepeatAttempt: response.attemptNumber > 1,
           responseType: response.responseType,
           audioUrl: response.audioUrl || null,
           transcriptionStatus: response.transcriptionStatus,
@@ -919,6 +1259,10 @@ router.post(
           wordCount: response.wordCount,
           submittedAt: response.createdAt,
         },
+        questionProgress: progress.questions.find(
+          (item) => item.questionId === toIdString(questionId)
+        ),
+        progress,
         transcriptionJob: transcriptionJobPayload,
       })
     } catch (error) {
@@ -957,34 +1301,44 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
 
     const isAlreadyCompleted = session.status === 'completed'
 
-    // Update session status when first completed.
+    const progressRows = await InterviewResponse.find({
+      sessionId: req.params.id,
+      userId: req.userId,
+    }).select('questionId responseType transcriptionStatus')
+    const progress = buildSessionProgressFromResponses(session.questions, progressRows)
+    const responseCount = progress.totalAttempts
+
     if (!isAlreadyCompleted) {
+      if (progress.pendingTranscriptions > 0) {
+        return res.status(409).json({
+          error: {
+            message:
+              'One or more audio responses are still being transcribed. Please review transcript status before completing feedback.',
+            code: 'TRANSCRIPTION_PENDING',
+          },
+          pendingTranscriptions: progress.pendingTranscriptions,
+        })
+      }
+
+      if (!progress.isComplete) {
+        return res.status(400).json({
+          error: {
+            message:
+              'Session is incomplete. Answer every question at least once before completing.',
+            code: 'SESSION_INCOMPLETE',
+          },
+          progress: {
+            totalQuestions: progress.totalQuestions,
+            answeredQuestions: progress.answeredQuestions,
+            remainingQuestions: progress.remainingQuestions,
+            missingQuestionIds: progress.missingQuestionIds,
+          },
+        })
+      }
+
       session.status = 'completed'
       session.completedAt = new Date()
       await session.save()
-    }
-
-    const responseCount = await InterviewResponse.countDocuments({
-      sessionId: req.params.id,
-      userId: req.userId,
-    })
-
-    const pendingTranscriptionCount = await InterviewResponse.countDocuments({
-      sessionId: req.params.id,
-      userId: req.userId,
-      responseType: 'audio_transcript',
-      transcriptionStatus: { $in: ['uploaded', 'transcribing'] },
-    })
-
-    if (pendingTranscriptionCount > 0) {
-      return res.status(409).json({
-        error: {
-          message:
-            'One or more audio responses are still being transcribed. Please review transcript status before completing feedback.',
-          code: 'TRANSCRIPTION_PENDING',
-        },
-        pendingTranscriptions: pendingTranscriptionCount,
-      })
     }
 
     const { job, created } = await FeedbackJob.findOrCreateForSession(
@@ -993,6 +1347,8 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
       {
         provider: process.env.FEEDBACK_PROVIDER || 'rule_based',
         responseCount,
+        answeredQuestionCount: progress.answeredQuestions,
+        totalQuestionCount: progress.totalQuestions,
         correlationId: req.correlationId || null,
       }
     )
@@ -1010,6 +1366,7 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
         status: session.status,
         completedAt: session.completedAt,
         duration: session.duration,
+        progress,
       },
       feedbackJob: {
         id: job._id,
@@ -1055,12 +1412,18 @@ router.get('/sessions/:id/responses', requireAuth, async (req, res) => {
     const responses = await InterviewResponse.find({
       sessionId: req.params.id,
       userId: req.userId,
-    }).populate('questionId')
+    })
+      .populate('questionId')
+      .sort({ createdAt: 1, attemptNumber: 1 })
+    const progress = buildSessionProgressFromResponses(session.questions, responses)
 
     res.json({
       responses: responses.map((r) => ({
         id: r._id,
         question: r.questionId,
+        questionId: toIdString(r.questionId),
+        attemptNumber: toAttemptNumber(r.attemptNumber, 1),
+        isRepeatAttempt: toAttemptNumber(r.attemptNumber, 1) > 1,
         responseText: r.responseText,
         responseType: r.responseType,
         audioUrl: r.audioUrl || null,
@@ -1076,6 +1439,7 @@ router.get('/sessions/:id/responses', requireAuth, async (req, res) => {
         submittedAt: r.createdAt,
       })),
       count: responses.length,
+      progress,
     })
   } catch (error) {
     console.error('Get responses error:', error)

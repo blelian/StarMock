@@ -5,6 +5,19 @@ Last updated: February 14, 2026
 ## Objective
 Implement AI Role (AIR) configuration so interview questions, feedback, and progress stats adapt to each user's target role, industry, and seniority level.
 
+## Session Flow Overhaul TODO (Current Sprint)
+Created: February 14, 2026
+
+- [x] Define implementation checklist for realistic interview session lifecycle.
+- [x] Backend: support multi-question session progression with explicit session state payload.
+- [x] Backend: allow optional per-question retries in the same session (`allowRepeat`) with attempt tracking.
+- [x] Backend: enforce session completion rules (all session questions answered at least once).
+- [x] Backend: improve stats rollup from attempt-level feedback -> question-level -> session overall summary.
+- [x] Backend: strengthen AIR profession/industry bias instructions for question generation and evaluation prompts.
+- [x] Frontend: redesign interview flow for create session -> answer question -> next/repeat -> complete.
+- [x] Frontend: improve speech UX and accessibility status/readout behavior for question narration + transcript flow.
+- [x] QA: update backend unit tests and e2e flows for new session behavior and stats.
+
 ## Scope
 - Career profile capture at interview entry (not hard-gated in auth flow).
 - Hybrid role intelligence:

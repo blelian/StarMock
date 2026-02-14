@@ -101,6 +101,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const roleFit = toPercent(metrics?.roleFitScore);
     const coverage = toPercent(metrics?.competencyCoverage);
     const trendLabel = formatTrend(metrics?.trend);
+    const retryLabel =
+      Number.isFinite(metrics?.extraAttempts) && metrics.extraAttempts > 0
+        ? ` • Retries ${Math.round(metrics.extraAttempts)}`
+        : '';
     const airDetails = isAirMode
       ? `
       <p class="text-xs text-primary/80 mt-2">
@@ -126,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             ${escapeHtml(primaryType)}
           </span>
           <h3 class="text-lg font-bold text-white">${escapeHtml(shortQuestionLabel)}</h3>
-          <p class="text-sm text-slate-400 mt-1">${escapeHtml(details)}</p>
+          <p class="text-sm text-slate-400 mt-1">${escapeHtml(details)}${escapeHtml(retryLabel)}</p>
           ${airDetails}
         </div>
         <div class="flex items-center gap-4">
@@ -163,6 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       roleFitScore: toPercent(roleMetrics.roleFitScore),
       competencyCoverage: toPercent(roleMetrics.competencyCoverage),
       trend: roleMetrics.trend || null,
+      extraAttempts: summary?.sessionMetrics?.extraAttempts ?? null,
       airMode: Boolean(summary.airMode),
     };
   };

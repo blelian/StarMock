@@ -3,8 +3,16 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000'
-const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND
+const explicitBaseURL = process.env.PLAYWRIGHT_BASE_URL
+const defaultPort = process.env.PLAYWRIGHT_PORT || '4173'
+const baseURL = explicitBaseURL || `http://127.0.0.1:${defaultPort}`
+const shouldAutoStartServer =
+  !explicitBaseURL && process.env.PLAYWRIGHT_DISABLE_WEBSERVER !== 'true'
+const webServerCommand =
+  process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ||
+  (shouldAutoStartServer
+    ? `npm run dev -- --host 127.0.0.1 --port ${defaultPort}`
+    : null)
 const thisFilePath = fileURLToPath(import.meta.url)
 const thisDir = path.dirname(thisFilePath)
 const localLibPath = path.join(
