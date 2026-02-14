@@ -15,7 +15,9 @@ router.post("/chat", async (req, res) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const modelName = "gemini-2.0-flash";
+    console.log(`Using model: ${modelName}`);
+    const model = genAI.getGenerativeModel({ model: modelName });
 
     const chat = model.startChat({
       history: history || [],
@@ -53,7 +55,8 @@ router.post("/start", async (req, res) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const modelName = "gemini-2.0-flash";
+    const model = genAI.getGenerativeModel({ model: modelName });
 
     const prompt = `Generate a set of 5 interview questions for a ${level || "Junior"} ${role || "Software Engineer"} position. 
     Context: ${description || "General technical interview"}
