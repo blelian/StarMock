@@ -35,12 +35,15 @@ const ALLOWED_CATEGORIES = new Set([
 const INDUSTRY_FOCUS_AREAS = {
   technology: 'scalability, system reliability, and engineering tradeoffs',
   finance: 'risk control, compliance constraints, and auditability',
-  healthcare: 'patient safety, privacy requirements, and interdisciplinary care',
+  healthcare:
+    'patient safety, privacy requirements, and interdisciplinary care',
   education: 'learner outcomes, accessibility, and instructional impact',
   retail: 'customer experience, inventory operations, and peak-load execution',
-  manufacturing: 'process control, quality assurance, and operational continuity',
+  manufacturing:
+    'process control, quality assurance, and operational continuity',
   government: 'public accountability, policy compliance, and stakeholder trust',
-  consulting: 'client outcomes, stakeholder alignment, and structured problem solving',
+  consulting:
+    'client outcomes, stakeholder alignment, and structured problem solving',
   media: 'audience engagement, editorial judgment, and delivery speed',
   other: 'domain constraints, stakeholder impact, and measurable outcomes',
 }
@@ -241,8 +244,7 @@ function buildPrompt({
   const industryFocus =
     INDUSTRY_FOCUS_AREAS[airContext.industry] || INDUSTRY_FOCUS_AREAS.other
   const seniorityExpectation =
-    SENIORITY_EXPECTATIONS[airContext.seniority] ||
-    SENIORITY_EXPECTATIONS.mid
+    SENIORITY_EXPECTATIONS[airContext.seniority] || SENIORITY_EXPECTATIONS.mid
   const exclusions =
     Array.isArray(existingQuestions) && existingQuestions.length > 0
       ? existingQuestions

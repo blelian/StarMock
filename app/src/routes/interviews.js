@@ -53,7 +53,10 @@ function toAttemptNumber(value, fallback = 1) {
   return parsed
 }
 
-function buildSessionProgressFromResponses(sessionQuestions = [], responses = []) {
+function buildSessionProgressFromResponses(
+  sessionQuestions = [],
+  responses = []
+) {
   const orderedQuestionIds = (
     Array.isArray(sessionQuestions) ? sessionQuestions : []
   )
@@ -68,7 +71,10 @@ function buildSessionProgressFromResponses(sessionQuestions = [], responses = []
     const questionId = toIdString(response?.questionId)
     if (!questionId || !attemptsByQuestion.has(questionId)) continue
 
-    attemptsByQuestion.set(questionId, (attemptsByQuestion.get(questionId) || 0) + 1)
+    attemptsByQuestion.set(
+      questionId,
+      (attemptsByQuestion.get(questionId) || 0) + 1
+    )
 
     if (
       response?.responseType === 'audio_transcript' &&
@@ -396,7 +402,10 @@ function selectBestAttempt(attempts) {
       best = attempt
       continue
     }
-    if (bestScore === currentScore && attempt.attemptNumber > best.attemptNumber) {
+    if (
+      bestScore === currentScore &&
+      attempt.attemptNumber > best.attemptNumber
+    ) {
       best = attempt
     }
   }
@@ -404,7 +413,10 @@ function selectBestAttempt(attempts) {
   return best
 }
 
-function buildQuestionFeedbackRollup(feedbackReports, sessionQuestionOrder = []) {
+function buildQuestionFeedbackRollup(
+  feedbackReports,
+  sessionQuestionOrder = []
+) {
   const grouped = new Map()
 
   for (const report of feedbackReports) {
@@ -603,7 +615,9 @@ async function buildFeedbackSummary({ session, feedbackReports, userId }) {
           historicalRollup.selectedReports.length > 0
             ? historicalRollup.selectedReports
             : reports
-        return average(selectedReportsForSession.map((item) => getRoleFitScore(item)))
+        return average(
+          selectedReportsForSession.map((item) => getRoleFitScore(item))
+        )
       })
       .filter((score) => Number.isFinite(score))
 
@@ -1017,7 +1031,10 @@ router.get('/sessions/:id', requireAuth, async (req, res) => {
       sessionId: req.params.id,
       userId: req.userId,
     }).select('questionId responseType transcriptionStatus')
-    const progress = buildSessionProgressFromResponses(session.questions, responses)
+    const progress = buildSessionProgressFromResponses(
+      session.questions,
+      responses
+    )
     const progressLookup = new Map(
       progress.questions.map((item) => [item.questionId, item])
     )
@@ -1305,7 +1322,10 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
       sessionId: req.params.id,
       userId: req.userId,
     }).select('questionId responseType transcriptionStatus')
-    const progress = buildSessionProgressFromResponses(session.questions, progressRows)
+    const progress = buildSessionProgressFromResponses(
+      session.questions,
+      progressRows
+    )
     const responseCount = progress.totalAttempts
 
     if (!isAlreadyCompleted) {
@@ -1415,7 +1435,10 @@ router.get('/sessions/:id/responses', requireAuth, async (req, res) => {
     })
       .populate('questionId')
       .sort({ createdAt: 1, attemptNumber: 1 })
-    const progress = buildSessionProgressFromResponses(session.questions, responses)
+    const progress = buildSessionProgressFromResponses(
+      session.questions,
+      responses
+    )
 
     res.json({
       responses: responses.map((r) => ({

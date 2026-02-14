@@ -560,9 +560,11 @@ describe('interview completion route', () => {
         created: true,
       } as never)
     vi.spyOn(InterviewResponse, 'find').mockReturnValue({
-      select: vi.fn().mockResolvedValue([
-        { questionId: 'question-1', responseType: 'text' },
-      ]),
+      select: vi
+        .fn()
+        .mockResolvedValue([
+          { questionId: 'question-1', responseType: 'text' },
+        ]),
     } as never)
 
     const res = await runRouteHandlers(completeSessionHandlers, {
@@ -1022,8 +1024,16 @@ describe('audio response and transcription routes', () => {
     } as never)
     vi.spyOn(InterviewResponse, 'find').mockReturnValue({
       select: vi.fn().mockResolvedValue([
-        { questionId: '507f1f77bcf86cd799439011', responseType: 'text', transcriptionStatus: 'none' },
-        { questionId: '507f1f77bcf86cd799439011', responseType: 'text', transcriptionStatus: 'none' },
+        {
+          questionId: '507f1f77bcf86cd799439011',
+          responseType: 'text',
+          transcriptionStatus: 'none',
+        },
+        {
+          questionId: '507f1f77bcf86cd799439011',
+          responseType: 'text',
+          transcriptionStatus: 'none',
+        },
       ]),
     } as never)
 

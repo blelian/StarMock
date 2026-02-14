@@ -6,16 +6,21 @@ const OPENAI_BASE_URL = (
   process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
 ).replace(/\/+$/, '')
 const INDUSTRY_REVIEW_LENSES = {
-  technology: 'system reliability, scalability tradeoffs, and engineering rigor',
+  technology:
+    'system reliability, scalability tradeoffs, and engineering rigor',
   finance: 'risk controls, compliance rigor, and auditability',
-  healthcare: 'patient safety, privacy obligations, and cross-team coordination',
+  healthcare:
+    'patient safety, privacy obligations, and cross-team coordination',
   education: 'learner outcomes, accessibility, and instructional effectiveness',
-  retail: 'customer impact, operations quality, and execution under demand spikes',
-  manufacturing: 'process discipline, quality control, and operational resilience',
+  retail:
+    'customer impact, operations quality, and execution under demand spikes',
+  manufacturing:
+    'process discipline, quality control, and operational resilience',
   government: 'policy alignment, public accountability, and stakeholder trust',
   consulting: 'client impact, stakeholder alignment, and structured analysis',
   media: 'audience impact, editorial judgment, and delivery velocity',
-  other: 'domain-specific constraints, stakeholder impact, and measurable outcomes',
+  other:
+    'domain-specific constraints, stakeholder impact, and measurable outcomes',
 }
 const SENIORITY_REVIEW_EXPECTATIONS = {
   entry: 'foundational execution and learning agility',
