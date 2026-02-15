@@ -499,7 +499,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!recordingStartTime) {
       recordingDuration.classList.add('hidden')
       recordingDuration.textContent = '00:00'
-      recordingDurationSeconds = 0
+      // Don't reset recordingDurationSeconds here - it may have been captured in onstop handler
       return
     }
 
