@@ -10,8 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const recordingEmoji = document.getElementById('recording-emoji')
   const recordingText = document.getElementById('recording-text')
   const recordingDuration = document.getElementById('recording-duration')
-  const startRecordingBtn = document.getElementById('start-recording-btn')
-  const stopRecordingBtn = document.getElementById('stop-recording-btn')
+  const recordToggleBtn = document.getElementById('record-toggle-btn')
   const transcriptWarning = document.getElementById('transcript-warning')
   const messageEl = document.getElementById('interview-message')
   const questionMeta = document.getElementById('question-meta')
@@ -30,7 +29,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const careerProfileSubmitBtn = document.getElementById(
     'career-profile-submit-btn'
   )
-  const careerProfileSkipBtn = document.getElementById('career-profile-skip-btn')
+  const careerProfileSkipBtn = document.getElementById(
+    'career-profile-skip-btn'
+  )
   const careerJobTitleInput = document.getElementById('career-job-title')
   const careerIndustrySelect = document.getElementById('career-industry')
   const careerSenioritySelect = document.getElementById('career-seniority')
@@ -39,7 +40,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   )
   const careerContextBadge = document.getElementById('career-context-badge')
   const careerContextText = document.getElementById('career-context-text')
-  const careerContextEditBtn = document.getElementById('career-context-edit-btn')
+  const careerContextEditBtn = document.getElementById(
+    'career-context-edit-btn'
+  )
   const readAloudBtn = document.getElementById('read-aloud-btn')
   const readAloudLabel = document.getElementById('read-aloud-label')
 
@@ -52,8 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     !messageEl ||
     !questionMeta ||
     !questionPrompt ||
-    !startRecordingBtn ||
-    !stopRecordingBtn ||
+    !recordToggleBtn ||
     !recordingDuration ||
     !transcriptWarning
   ) {
@@ -115,7 +117,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!Array.isArray(voices) || voices.length === 0) return null
 
     const englishVoices = voices.filter((voice) =>
-      String(voice.lang || '').toLowerCase().startsWith('en')
+      String(voice.lang || '')
+        .toLowerCase()
+        .startsWith('en')
     )
     const voicePool = englishVoices.length > 0 ? englishVoices : voices
     const localCandidate = voicePool.find((voice) => voice.localService)
@@ -182,7 +186,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     ttsUtterance.onerror = () => {
       stopSpeaking()
-      setMessage('Question readout is unavailable in this browser session.', true)
+      setMessage(
+        'Question readout is unavailable in this browser session.',
+        true
+      )
     }
 
     synth.speak(ttsUtterance)
@@ -258,8 +265,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const setCareerProfileMessage = (message, isError = true) => {
     if (!careerProfileMessage) return
     careerProfileMessage.textContent = message
-    careerProfileMessage.classList.remove('hidden', 'text-red-400', 'text-primary')
-    careerProfileMessage.classList.add(isError ? 'text-red-400' : 'text-primary')
+    careerProfileMessage.classList.remove(
+      'hidden',
+      'text-red-400',
+      'text-primary'
+    )
+    careerProfileMessage.classList.add(
+      isError ? 'text-red-400' : 'text-primary'
+    )
   }
 
   const clearCareerProfileMessage = () => {
@@ -325,7 +338,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const createEmptyProgress = () => ({
     totalQuestions: sessionQuestions.length || preparedQuestions.length || 0,
     answeredQuestions: 0,
-    remainingQuestions: sessionQuestions.length || preparedQuestions.length || 0,
+    remainingQuestions:
+      sessionQuestions.length || preparedQuestions.length || 0,
     totalAttempts: 0,
     repeatedQuestions: 0,
     extraAttempts: 0,
@@ -339,20 +353,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       ? sessionProgress.questions
       : []
     return (
-      progressList.find((item) => String(item?.questionId || '') === normalizedId) ||
-      { questionId: normalizedId, attempts: 0, answered: false, repeated: false }
+      progressList.find(
+        (item) => String(item?.questionId || '') === normalizedId
+      ) || {
+        questionId: normalizedId,
+        attempts: 0,
+        answered: false,
+        repeated: false,
+      }
     )
   }
 
   const updateSessionStats = () => {
-    const fallbackTotal = sessionQuestions.length || preparedQuestions.length || 0
+    const fallbackTotal =
+      sessionQuestions.length || preparedQuestions.length || 0
     const progress = sessionProgress || createEmptyProgress()
     const totalQuestions =
       Number.isFinite(progress.totalQuestions) && progress.totalQuestions >= 0
         ? progress.totalQuestions
         : fallbackTotal
     const answeredQuestions =
-      Number.isFinite(progress.answeredQuestions) && progress.answeredQuestions >= 0
+      Number.isFinite(progress.answeredQuestions) &&
+      progress.answeredQuestions >= 0
         ? progress.answeredQuestions
         : 0
     const totalAttempts =
@@ -392,7 +414,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const updateQuestionProgressText = () => {
-    const totalQuestions = sessionQuestions.length || preparedQuestions.length || 0
+    const totalQuestions =
+      sessionQuestions.length || preparedQuestions.length || 0
     const currentNumber = totalQuestions > 0 ? currentQuestionIndex + 1 : 0
     const currentQuestionId = toQuestionId(currentQuestion)
     const progressForQuestion = getQuestionProgress(currentQuestionId)
@@ -518,8 +541,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hasActiveSession = Boolean(sessionId && currentQuestion)
     if (!hasActiveSession) {
       submitBtn.disabled = true
-      if (startRecordingBtn) startRecordingBtn.disabled = true
-      if (stopRecordingBtn) stopRecordingBtn.disabled = true
+      if (recordToggleBtn) recordToggleBtn.disabled = true
       if (nextQuestionBtn) nextQuestionBtn.disabled = true
       if (repeatQuestionBtn) repeatQuestionBtn.disabled = true
       if (completeSessionBtn) completeSessionBtn.disabled = true
@@ -529,8 +551,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const minLength = uploadedAudioUrl ? 20 : 50
     submitBtn.disabled = responseInput.value.trim().length < minLength
-    if (startRecordingBtn && isAudioRecordingEnabled()) {
-      startRecordingBtn.disabled = false
+
+    // Enable record button if audio recording is available
+    if (recordToggleBtn && isAudioRecordingEnabled()) {
+      recordToggleBtn.disabled = false
     }
     updateTranscriptWarning()
     refreshSessionControls()
@@ -541,8 +565,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentQuestionId = toQuestionId(currentQuestion)
     const currentProgress = getQuestionProgress(currentQuestionId)
     const hasAnsweredCurrent = Boolean(currentProgress.answered)
-    const isRecordingActive =
-      Boolean(mediaRecorder && mediaRecorder.state === 'recording')
+    const isRecordingActive = Boolean(
+      mediaRecorder && mediaRecorder.state === 'recording'
+    )
     const hasNextQuestion =
       Array.isArray(sessionQuestions) &&
       currentQuestionIndex < sessionQuestions.length - 1
@@ -554,7 +579,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     )
     setControlVisibility(
       nextQuestionBtn,
-      hasActiveSession && Boolean(currentQuestion) && sessionQuestions.length > 1
+      hasActiveSession &&
+        Boolean(currentQuestion) &&
+        sessionQuestions.length > 1
     )
     setControlVisibility(completeSessionBtn, hasActiveSession)
     setControlVisibility(newSessionBtn, !hasActiveSession)
@@ -579,8 +606,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     recordingStartTime = null
     updateRecordingDuration()
-    stopRecordingBtn.disabled = true
-    startRecordingBtn.disabled = false
+
+    // Reset toggle button to "Start Recording" state
+    if (recordToggleBtn) {
+      recordToggleBtn.disabled = false
+      recordToggleBtn.textContent = '🎙️ Start Recording'
+      recordToggleBtn.setAttribute('data-recording', 'false')
+      recordToggleBtn.className =
+        'hidden bg-rose-500 hover:bg-rose-500/90 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide'
+    }
   }
 
   const cleanupMedia = () => {
@@ -834,6 +868,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       mediaRecorder.onstop = async () => {
         stopSpeechRecognition()
+        // Capture final duration before cleanup
+        if (recordingStartTime) {
+          recordingDurationSeconds = (Date.now() - recordingStartTime) / 1000
+        }
         try {
           const audioType = mediaRecorder?.mimeType || 'audio/webm'
           const audioBlob = new Blob(recordedChunks, { type: audioType })
@@ -876,8 +914,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       recordingTimer = setInterval(updateRecordingDuration, 250)
       updateRecordingDuration()
 
-      startRecordingBtn.disabled = true
-      stopRecordingBtn.disabled = false
+      // Update toggle button to "Stop Recording" state
+      recordToggleBtn.textContent = '⏹️ Stop Recording'
+      recordToggleBtn.setAttribute('data-recording', 'true')
+      recordToggleBtn.className =
+        'bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide'
+
       recordingText.textContent = 'Recording in progress'
       recordingEmoji.classList.remove('hidden')
       refreshSessionControls()
@@ -993,8 +1035,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
-    preparedQuestions = questionResult.payload.questions.map((question, index) =>
-      normalizeQuestion(question, index)
+    preparedQuestions = questionResult.payload.questions.map(
+      (question, index) => normalizeQuestion(question, index)
     )
     sessionQuestions = [...preparedQuestions]
     currentQuestionIndex = 0
@@ -1006,8 +1048,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     startBtn.disabled = !currentQuestion
     responseInput.classList.add('hidden')
     submitBtn.classList.add('hidden')
-    startRecordingBtn.classList.add('hidden')
-    stopRecordingBtn.classList.add('hidden')
+    recordToggleBtn.classList.add('hidden')
     recordingEmoji.classList.add('hidden')
     recordingText.textContent = 'Awaiting session start'
     setMessage(
@@ -1187,7 +1228,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const buildCreateSessionPayload = () => {
-    const questionIds = preparedQuestions.map((question) => question.id).filter(Boolean)
+    const questionIds = preparedQuestions
+      .map((question) => question.id)
+      .filter(Boolean)
     const payload = { questionIds }
     if (isAirMode && isCareerProfileComplete(careerProfile)) {
       payload.airMode = true
@@ -1220,7 +1263,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     startBtn.disabled = true
     setMessage('Creating interview session...')
     const createPayload = buildCreateSessionPayload()
-    if (!Array.isArray(createPayload.questionIds) || !createPayload.questionIds.length) {
+    if (
+      !Array.isArray(createPayload.questionIds) ||
+      !createPayload.questionIds.length
+    ) {
       startBtn.disabled = false
       setMessage('Question set is invalid. Refresh and try again.', true)
       return
@@ -1243,7 +1289,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     sessionId = createResult.payload.session.id
     const sessionFromServer = createResult.payload.session
-    if (Array.isArray(sessionFromServer.questions) && sessionFromServer.questions.length) {
+    if (
+      Array.isArray(sessionFromServer.questions) &&
+      sessionFromServer.questions.length
+    ) {
       sessionQuestions = sessionFromServer.questions.map((question, index) =>
         normalizeQuestion(question, index)
       )
@@ -1258,9 +1307,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     submitBtn.classList.remove('hidden')
     responseInput.disabled = false
     responseInput.focus()
-    setControlVisibility(startRecordingBtn, isAudioRecordingEnabled())
-    setControlVisibility(stopRecordingBtn, isAudioRecordingEnabled())
-    stopRecordingBtn.disabled = true
+    setControlVisibility(recordToggleBtn, isAudioRecordingEnabled())
     recordingEmoji.classList.remove('hidden')
     recordingText.textContent = 'Session started'
     setCurrentQuestionByIndex(0, { resetDraft: true })
@@ -1350,22 +1397,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     submitBtn.disabled = true
     responseInput.disabled = true
-    if (startRecordingBtn) startRecordingBtn.disabled = true
-    if (stopRecordingBtn) stopRecordingBtn.disabled = true
+    if (recordToggleBtn) recordToggleBtn.disabled = true
     if (completeSessionBtn) completeSessionBtn.disabled = true
     stopSpeechRecognition()
     stopSpeaking()
 
     setMessage('Completing session...')
-    const completeResult = await apiRequest(`/api/sessions/${sessionId}/complete`, {
-      method: 'POST',
-    })
+    const completeResult = await apiRequest(
+      `/api/sessions/${sessionId}/complete`,
+      {
+        method: 'POST',
+      }
+    )
 
     if (!completeResult.ok) {
       responseInput.disabled = false
       submitBtn.disabled = false
-      if (startRecordingBtn && isAudioRecordingEnabled()) {
-        startRecordingBtn.disabled = false
+      if (recordToggleBtn && isAudioRecordingEnabled()) {
+        recordToggleBtn.disabled = false
       }
       refreshSessionControls()
       setMessage(
@@ -1389,7 +1438,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (newSessionBtn) {
     newSessionBtn.addEventListener('click', async () => {
       if (sessionId) {
-        setMessage('Complete the current session before starting a new one.', true)
+        setMessage(
+          'Complete the current session before starting a new one.',
+          true
+        )
         return
       }
       resetResponseDraft(true)
@@ -1397,11 +1449,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
   }
 
-  if (startRecordingBtn) {
-    startRecordingBtn.addEventListener('click', startRecording)
-  }
-  if (stopRecordingBtn) {
-    stopRecordingBtn.addEventListener('click', stopRecording)
+  if (recordToggleBtn) {
+    recordToggleBtn.addEventListener('click', () => {
+      const isRecording =
+        recordToggleBtn.getAttribute('data-recording') === 'true'
+      if (isRecording) {
+        stopRecording()
+      } else {
+        startRecording()
+      }
+    })
   }
   if (nextQuestionBtn) {
     nextQuestionBtn.addEventListener('click', moveToNextQuestion)
@@ -1424,9 +1481,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (uploadedAudioUrl) {
         transcriptConfidence = estimateTranscriptConfidence(responseInput.value)
       }
-      const questionAttempts = getQuestionProgress(toQuestionId(currentQuestion)).attempts
+      const questionAttempts = getQuestionProgress(
+        toQuestionId(currentQuestion)
+      ).attempts
       if (questionAttempts > 0) {
-        setMessage('Updated attempt looks strong. Submit to improve your score.')
+        setMessage(
+          'Updated attempt looks strong. Submit to improve your score.'
+        )
       } else {
         setMessage('Response looks good. Submit your first attempt.')
       }
@@ -1456,8 +1517,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     submitBtn.disabled = true
     responseInput.disabled = true
-    if (startRecordingBtn) startRecordingBtn.disabled = true
-    if (stopRecordingBtn) stopRecordingBtn.disabled = true
+    if (recordToggleBtn) recordToggleBtn.disabled = true
     stopSpeechRecognition()
 
     setMessage('Submitting your response...')
@@ -1490,8 +1550,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!submitResponseResult.ok) {
       responseInput.disabled = false
       submitBtn.disabled = false
-      if (startRecordingBtn && isAudioRecordingEnabled()) {
-        startRecordingBtn.disabled = false
+      if (recordToggleBtn && isAudioRecordingEnabled()) {
+        recordToggleBtn.disabled = false
       }
       setMessage(
         submitResponseResult.payload?.error?.message ||
@@ -1515,8 +1575,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     responseInput.value = ''
     responseInput.disabled = false
     submitBtn.disabled = false
-    if (startRecordingBtn && isAudioRecordingEnabled()) {
-      startRecordingBtn.disabled = false
+    if (recordToggleBtn && isAudioRecordingEnabled()) {
+      recordToggleBtn.disabled = false
     }
     recordingText.textContent = `Attempt ${attempts} saved`
     updateSubmitState()
