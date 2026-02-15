@@ -511,8 +511,12 @@ test.describe('AI recording interview flows', () => {
 
     await page.goto('/interview.html')
     await page.getByRole('button', { name: /start/i }).click()
-    const stopBtn = page.getByRole('button', { name: /stop recording/i })
-    await page.getByRole('button', { name: /start recording/i }).click()
+    
+    // Wait for the record toggle button to be visible after session starts
+    // Button text includes emoji: "🎙️ Start Recording"
+    const recordToggleBtn = page.locator('#record-toggle-btn')
+    await recordToggleBtn.waitFor({ state: 'visible', timeout: 10000 })
+    await recordToggleBtn.click()
 
     // The mock SpeechRecognition.start() fires onresult after 200ms.
     // If the page's DOMContentLoaded captured SpeechRecognitionAPI=null
@@ -546,7 +550,8 @@ test.describe('AI recording interview flows', () => {
       { timeout: 5000 }
     )
 
-    await stopBtn.click({ timeout: 10000 })
+    // Click the record toggle button again to stop recording
+    await recordToggleBtn.click({ timeout: 10000 })
 
     // Wait for audio upload to complete and submit button to enable
     await page.waitForFunction(

@@ -612,8 +612,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       recordToggleBtn.disabled = false
       recordToggleBtn.textContent = '🎙️ Start Recording'
       recordToggleBtn.setAttribute('data-recording', 'false')
-      recordToggleBtn.className =
-        'hidden bg-rose-500 hover:bg-rose-500/90 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide'
+      // Remove only the recording-specific classes, keep visibility state
+      recordToggleBtn.classList.remove('bg-slate-700', 'hover:bg-slate-600')
+      recordToggleBtn.classList.add('bg-rose-500', 'hover:bg-rose-500/90')
     }
   }
 
