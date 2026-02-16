@@ -387,6 +387,9 @@ test.describe('AI recording interview flows', () => {
         'Situation: production incident impacted customers. Task: I needed to restore service quickly. Action: I coordinated incident response, identified the bottleneck, and implemented a rollback plan. Result: uptime recovered in under 10 minutes and we added preventive monitoring.'
       )
     await page.getByRole('button', { name: /submit answer/i }).click()
+
+    // Accept the confirmation dialog added by the UX overhaul
+    page.on('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: /complete session/i }).click()
 
     await expect(page).toHaveURL(/feedback\.html\?sessionId=session-1/)
@@ -471,7 +474,9 @@ test.describe('AI recording interview flows', () => {
                 },
               })
               // Also directly set the textarea as a fallback
-              const el = document.getElementById('response-input') as HTMLTextAreaElement
+              const el = document.getElementById(
+                'response-input'
+              ) as HTMLTextAreaElement
               if (el && !el.value) {
                 el.value = mockTranscript
                 el.dispatchEvent(new Event('input', { bubbles: true }))
@@ -511,7 +516,7 @@ test.describe('AI recording interview flows', () => {
 
     await page.goto('/interview.html')
     await page.getByRole('button', { name: /start/i }).click()
-    
+
     // Wait for the record toggle button to be visible after session starts
     // Button text includes emoji: "🎙️ Start Recording"
     const recordToggleBtn = page.locator('#record-toggle-btn')
@@ -525,12 +530,16 @@ test.describe('AI recording interview flows', () => {
     // populate the textarea after a short wait.
     await page.waitForTimeout(500)
     const hasText = await page.evaluate(() => {
-      const el = document.getElementById('response-input') as HTMLTextAreaElement
+      const el = document.getElementById(
+        'response-input'
+      ) as HTMLTextAreaElement
       return el && el.value.length > 20
     })
     if (!hasText) {
       await page.evaluate(() => {
-        const el = document.getElementById('response-input') as HTMLTextAreaElement
+        const el = document.getElementById(
+          'response-input'
+        ) as HTMLTextAreaElement
         if (el) {
           el.value =
             'I resolved a critical production issue by coordinating with the team and implementing a rollback plan.'
@@ -565,6 +574,9 @@ test.describe('AI recording interview flows', () => {
     )
 
     await page.getByRole('button', { name: /submit answer/i }).click()
+
+    // Accept the confirmation dialog added by the UX overhaul
+    page.on('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: /complete session/i }).click()
 
     await expect(page).toHaveURL(/feedback\.html\?sessionId=session-1/)
@@ -598,6 +610,9 @@ test.describe('AI recording interview flows', () => {
         'Situation: I managed both spoken and written updates for a critical release. Task: keep stakeholders aligned. Action: I used a recorded walkthrough then refined the transcript with exact metrics. Result: faster approvals and better team clarity.'
       )
     await page.getByRole('button', { name: /submit answer/i }).click()
+
+    // Accept the confirmation dialog added by the UX overhaul
+    page.on('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: /complete session/i }).click()
 
     await expect(page).toHaveURL(/feedback\.html\?sessionId=session-1/)
@@ -626,8 +641,16 @@ test.describe('AIR feedback and history metrics', () => {
             roleMetrics: {
               roleFitScore: 84,
               competencyCoverage: 75,
-              strongestCompetency: { key: 'reliability', label: 'Reliability', score: 88 },
-              weakestCompetency: { key: 'api-design', label: 'Api Design', score: 74 },
+              strongestCompetency: {
+                key: 'reliability',
+                label: 'Reliability',
+                score: 88,
+              },
+              weakestCompetency: {
+                key: 'api-design',
+                label: 'Api Design',
+                score: 74,
+              },
               competencyScores: [
                 { key: 'reliability', label: 'Reliability', score: 88 },
                 { key: 'api-design', label: 'Api Design', score: 74 },
@@ -643,8 +666,16 @@ test.describe('AIR feedback and history metrics', () => {
           feedback: [
             {
               id: 'feedback-1',
-              scores: { overall: 82, situation: 72, task: 75, action: 85, result: 88 },
-              suggestions: ['Quantify outage impact with one additional metric.'],
+              scores: {
+                overall: 82,
+                situation: 72,
+                task: 75,
+                action: 85,
+                result: 88,
+              },
+              suggestions: [
+                'Quantify outage impact with one additional metric.',
+              ],
             },
           ],
         },
@@ -662,7 +693,9 @@ test.describe('AIR feedback and history metrics', () => {
     )
   })
 
-  test('hides AIR metrics panel on generic feedback sessions', async ({ page }) => {
+  test('hides AIR metrics panel on generic feedback sessions', async ({
+    page,
+  }) => {
     await mockFeedbackAndHistoryApis(page, {
       historySessions: [],
       feedbackBySession: {
@@ -686,7 +719,13 @@ test.describe('AIR feedback and history metrics', () => {
           feedback: [
             {
               id: 'feedback-1',
-              scores: { overall: 66, situation: 60, task: 62, action: 70, result: 72 },
+              scores: {
+                overall: 66,
+                situation: 60,
+                task: 62,
+                action: 70,
+                result: 72,
+              },
               suggestions: ['Use more specific results.'],
             },
           ],
@@ -755,7 +794,11 @@ test.describe('AIR feedback and history metrics', () => {
           summary: {
             airMode: false,
             starScores: { overall: 64 },
-            roleMetrics: { roleFitScore: null, competencyCoverage: null, trend: null },
+            roleMetrics: {
+              roleFitScore: null,
+              competencyCoverage: null,
+              trend: null,
+            },
           },
           feedback: [{ id: 'f2', scores: { overall: 64 } }],
         },
