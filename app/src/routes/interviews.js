@@ -797,7 +797,10 @@ async function buildHistoryFeedbackSummaryBySession(sessions = [], userId) {
     if (!sessionId) continue
     const reports = reportsBySession.get(sessionId) || []
     if (!reports.length) continue
-    summaryBySession.set(sessionId, buildHistoryFeedbackSummary(session, reports))
+    summaryBySession.set(
+      sessionId,
+      buildHistoryFeedbackSummary(session, reports)
+    )
   }
 
   return summaryBySession
