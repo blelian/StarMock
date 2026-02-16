@@ -1,25 +1,27 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  const messageEl = document.getElementById('feedback-message');
-  const overallScoreValueEl = document.getElementById('overall-score-value');
-  const overallScoreRingEl = document.getElementById('overall-score-ring');
-  const breakdownEl = document.getElementById('star-breakdown');
-  const suggestionsEl = document.getElementById('feedback-suggestions');
-  const airMetricsPanelEl = document.getElementById('air-metrics-panel');
-  const airRoleFitScoreEl = document.getElementById('air-role-fit-score');
-  const airCoverageEl = document.getElementById('air-competency-coverage');
-  const airWeakestEl = document.getElementById('air-weakest-competency');
-  const airTrendEl = document.getElementById('air-trend-score');
+  const messageEl = document.getElementById('feedback-message')
+  const overallScoreValueEl = document.getElementById('overall-score-value')
+  const overallScoreRingEl = document.getElementById('overall-score-ring')
+  const breakdownEl = document.getElementById('star-breakdown')
+  const suggestionsEl = document.getElementById('feedback-suggestions')
+  const airMetricsPanelEl = document.getElementById('air-metrics-panel')
+  const airRoleFitScoreEl = document.getElementById('air-role-fit-score')
+  const airCoverageEl = document.getElementById('air-competency-coverage')
+  const airWeakestEl = document.getElementById('air-weakest-competency')
+  const airTrendEl = document.getElementById('air-trend-score')
   const airCompetencyBreakdownEl = document.getElementById(
     'air-competency-breakdown'
-  );
+  )
   const questionRollupSummaryEl = document.getElementById(
     'question-rollup-summary'
-  );
-  const questionMetricsListEl = document.getElementById('question-metrics-list');
+  )
+  const questionMetricsListEl = document.getElementById('question-metrics-list')
   const progressIndicatorEl = document.getElementById(
     'feedback-progress-indicator'
-  );
-  const progressTextEl = document.getElementById('feedback-progress-text');
+  )
+  const progressTextEl = document.getElementById('feedback-progress-text')
+  const feedbackActionsEl = document.getElementById('feedback-actions')
+  const feedbackRetryBtn = document.getElementById('feedback-retry-btn')
 
   if (
     !messageEl ||
@@ -28,51 +30,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     !breakdownEl ||
     !suggestionsEl
   ) {
-    return;
+    return
   }
 
-  const DASH_ARRAY = 552;
-  const FEEDBACK_POLL_BASE_INTERVAL_MS = 2500;
-  const FEEDBACK_POLL_MAX_INTERVAL_MS = 30000;
-  const FEEDBACK_POLL_JITTER_RATIO = 0.2;
-  const FEEDBACK_POLL_TIMEOUT_MS = 120000;
+  const DASH_ARRAY = 552
+  const FEEDBACK_POLL_BASE_INTERVAL_MS = 2500
+  const FEEDBACK_POLL_MAX_INTERVAL_MS = 30000
+  const FEEDBACK_POLL_JITTER_RATIO = 0.2
+  const FEEDBACK_POLL_TIMEOUT_MS = 120000
 
   const apiRequest = async (url, options = {}) => {
     const response = await fetch(url, {
       credentials: 'include',
       ...options,
-    });
+    })
 
-    let payload = null;
+    let payload = null
     try {
-      payload = await response.json();
+      payload = await response.json()
     } catch {
-      payload = null;
+      payload = null
     }
 
-    return { ok: response.ok, status: response.status, payload };
-  };
+    return { ok: response.ok, status: response.status, payload }
+  }
 
-  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
   const computePollDelay = (attemptNumber) => {
     const exponentialDelay = Math.min(
       FEEDBACK_POLL_BASE_INTERVAL_MS * 2 ** attemptNumber,
       FEEDBACK_POLL_MAX_INTERVAL_MS
-    );
+    )
     const jitterOffset =
-      (Math.random() * 2 - 1) * FEEDBACK_POLL_JITTER_RATIO * exponentialDelay;
-    return Math.max(1000, Math.round(exponentialDelay + jitterOffset));
-  };
+      (Math.random() * 2 - 1) * FEEDBACK_POLL_JITTER_RATIO * exponentialDelay
+    return Math.max(1000, Math.round(exponentialDelay + jitterOffset))
+  }
 
   const setProgress = (message, isVisible = true) => {
     if (!progressIndicatorEl || !progressTextEl) {
-      return;
+      return
     }
 
-    progressTextEl.textContent = message;
-    progressIndicatorEl.classList.toggle('hidden', !isVisible);
-  };
+    progressTextEl.textContent = message
+    progressIndicatorEl.classList.toggle('hidden', !isVisible)
+  }
 
   const escapeHtml = (value) =>
     String(value)
@@ -80,19 +82,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
+      .replaceAll("'", '&#39;')
 
   const toPercent = (score) => {
-    if (!Number.isFinite(score)) return null;
-    return Math.max(0, Math.min(100, Math.round(score)));
-  };
+    if (!Number.isFinite(score)) return null
+    return Math.max(0, Math.min(100, Math.round(score)))
+  }
 
   const scoreLabel = (score) => {
-    if (score >= 85) return 'Excellent';
-    if (score >= 70) return 'Strong';
-    if (score >= 50) return 'Developing';
-    return 'Needs focus';
-  };
+    if (score >= 85) return 'Excellent'
+    if (score >= 70) return 'Strong'
+    if (score >= 50) return 'Developing'
+    return 'Needs focus'
+  }
 
   const scoreTone = (score) => {
     if (score >= 70) {
@@ -100,73 +102,73 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'check_circle',
         iconColor: 'bg-primary/20 text-primary',
         labelColor: 'text-primary',
-      };
+      }
     }
     if (score >= 50) {
       return {
         icon: 'error',
         iconColor: 'bg-amber-500/20 text-amber-500',
         labelColor: 'text-amber-500',
-      };
+      }
     }
     return {
       icon: 'warning',
       iconColor: 'bg-red-500/20 text-red-400',
       labelColor: 'text-red-400',
-    };
-  };
+    }
+  }
 
   const average = (values) => {
-    const filtered = values.filter((value) => Number.isFinite(value));
-    if (!filtered.length) return null;
-    return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
-  };
+    const filtered = values.filter((value) => Number.isFinite(value))
+    if (!filtered.length) return null
+    return filtered.reduce((sum, value) => sum + value, 0) / filtered.length
+  }
 
   const componentGuidance = {
     situation: 'Set context clearly: role, timeline, and challenge.',
     task: 'State your exact ownership and what success required.',
     action: 'Detail concrete steps you personally took.',
     result: 'Quantify outcomes and reflect on impact.',
-  };
+  }
 
   const formatDelta = (delta) => {
-    if (!Number.isFinite(delta)) return '--';
-    return `${delta >= 0 ? '+' : ''}${Math.round(delta)} pts`;
-  };
+    if (!Number.isFinite(delta)) return '--'
+    return `${delta >= 0 ? '+' : ''}${Math.round(delta)} pts`
+  }
 
   const renderQuestionMetrics = (summary) => {
     if (!questionRollupSummaryEl || !questionMetricsListEl) {
-      return;
+      return
     }
 
-    const sessionMetrics = summary?.sessionMetrics || null;
+    const sessionMetrics = summary?.sessionMetrics || null
     const questionMetrics = Array.isArray(summary?.questionMetrics)
       ? summary.questionMetrics
-      : [];
+      : []
 
     if (!sessionMetrics || !questionMetrics.length) {
-      questionRollupSummaryEl.textContent = 'No retries';
+      questionRollupSummaryEl.textContent = 'No retries'
       questionMetricsListEl.innerHTML =
-        '<li>No question-attempt rollup is available for this session.</li>';
-      return;
+        '<li>No question-attempt rollup is available for this session.</li>'
+      return
     }
 
-    questionRollupSummaryEl.textContent = `${sessionMetrics.questionCount || questionMetrics.length} questions • ${sessionMetrics.totalAttempts || questionMetrics.length} attempts`;
+    questionRollupSummaryEl.textContent = `${sessionMetrics.questionCount || questionMetrics.length} questions • ${sessionMetrics.totalAttempts || questionMetrics.length} attempts`
     questionMetricsListEl.innerHTML = questionMetrics
       .slice(0, 8)
       .map((item, index) => {
-        const bestScore = toPercent(item?.bestAttempt?.overallScore);
-        const latestScore = toPercent(item?.latestAttempt?.overallScore);
-        const improvement = item?.improvement?.overallDelta;
+        const bestScore = toPercent(item?.bestAttempt?.overallScore)
+        const latestScore = toPercent(item?.latestAttempt?.overallScore)
+        const improvement = item?.improvement?.overallDelta
         const improvementLabel =
           Number.isFinite(improvement) && improvement !== 0
             ? `${improvement > 0 ? '+' : ''}${Math.round(improvement)} pts`
-            : 'No change';
+            : 'No change'
         const questionLabel =
           typeof item?.questionText === 'string' && item.questionText.trim()
             ? item.questionText.trim()
-            : `Question ${index + 1}`;
-        const attemptCount = Number(item?.attemptCount || 0);
+            : `Question ${index + 1}`
+        const attemptCount = Number(item?.attemptCount || 0)
 
         return `
           <li class="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -177,10 +179,10 @@ document.addEventListener('DOMContentLoaded', async () => {
               }% • Delta: ${escapeHtml(improvementLabel)}
             </p>
           </li>
-        `;
+        `
       })
-      .join('');
-  };
+      .join('')
+  }
 
   const renderAirMetrics = (summary) => {
     if (
@@ -191,30 +193,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       !airTrendEl ||
       !airCompetencyBreakdownEl
     ) {
-      return;
+      return
     }
 
-    const roleMetrics = summary?.roleMetrics || {};
-    const roleFitScore = toPercent(roleMetrics.roleFitScore);
-    const coverage = toPercent(roleMetrics.competencyCoverage);
-    const weakest = roleMetrics.weakestCompetency || null;
-    const trend = roleMetrics.trend || null;
+    const roleMetrics = summary?.roleMetrics || {}
+    const roleFitScore = toPercent(roleMetrics.roleFitScore)
+    const coverage = toPercent(roleMetrics.competencyCoverage)
+    const weakest = roleMetrics.weakestCompetency || null
+    const trend = roleMetrics.trend || null
     const competencyScores = Array.isArray(roleMetrics.competencyScores)
       ? roleMetrics.competencyScores
-      : [];
+      : []
 
     if (!summary?.airMode) {
-      airMetricsPanelEl.classList.add('hidden');
-      return;
+      airMetricsPanelEl.classList.add('hidden')
+      return
     }
 
-    airMetricsPanelEl.classList.remove('hidden');
+    airMetricsPanelEl.classList.remove('hidden')
     airRoleFitScoreEl.textContent =
-      roleFitScore === null ? '--%' : `${roleFitScore}%`;
-    airCoverageEl.textContent = coverage === null ? '--%' : `${coverage}%`;
+      roleFitScore === null ? '--%' : `${roleFitScore}%`
+    airCoverageEl.textContent = coverage === null ? '--%' : `${coverage}%`
     airWeakestEl.textContent = weakest
       ? `${weakest.label} (${toPercent(weakest.score)}%)`
-      : '--';
+      : '--'
 
     if (trend && Number.isFinite(trend.delta)) {
       const directionLabel =
@@ -222,26 +224,26 @@ document.addEventListener('DOMContentLoaded', async () => {
           ? 'Improving'
           : trend.direction === 'down'
             ? 'Declining'
-            : 'Stable';
-      airTrendEl.textContent = `${directionLabel} (${formatDelta(trend.delta)})`;
+            : 'Stable'
+      airTrendEl.textContent = `${directionLabel} (${formatDelta(trend.delta)})`
     } else {
-      airTrendEl.textContent = 'No baseline yet';
+      airTrendEl.textContent = 'No baseline yet'
     }
 
     if (!competencyScores.length) {
       airCompetencyBreakdownEl.innerHTML =
-        '<li>No competency-level scores available yet.</li>';
-      return;
+        '<li>No competency-level scores available yet.</li>'
+      return
     }
 
     airCompetencyBreakdownEl.innerHTML = competencyScores
       .slice(0, 6)
       .map((item) => {
-        const score = toPercent(item.score);
-        return `<li class="flex items-center justify-between"><span>${escapeHtml(item.label)}</span><span class="font-semibold">${score ?? '--'}%</span></li>`;
+        const score = toPercent(item.score)
+        return `<li class="flex items-center justify-between"><span>${escapeHtml(item.label)}</span><span class="font-semibold">${score ?? '--'}%</span></li>`
       })
-      .join('');
-  };
+      .join('')
+  }
 
   const renderBreakdown = (scores) => {
     const entries = [
@@ -249,14 +251,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       ['Task', scores.task],
       ['Action', scores.action],
       ['Result', scores.result],
-    ];
+    ]
 
     breakdownEl.innerHTML = entries
       .map(([name, value]) => {
-        const normalizedScore = toPercent(value);
-        const tone = scoreTone(normalizedScore ?? 0);
-        const label = scoreLabel(normalizedScore ?? 0);
-        const guidance = componentGuidance[name.toLowerCase()];
+        const normalizedScore = toPercent(value)
+        const tone = scoreTone(normalizedScore ?? 0)
+        const label = scoreLabel(normalizedScore ?? 0)
+        const guidance = componentGuidance[name.toLowerCase()]
 
         return `
           <div class="flex items-start gap-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-4 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
@@ -273,58 +275,59 @@ document.addEventListener('DOMContentLoaded', async () => {
               </p>
             </div>
           </div>
-        `;
+        `
       })
-      .join('');
-  };
+      .join('')
+  }
 
   const renderSuggestions = (feedbackItems) => {
     const suggestionPool = feedbackItems.flatMap((item) =>
       Array.isArray(item.suggestions) ? item.suggestions : []
-    );
-    const uniqueSuggestions = [...new Set(suggestionPool)].slice(0, 4);
+    )
+    const uniqueSuggestions = [...new Set(suggestionPool)].slice(0, 4)
 
     if (!uniqueSuggestions.length) {
       suggestionsEl.innerHTML =
-        '<li>Keep practicing. Focus on structure and measurable outcomes.</li>';
-      return;
+        '<li>Keep practicing. Focus on structure and measurable outcomes.</li>'
+      return
     }
 
     suggestionsEl.innerHTML = uniqueSuggestions
       .map((suggestion) => `<li>${escapeHtml(suggestion)}</li>`)
-      .join('');
-  };
-
-  const resolveSessionId = async () => {
-    const fromQuery = new URLSearchParams(window.location.search).get('sessionId');
-    if (fromQuery) return fromQuery;
-
-    const historyResult = await apiRequest('/api/history?status=completed&page=1&limit=1');
-    if (!historyResult.ok) return null;
-    return historyResult.payload?.sessions?.[0]?.id || null;
-  };
-
-  messageEl.textContent = 'Loading feedback...';
-  setProgress('Preparing feedback generation status...');
-
-  const sessionId = await resolveSessionId();
-  if (!sessionId) {
-    messageEl.textContent =
-      'No completed interview session found. Complete an interview first.';
-    setProgress('', false);
-    messageEl.classList.remove('text-slate-500', 'dark:text-slate-400');
-    messageEl.classList.add('text-red-400');
-    return;
+      .join('')
   }
 
-  const loadFeedbackWithPolling = async () => {
-    const startedAt = Date.now();
-    let pollAttempt = 0;
+  const resolveSessionId = async () => {
+    const fromQuery = new URLSearchParams(window.location.search).get(
+      'sessionId'
+    )
+    if (fromQuery) return fromQuery
+
+    const historyResult = await apiRequest(
+      '/api/history?status=completed&page=1&limit=1'
+    )
+    if (!historyResult.ok) return null
+    return historyResult.payload?.sessions?.[0]?.id || null
+  }
+
+  const showFeedbackActions = (showRetry = false) => {
+    if (feedbackActionsEl) {
+      feedbackActionsEl.classList.remove('hidden')
+      feedbackActionsEl.style.display = 'flex'
+    }
+    if (feedbackRetryBtn) {
+      feedbackRetryBtn.classList.toggle('hidden', !showRetry)
+    }
+  }
+
+  const loadFeedbackWithPolling = async (sessionId) => {
+    const startedAt = Date.now()
+    let pollAttempt = 0
 
     while (Date.now() - startedAt < FEEDBACK_POLL_TIMEOUT_MS) {
       const statusResult = await apiRequest(
         `/api/sessions/${sessionId}/feedback-status`
-      );
+      )
 
       if (!statusResult.ok) {
         return {
@@ -332,39 +335,44 @@ document.addEventListener('DOMContentLoaded', async () => {
           message:
             statusResult.payload?.error?.message ||
             'Unable to check feedback status.',
-        };
+        }
       }
 
-      const statusPayload = statusResult.payload || {};
-      const feedbackState = statusPayload.feedback || {};
-      const job = feedbackState.job || null;
+      const statusPayload = statusResult.payload || {}
+      const feedbackState = statusPayload.feedback || {}
+      const job = feedbackState.job || null
 
       if (feedbackState.ready) {
-        const feedbackResult = await apiRequest(`/api/sessions/${sessionId}/feedback`);
+        const feedbackResult = await apiRequest(
+          `/api/sessions/${sessionId}/feedback`
+        )
         if (feedbackResult.status === 202) {
-          const waitMs = computePollDelay(pollAttempt);
-          pollAttempt += 1;
+          const waitMs = computePollDelay(pollAttempt)
+          pollAttempt += 1
           messageEl.textContent =
-            feedbackResult.payload?.message || 'Feedback is still processing...';
-          setProgress(`Checking again in ${Math.ceil(waitMs / 1000)}s...`);
-          await wait(waitMs);
-          continue;
+            feedbackResult.payload?.message || 'Feedback is still processing...'
+          setProgress(`Checking again in ${Math.ceil(waitMs / 1000)}s...`)
+          await wait(waitMs)
+          continue
         }
 
-        if (!feedbackResult.ok || !Array.isArray(feedbackResult.payload?.feedback)) {
+        if (
+          !feedbackResult.ok ||
+          !Array.isArray(feedbackResult.payload?.feedback)
+        ) {
           return {
             ok: false,
             message:
               feedbackResult.payload?.error?.message ||
               'Unable to load feedback.',
-          };
+          }
         }
 
         return {
           ok: true,
           feedbackItems: feedbackResult.payload.feedback,
           summary: feedbackResult.payload.summary || null,
-        };
+        }
       }
 
       if (job?.status === 'failed') {
@@ -372,67 +380,97 @@ document.addEventListener('DOMContentLoaded', async () => {
           ok: false,
           message:
             job?.lastError?.message ||
-            'Feedback generation failed. Please retry this session.',
-        };
+            'Feedback generation failed. You can retry or start a new session.',
+        }
       }
 
-      const waitMs = computePollDelay(pollAttempt);
-      pollAttempt += 1;
+      const waitMs = computePollDelay(pollAttempt)
+      pollAttempt += 1
       if (job?.status === 'processing') {
-        messageEl.textContent = `Generating feedback (attempt ${job.attempts || 1}/${job.maxAttempts || 3})...`;
+        messageEl.textContent = `Generating feedback (attempt ${job.attempts || 1}/${job.maxAttempts || 3})...`
       } else if (job?.status === 'queued') {
-        messageEl.textContent = 'Feedback is queued and will be ready shortly...';
+        messageEl.textContent =
+          'Feedback is queued and will be ready shortly...'
       } else {
-        messageEl.textContent = 'Preparing feedback...';
+        messageEl.textContent = 'Preparing feedback...'
       }
-      setProgress(`Checking again in ${Math.ceil(waitMs / 1000)}s...`);
+      setProgress(`Checking again in ${Math.ceil(waitMs / 1000)}s...`)
 
-      await wait(waitMs);
+      await wait(waitMs)
     }
 
     return {
       ok: false,
       message:
-        'Feedback is taking longer than expected. Please refresh in a moment.',
-    };
-  };
-
-  const feedbackLoadResult = await loadFeedbackWithPolling();
-  if (!feedbackLoadResult.ok) {
-    setProgress('', false);
-    messageEl.textContent = feedbackLoadResult.message;
-    messageEl.classList.remove('text-slate-500', 'dark:text-slate-400');
-    messageEl.classList.add('text-red-400');
-    return;
+        'Feedback is taking longer than expected. Try again in a moment.',
+    }
   }
 
-  setProgress('', false);
-  const feedbackItems = feedbackLoadResult.feedbackItems;
-  const summary = feedbackLoadResult.summary || null;
-  if (!feedbackItems.length) {
-    messageEl.textContent = 'No feedback generated for this session yet.';
-    return;
+  const loadAndRenderFeedback = async () => {
+    messageEl.textContent = 'Loading feedback...'
+    setProgress('Preparing feedback generation status...')
+
+    const sessionId = await resolveSessionId()
+    if (!sessionId) {
+      messageEl.textContent =
+        'No completed interview session found. Complete an interview first.'
+      setProgress('', false)
+      messageEl.classList.remove('text-slate-500', 'dark:text-slate-400')
+      messageEl.classList.add('text-red-400')
+      showFeedbackActions(false)
+      return
+    }
+
+    const feedbackLoadResult = await loadFeedbackWithPolling(sessionId)
+    if (!feedbackLoadResult.ok) {
+      setProgress('', false)
+      messageEl.textContent = feedbackLoadResult.message
+      messageEl.classList.remove('text-slate-500', 'dark:text-slate-400')
+      messageEl.classList.add('text-red-400')
+      showFeedbackActions(true)
+      return
+    }
+
+    setProgress('', false)
+    const feedbackItems = feedbackLoadResult.feedbackItems
+    const summary = feedbackLoadResult.summary || null
+    if (!feedbackItems.length) {
+      messageEl.textContent = 'No feedback generated for this session yet.'
+      showFeedbackActions(true)
+      return
+    }
+
+    const aggregateScores = summary?.starScores || {
+      situation: average(feedbackItems.map((item) => item?.scores?.situation)),
+      task: average(feedbackItems.map((item) => item?.scores?.task)),
+      action: average(feedbackItems.map((item) => item?.scores?.action)),
+      result: average(feedbackItems.map((item) => item?.scores?.result)),
+      overall: average(feedbackItems.map((item) => item?.scores?.overall)),
+    }
+
+    const overall = toPercent(aggregateScores.overall) ?? 0
+    overallScoreValueEl.textContent = `${overall}%`
+    overallScoreRingEl.setAttribute(
+      'stroke-dashoffset',
+      String(DASH_ARRAY - (DASH_ARRAY * overall) / 100)
+    )
+
+    renderBreakdown(aggregateScores)
+    renderSuggestions(feedbackItems)
+    renderAirMetrics(summary)
+    renderQuestionMetrics(summary)
+
+    messageEl.textContent = `Feedback loaded for session ${sessionId.slice(-6)}.`
+    showFeedbackActions(false)
   }
 
-  const aggregateScores = summary?.starScores || {
-    situation: average(feedbackItems.map((item) => item?.scores?.situation)),
-    task: average(feedbackItems.map((item) => item?.scores?.task)),
-    action: average(feedbackItems.map((item) => item?.scores?.action)),
-    result: average(feedbackItems.map((item) => item?.scores?.result)),
-    overall: average(feedbackItems.map((item) => item?.scores?.overall)),
-  };
+  // Wire up retry button
+  if (feedbackRetryBtn) {
+    feedbackRetryBtn.addEventListener('click', () => {
+      if (feedbackActionsEl) feedbackActionsEl.classList.add('hidden')
+      loadAndRenderFeedback()
+    })
+  }
 
-  const overall = toPercent(aggregateScores.overall) ?? 0;
-  overallScoreValueEl.textContent = `${overall}%`;
-  overallScoreRingEl.setAttribute(
-    'stroke-dashoffset',
-    String(DASH_ARRAY - (DASH_ARRAY * overall) / 100)
-  );
-
-  renderBreakdown(aggregateScores);
-  renderSuggestions(feedbackItems);
-  renderAirMetrics(summary);
-  renderQuestionMetrics(summary);
-
-  messageEl.textContent = `Feedback loaded for session ${sessionId.slice(-6)}.`;
-});
+  await loadAndRenderFeedback()
+})

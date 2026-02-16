@@ -1049,6 +1049,7 @@ describe('audio response and transcription routes', () => {
       _id: 'session-1',
       status: 'in_progress',
       questions: ['question-1'],
+      save: vi.fn().mockResolvedValue(undefined),
     } as never)
     vi.spyOn(InterviewResponse, 'findOne').mockReturnValue({
       sort: vi.fn().mockResolvedValue(null),
@@ -1115,6 +1116,7 @@ describe('audio response and transcription routes', () => {
       _id: 'session-1',
       status: 'in_progress',
       questions: ['507f1f77bcf86cd799439011'], // Valid ObjectId format
+      save: vi.fn().mockResolvedValue(undefined),
     } as never)
     vi.spyOn(InterviewResponse, 'findOne').mockReturnValue({
       sort: vi.fn().mockResolvedValue({

@@ -1,192 +1,267 @@
-<!DOCTYPE html>
+<!doctype html>
 <html class="dark" lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Feedback Report - StarMock</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Feedback Report - StarMock</title>
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 
-  <!-- Shared Tailwind Config -->
-  <script src="/components/tailwind-config.js"></script>
+    <!-- Shared Tailwind Config -->
+    <script src="/components/tailwind-config.js"></script>
 
-  <!-- Global Styles -->
-  <link href="/styles/global.css" rel="stylesheet"/>
+    <!-- Global Styles -->
+    <link href="/styles/global.css" rel="stylesheet" />
 
-  <!-- Material Icons -->
-   <link
-  href="https://fonts.googleapis.com/css2?family=Material+Icons+Round"  rel="stylesheet" />
+    <!-- Material Icons -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Icons+Round"
+      rel="stylesheet"
+    />
 
+    <!-- Auth Check -->
+    <script src="/components/auth-check.js" defer></script>
+  </head>
 
-  <!-- Auth Check -->
-  <script src="/components/auth-check.js" defer></script>
-</head>
+  <body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col"
+  >
+    <!-- Background Grid -->
+    <div class="fixed inset-0 grid-bg pointer-events-none opacity-40"></div>
 
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col">
+    <!-- Header Component -->
+    <div id="site-header"></div>
 
-  <!-- Background Grid -->
-  <div class="fixed inset-0 grid-bg pointer-events-none opacity-40"></div>
-
-  <!-- Header Component -->
-  <div id="site-header"></div>
-
-  <main class="flex-1 max-w-6xl mx-auto w-full px-5 py-8 relative z-10">
-
-    <div class="text-center mb-8">
-      <p class="text-sm font-medium text-slate-500 dark:text-primary/70 uppercase tracking-widest">
-        Interview Session Feedback
-      </p>
-      <h1 class="text-2xl font-bold mt-1 text-slate-900 dark:text-white">Ratings</h1>
-      <p id="feedback-message" class="text-sm text-slate-500 dark:text-slate-400 mt-3">
-        Loading feedback...
-      </p>
-      <div
-        id="feedback-progress-indicator"
-        class="hidden mt-2 inline-flex items-center gap-2 text-sm text-primary"
-      >
-        <svg
-          class="h-4 w-4 animate-spin"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
+    <main class="flex-1 max-w-6xl mx-auto w-full px-5 py-8 relative z-10">
+      <div class="text-center mb-8">
+        <p
+          class="text-sm font-medium text-slate-500 dark:text-primary/70 uppercase tracking-widest"
         >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          ></circle>
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-          ></path>
-        </svg>
-        <span id="feedback-progress-text">Preparing feedback...</span>
-      </div>
-    </div>
-
-    <div class="glass-panel rounded-2xl border border-white/5 p-6 space-y-6">
-      <div class="flex flex-col items-center justify-center py-6">
-        <div class="relative flex items-center justify-center">
-          <svg class="w-48 h-48 -rotate-90">
+          Interview Session Feedback
+        </p>
+        <h1 class="text-2xl font-bold mt-1 text-slate-900 dark:text-white">
+          Ratings
+        </h1>
+        <p
+          id="feedback-message"
+          class="text-sm text-slate-500 dark:text-slate-400 mt-3"
+        >
+          Loading feedback...
+        </p>
+        <div
+          id="feedback-progress-indicator"
+          class="hidden mt-2 inline-flex items-center gap-2 text-sm text-primary"
+        >
+          <svg
+            class="h-4 w-4 animate-spin"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
             <circle
-              class="text-slate-200 dark:text-white/5"
-              cx="96"
-              cy="96"
-              fill="transparent"
-              r="88"
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
               stroke="currentColor"
-              stroke-width="8"
+              stroke-width="4"
             ></circle>
-            <circle
-              id="overall-score-ring"
-              class="text-primary"
-              cx="96"
-              cy="96"
-              fill="transparent"
-              r="88"
-              stroke="currentColor"
-              stroke-dasharray="552"
-              stroke-dashoffset="552"
-              stroke-linecap="round"
-              stroke-width="10"
-            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            ></path>
           </svg>
-          <div class="absolute inset-0 flex flex-col items-center justify-center">
-            <span
-              id="overall-score-value"
-              class="text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight"
+          <span id="feedback-progress-text">Preparing feedback...</span>
+        </div>
+      </div>
+
+      <div class="glass-panel rounded-2xl border border-white/5 p-6 space-y-6">
+        <div class="flex flex-col items-center justify-center py-6">
+          <div class="relative flex items-center justify-center">
+            <svg class="w-48 h-48 -rotate-90">
+              <circle
+                class="text-slate-200 dark:text-white/5"
+                cx="96"
+                cy="96"
+                fill="transparent"
+                r="88"
+                stroke="currentColor"
+                stroke-width="8"
+              ></circle>
+              <circle
+                id="overall-score-ring"
+                class="text-primary"
+                cx="96"
+                cy="96"
+                fill="transparent"
+                r="88"
+                stroke="currentColor"
+                stroke-dasharray="552"
+                stroke-dashoffset="552"
+                stroke-linecap="round"
+                stroke-width="10"
+              ></circle>
+            </svg>
+            <div
+              class="absolute inset-0 flex flex-col items-center justify-center"
             >
-              --%
+              <span
+                id="overall-score-value"
+                class="text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight"
+              >
+                --%
+              </span>
+              <p
+                class="text-sm font-semibold text-slate-500 dark:text-primary/80 mt-1 uppercase"
+              >
+                Overall Score
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <section id="air-metrics-panel" class="hidden">
+          <div class="flex items-center justify-between mb-4 px-1">
+            <h3 class="text-lg font-bold leading-tight tracking-tight">
+              AIR Role Metrics
+            </h3>
+            <span
+              class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase"
+            >
+              Dynamic
             </span>
-            <p class="text-sm font-semibold text-slate-500 dark:text-primary/80 mt-1 uppercase">
-              Overall Score
-            </p>
           </div>
-        </div>
-      </div>
 
-      <section id="air-metrics-panel" class="hidden">
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+              <p
+                class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70"
+              >
+                Role Fit
+              </p>
+              <p id="air-role-fit-score" class="text-2xl font-bold mt-1">--%</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+              <p
+                class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70"
+              >
+                Coverage
+              </p>
+              <p id="air-competency-coverage" class="text-2xl font-bold mt-1">
+                --%
+              </p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+              <p
+                class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70"
+              >
+                Weakest
+              </p>
+              <p id="air-weakest-competency" class="text-sm font-semibold mt-1">
+                --
+              </p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+              <p
+                class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70"
+              >
+                Trend
+              </p>
+              <p id="air-trend-score" class="text-sm font-semibold mt-1">--</p>
+            </div>
+          </div>
+
+          <div class="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
+            <p class="text-sm font-semibold mb-2">Competency Breakdown</p>
+            <ul
+              id="air-competency-breakdown"
+              class="space-y-2 text-sm text-slate-600 dark:text-primary/70"
+            ></ul>
+          </div>
+        </section>
+
         <div class="flex items-center justify-between mb-4 px-1">
-          <h3 class="text-lg font-bold leading-tight tracking-tight">AIR Role Metrics</h3>
-          <span class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase">
-            Dynamic
-          </span>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70">Role Fit</p>
-            <p id="air-role-fit-score" class="text-2xl font-bold mt-1">--%</p>
-          </div>
-          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70">Coverage</p>
-            <p id="air-competency-coverage" class="text-2xl font-bold mt-1">--%</p>
-          </div>
-          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70">Weakest</p>
-            <p id="air-weakest-competency" class="text-sm font-semibold mt-1">--</p>
-          </div>
-          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-primary/70">Trend</p>
-            <p id="air-trend-score" class="text-sm font-semibold mt-1">--</p>
-          </div>
-        </div>
-
-        <div class="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
-          <p class="text-sm font-semibold mb-2">Competency Breakdown</p>
-          <ul id="air-competency-breakdown" class="space-y-2 text-sm text-slate-600 dark:text-primary/70"></ul>
-        </div>
-      </section>
-
-      <div class="flex items-center justify-between mb-4 px-1">
-        <h3 class="text-lg font-bold leading-tight tracking-tight">STAR Method Breakdown</h3>
-        <span class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase">
-          Details
-        </span>
-      </div>
-
-      <div id="star-breakdown" class="space-y-4"></div>
-
-      <section class="mt-6">
-        <div class="flex items-center justify-between mb-3 px-1">
           <h3 class="text-lg font-bold leading-tight tracking-tight">
-            Question Progress
+            STAR Method Breakdown
           </h3>
           <span
-            id="question-rollup-summary"
             class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase"
           >
-            Loading
+            Details
           </span>
         </div>
-        <ul
-          id="question-metrics-list"
-          class="space-y-2 text-sm text-slate-600 dark:text-primary/70"
-        ></ul>
-      </section>
 
-      <div class="mt-8 mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
-        <div class="flex items-center gap-2 mb-2">
-          <span class="material-icons-round text-primary text-xl">lightbulb</span>
-          <p class="text-sm font-bold text-primary">Suggestions</p>
+        <div id="star-breakdown" class="space-y-4"></div>
+
+        <section class="mt-6">
+          <div class="flex items-center justify-between mb-3 px-1">
+            <h3 class="text-lg font-bold leading-tight tracking-tight">
+              Question Progress
+            </h3>
+            <span
+              id="question-rollup-summary"
+              class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase"
+            >
+              Loading
+            </span>
+          </div>
+          <ul
+            id="question-metrics-list"
+            class="space-y-2 text-sm text-slate-600 dark:text-primary/70"
+          ></ul>
+        </section>
+
+        <div
+          class="mt-8 mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20"
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <span class="material-icons-round text-primary text-xl"
+              >lightbulb</span
+            >
+            <p class="text-sm font-bold text-primary">Suggestions</p>
+          </div>
+          <ul
+            id="feedback-suggestions"
+            class="text-sm text-slate-600 dark:text-primary/70 italic space-y-2"
+          ></ul>
         </div>
-        <ul id="feedback-suggestions" class="text-sm text-slate-600 dark:text-primary/70 italic space-y-2"></ul>
+
+        <!-- Error/retry and navigation actions -->
+        <div
+          id="feedback-actions"
+          class="hidden mt-6 flex flex-wrap items-center justify-center gap-3"
+        >
+          <button
+            id="feedback-retry-btn"
+            type="button"
+            class="hidden bg-primary hover:bg-primary/90 text-background-dark px-5 py-2.5 rounded-xl font-bold text-sm"
+          >
+            Retry Feedback Generation
+          </button>
+          <a
+            href="/interview.html"
+            class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm inline-block"
+          >
+            Start New Session
+          </a>
+          <a
+            href="/history.html"
+            class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-5 py-2.5 rounded-xl font-bold text-sm inline-block"
+          >
+            View History
+          </a>
+        </div>
       </div>
-    </div>
-  </main>
+    </main>
 
-  <!-- Footer Component -->
-  <div id="site-footer"></div>
+    <!-- Footer Component -->
+    <div id="site-footer"></div>
 
-  <!-- Components -->
-  <script src="/components/header.js" defer></script>
-  <script src="/components/footer.js" defer></script>
-  <script src="/components/feedback.js" defer></script>
-
-</body>
+    <!-- Components -->
+    <script src="/components/header.js" defer></script>
+    <script src="/components/footer.js" defer></script>
+    <script src="/components/feedback.js" defer></script>
+  </body>
 </html>

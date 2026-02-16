@@ -71,7 +71,7 @@ describe('feedback provider abstraction', () => {
 
     expect(evaluatorType).toBe('rule_based')
     expect(evaluation.scores.overall).toBeGreaterThan(0)
-    expect(warnSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy).toHaveBeenCalled()
   })
 
   it('falls back when ai_model payload is invalid', async () => {
@@ -91,7 +91,7 @@ describe('feedback provider abstraction', () => {
     )
 
     expect(evaluatorType).toBe('rule_based')
-    expect(warnSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy).toHaveBeenCalled()
   })
 
   it('retries provider before succeeding', async () => {

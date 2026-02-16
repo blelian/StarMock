@@ -2,6 +2,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const startBtn = document.getElementById('start-interview-btn')
   const repeatQuestionBtn = document.getElementById('repeat-question-btn')
+  const prevQuestionBtn = document.getElementById('prev-question-btn')
   const nextQuestionBtn = document.getElementById('next-question-btn')
   const completeSessionBtn = document.getElementById('complete-session-btn')
   const newSessionBtn = document.getElementById('new-session-btn')
@@ -221,11 +222,99 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
   }
 
-  const setMessage = (message, isError = false) => {
+  let messageTimeout = null
+
+  const setMessage = (message, isError = false, { durationMs = 0 } = {}) => {
+    if (messageTimeout) {
+      clearTimeout(messageTimeout)
+      messageTimeout = null
+    }
     messageEl.textContent = message
-    messageEl.classList.remove('text-red-400', 'text-slate-400')
+    messageEl.classList.remove(
+      'text-red-400',
+      'text-slate-400',
+      'text-primary',
+      'text-amber-400'
+    )
     messageEl.classList.add(isError ? 'text-red-400' : 'text-slate-400')
     announce(message)
+
+    if (durationMs > 0) {
+      messageTimeout = setTimeout(() => {
+        messageEl.textContent = ''
+        messageTimeout = null
+      }, durationMs)
+    }
+  }
+
+  const setSuccessMessage = (message, { durationMs = 4000 } = {}) => {
+    if (messageTimeout) {
+      clearTimeout(messageTimeout)
+      messageTimeout = null
+    }
+    messageEl.textContent = `✓ ${message}`
+    messageEl.classList.remove(
+      'text-red-400',
+      'text-slate-400',
+      'text-amber-400'
+    )
+    messageEl.classList.add('text-primary')
+    announce(message)
+    if (durationMs > 0) {
+      messageTimeout = setTimeout(() => {
+        messageEl.textContent = ''
+        messageTimeout = null
+      }, durationMs)
+    }
+  }
+
+  // -- Loading state helpers: show spinner text on buttons during async work --
+  const setButtonLoading = (button, loadingText) => {
+    if (!button) return
+    button.disabled = true
+    button.setAttribute('data-original-text', button.textContent)
+    button.textContent = `⏳ ${loadingText}`
+  }
+
+  const clearButtonLoading = (button) => {
+    if (!button) return
+    const original = button.getAttribute('data-original-text')
+    if (original) button.textContent = original
+    button.removeAttribute('data-original-text')
+    // NOTE: caller decides whether to re-enable the button
+  }
+
+  // -- Retry wrapper: retries an async fn up to maxRetries times with backoff --
+  const withRetry = async (
+    asyncFn,
+    {
+      maxRetries = 2,
+      baseDelayMs = 1000,
+      onRetry = null,
+      label = 'Operation',
+    } = {}
+  ) => {
+    let lastError = null
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await asyncFn(attempt)
+      } catch (error) {
+        lastError = error
+        if (attempt < maxRetries) {
+          const delay = baseDelayMs * 2 ** attempt
+          if (onRetry) {
+            onRetry(attempt + 1, maxRetries, delay)
+          } else {
+            setMessage(
+              `${label} failed. Retrying (${attempt + 1}/${maxRetries})...`,
+              true
+            )
+          }
+          await new Promise((resolve) => setTimeout(resolve, delay))
+        }
+      }
+    }
+    throw lastError
   }
 
   const toNonEmptyString = (value) =>
@@ -672,6 +761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       submitBtn.disabled = true
       if (recordToggleBtn) recordToggleBtn.disabled = true
       if (nextQuestionBtn) nextQuestionBtn.disabled = true
+      if (prevQuestionBtn) prevQuestionBtn.disabled = true
       if (repeatQuestionBtn) repeatQuestionBtn.disabled = true
       if (completeSessionBtn) completeSessionBtn.disabled = true
       refreshSessionControls()
@@ -700,11 +790,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hasNextQuestion =
       Array.isArray(sessionQuestions) &&
       currentQuestionIndex < sessionQuestions.length - 1
+    const hasPrevQuestion =
+      Array.isArray(sessionQuestions) && currentQuestionIndex > 0
 
     setControlVisibility(startBtn, !hasActiveSession)
     setControlVisibility(
       repeatQuestionBtn,
       hasActiveSession && Boolean(currentQuestion)
+    )
+    setControlVisibility(
+      prevQuestionBtn,
+      hasActiveSession &&
+        Boolean(currentQuestion) &&
+        sessionQuestions.length > 1
     )
     setControlVisibility(
       nextQuestionBtn,
@@ -718,6 +816,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (repeatQuestionBtn) {
       repeatQuestionBtn.disabled = !hasAnsweredCurrent || isRecordingActive
     }
+    if (prevQuestionBtn) {
+      prevQuestionBtn.disabled = !hasPrevQuestion || isRecordingActive
+    }
     if (nextQuestionBtn) {
       nextQuestionBtn.disabled =
         !hasAnsweredCurrent || !hasNextQuestion || isRecordingActive
@@ -726,6 +827,76 @@ document.addEventListener('DOMContentLoaded', async () => {
       completeSessionBtn.disabled =
         !sessionProgress?.isComplete || isRecordingActive
     }
+
+    renderQuestionNav()
+  }
+
+  // -- Question navigation mini-map: clickable dots showing progress --
+  const questionNavContainer = document.getElementById('question-nav-map')
+
+  const renderQuestionNav = () => {
+    if (!questionNavContainer) return
+
+    if (
+      !sessionId ||
+      !Array.isArray(sessionQuestions) ||
+      !sessionQuestions.length
+    ) {
+      questionNavContainer.classList.add('hidden')
+      questionNavContainer.innerHTML = ''
+      return
+    }
+
+    questionNavContainer.classList.remove('hidden')
+
+    const progressList = Array.isArray(sessionProgress?.questions)
+      ? sessionProgress.questions
+      : []
+    const answeredLookup = new Map(
+      progressList
+        .filter((item) => item?.answered)
+        .map((item) => [String(item.questionId || ''), item])
+    )
+
+    const dots = sessionQuestions
+      .map((question, index) => {
+        const qId = toQuestionId(question)
+        const isAnswered = answeredLookup.has(qId)
+        const isCurrent = index === currentQuestionIndex
+
+        let dotClasses =
+          'w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center cursor-pointer transition-all duration-200 border-2'
+
+        if (isCurrent) {
+          dotClasses +=
+            ' bg-primary text-background-dark border-primary ring-2 ring-primary/30 scale-110'
+        } else if (isAnswered) {
+          dotClasses +=
+            ' bg-primary/20 text-primary border-primary/40 hover:bg-primary/30'
+        } else {
+          dotClasses +=
+            ' bg-slate-800 text-slate-400 border-slate-600 hover:bg-slate-700 hover:border-slate-500'
+        }
+
+        const label = isAnswered ? '✓' : String(index + 1)
+        const title = `Question ${index + 1}${isAnswered ? ' (answered)' : ''}${isCurrent ? ' (current)' : ''}`
+
+        return `<button type="button" class="${dotClasses}" data-question-index="${index}" title="${title}" aria-label="${title}">${label}</button>`
+      })
+      .join('')
+
+    questionNavContainer.innerHTML = dots
+
+    // Attach click handlers
+    questionNavContainer
+      .querySelectorAll('[data-question-index]')
+      .forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const targetIndex = Number(btn.getAttribute('data-question-index'))
+          moveToQuestion(targetIndex)
+          renderQuestionNav()
+        })
+      })
   }
 
   const resetRecordingState = () => {
@@ -1152,19 +1323,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const prepareSessionQuestions = async () => {
     setMessage('Fetching practice questions for your next session...')
-    const questionResult = await apiRequest(
-      buildQuestionUrl(DEFAULT_SESSION_QUESTION_COUNT)
-    )
+    setButtonLoading(startBtn, 'Loading...')
 
-    if (!questionResult.ok || !questionResult.payload?.questions?.length) {
+    let questionResult
+    try {
+      questionResult = await withRetry(
+        async () => {
+          const result = await apiRequest(
+            buildQuestionUrl(DEFAULT_SESSION_QUESTION_COUNT)
+          )
+          if (!result.ok || !result.payload?.questions?.length) {
+            throw new Error(
+              result.payload?.error?.message ||
+                'Unable to load interview questions.'
+            )
+          }
+          return result
+        },
+        { maxRetries: 2, label: 'Question fetch' }
+      )
+    } catch (error) {
+      clearButtonLoading(startBtn)
       setMessage(
-        questionResult.payload?.error?.message ||
-          'Unable to load interview questions.',
+        error.message || 'Unable to load questions after retries.',
         true
       )
       questionMeta.textContent = 'Unavailable'
       questionPrompt.textContent =
-        'No questions could be loaded right now. Please try again.'
+        'Questions could not be loaded. Please try again.'
       preparedQuestions = []
       sessionQuestions = []
       currentQuestion = null
@@ -1175,6 +1361,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
+    clearButtonLoading(startBtn)
     preparedQuestions = questionResult.payload.questions.map(
       (question, index) => normalizeQuestion(question, index)
     )
@@ -1390,7 +1577,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const answeredLookup = new Map(
       (Array.isArray(progress?.questions) ? progress.questions : [])
-        .map((item) => [String(item?.questionId || ''), Boolean(item?.answered)])
+        .map((item) => [
+          String(item?.questionId || ''),
+          Boolean(item?.answered),
+        ])
         .filter((entry) => entry[0])
     )
 
@@ -1413,7 +1603,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     unloadAbandonRequested = false
     isAirMode = Boolean(serverSession.airMode)
 
-    if (Array.isArray(serverSession.questions) && serverSession.questions.length) {
+    if (
+      Array.isArray(serverSession.questions) &&
+      serverSession.questions.length
+    ) {
       sessionQuestions = serverSession.questions.map((question, index) =>
         normalizeQuestion(question, index)
       )
@@ -1463,9 +1656,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return false
     }
 
-    setMessage(
-      'Resumed your in-progress session. Continue where you left off.'
-    )
+    setMessage('Resumed your in-progress session. Continue where you left off.')
     return true
   }
 
@@ -1485,13 +1676,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     stopSpeaking()
-    startBtn.disabled = true
-    setMessage('Creating interview session...')
+    setButtonLoading(startBtn, 'Starting...')
     const createPayload = buildCreateSessionPayload()
     if (
       !Array.isArray(createPayload.questionIds) ||
       !createPayload.questionIds.length
     ) {
+      clearButtonLoading(startBtn)
       startBtn.disabled = false
       setMessage('Question set is invalid. Refresh and try again.', true)
       return
@@ -1504,61 +1695,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
 
     if (!createResult.ok) {
-      let activeSessionConflictHandled = false
+      // Handle active-session conflict
       if (
         createResult.status === 409 &&
         createResult.payload?.error?.code === 'ACTIVE_SESSION_EXISTS'
       ) {
-        activeSessionConflictHandled = true
         const activeSessionId = createResult.payload?.session?.id
         const shouldResume = window.confirm(
-          'You already have an interview session in progress. Resume it now?'
+          'You already have an interview session in progress.\n\nResume it now?'
         )
 
         if (!shouldResume) {
+          clearButtonLoading(startBtn)
           startBtn.disabled = false
           setMessage(
-            'Resume your existing session to continue, or close this page to abandon it.',
+            'Your existing session is still active. Resume it when ready.',
             true
           )
           return
         }
 
-        startBtn.disabled = true
         setMessage('Loading your active session...')
         const resumed = await resumeExistingSession(activeSessionId)
+        clearButtonLoading(startBtn)
         startBtn.disabled = false
-        if (!resumed) {
-          return
+        if (resumed) {
+          setSuccessMessage('Resumed your in-progress session.')
         }
+        return
       }
 
+      clearButtonLoading(startBtn)
       startBtn.disabled = false
-      if (!activeSessionConflictHandled) {
-        setMessage(
-          createResult.payload?.error?.message || 'Unable to start session.',
-          true
-        )
-      }
+      setMessage(
+        createResult.payload?.error?.message || 'Unable to start session.',
+        true
+      )
       return
     }
 
     if (!hydrateSessionFromServer(createResult.payload.session)) {
+      clearButtonLoading(startBtn)
       startBtn.disabled = false
       setMessage('Unable to initialize the new session. Please retry.', true)
       return
     }
 
+    clearButtonLoading(startBtn)
     recordingText.textContent = 'Session started'
-    startBtn.disabled = false
 
     if (isAudioRecordingEnabled()) {
-      setMessage(
-        'Session started. Submit one answer per question, then repeat any question to improve before completion.'
+      setSuccessMessage(
+        'Session started! Answer each question, then repeat to improve before completing.'
       )
     } else {
-      setMessage(
-        'Session started in text mode. Submit one answer per question, then repeat any question to improve before completion.'
+      setSuccessMessage(
+        'Session started in text mode. Answer each question, then repeat to improve.'
       )
     }
   }
@@ -1570,26 +1762,72 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const currentProgress = getQuestionProgress(toQuestionId(currentQuestion))
     if (!currentProgress.answered) {
-      setMessage(
-        'Submit at least one answer for this question before moving to the next one.',
-        true
-      )
+      setMessage('Submit at least one answer before moving on.', true, {
+        durationMs: 3000,
+      })
+      responseInput.focus()
       return
     }
 
     if (currentQuestionIndex >= sessionQuestions.length - 1) {
-      setMessage(
-        'This is the final question. Complete the session or repeat this question.',
-        true
-      )
+      if (sessionProgress?.isComplete) {
+        setMessage(
+          'All questions answered! Complete the session or repeat any question.',
+          false
+        )
+      } else {
+        setMessage(
+          'This is the final question. You can repeat it or complete the session.',
+          false
+        )
+      }
       return
     }
 
     setCurrentQuestionByIndex(currentQuestionIndex + 1, { resetDraft: true })
-    setMessage(
-      `Moved to question ${currentQuestionIndex + 1} of ${sessionQuestions.length}.`
+    setSuccessMessage(
+      `Question ${currentQuestionIndex + 1} of ${sessionQuestions.length}`,
+      { durationMs: 2500 }
     )
     responseInput.focus()
+  }
+
+  const moveToQuestion = (targetIndex) => {
+    if (!sessionId || !Array.isArray(sessionQuestions)) return
+    if (targetIndex < 0 || targetIndex >= sessionQuestions.length) return
+    if (targetIndex === currentQuestionIndex) return
+
+    setCurrentQuestionByIndex(targetIndex, { resetDraft: true })
+    setMessage(
+      `Jumped to question ${targetIndex + 1} of ${sessionQuestions.length}.`
+    )
+    responseInput.focus()
+  }
+
+  const autoAdvanceToNextUnanswered = () => {
+    if (!sessionId || !Array.isArray(sessionQuestions)) return false
+    if (sessionProgress?.isComplete) return false
+
+    const progressList = Array.isArray(sessionProgress?.questions)
+      ? sessionProgress.questions
+      : []
+    const answeredLookup = new Map(
+      progressList
+        .filter((item) => item?.answered)
+        .map((item) => [String(item.questionId || ''), true])
+    )
+
+    // Look ahead from current position first, then wrap around
+    for (let offset = 1; offset < sessionQuestions.length; offset++) {
+      const candidateIndex =
+        (currentQuestionIndex + offset) % sessionQuestions.length
+      const candidateId = toQuestionId(sessionQuestions[candidateIndex])
+      if (!answeredLookup.get(candidateId)) {
+        setCurrentQuestionByIndex(candidateIndex, { resetDraft: true })
+        return true
+      }
+    }
+    return false
   }
 
   const prepareRepeatAttempt = () => {
@@ -1607,10 +1845,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
+    // Warn if there's unsaved text in the input
+    const currentText = responseInput.value.trim()
+    if (currentText.length > 10) {
+      const confirmed = window.confirm(
+        'This will clear your current draft. Continue?'
+      )
+      if (!confirmed) return
+    }
+
     resetResponseDraft(true)
+    const attempts = Number(currentProgress.attempts || 0)
     recordingText.textContent = 'Ready for retry'
     setMessage(
-      `Retrying question ${currentQuestionIndex + 1}. Improve specificity and quantified impact for a higher rating.`
+      `Attempt ${attempts + 1} — focus on specific actions and measurable outcomes.`
     )
     responseInput.focus()
   }
@@ -1622,8 +1870,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (!sessionProgress?.isComplete) {
+      const remaining = sessionProgress?.remainingQuestions ?? '?'
       setMessage(
-        'Answer every question at least once before completing the session.',
+        `Answer all questions before completing. ${remaining} remaining.`,
         true
       )
       return
@@ -1634,43 +1883,63 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
+    // Confirmation dialog for irreversible action
+    const confirmed = window.confirm(
+      'Complete this session and generate feedback?\n\nYou will not be able to add more answers after this.'
+    )
+    if (!confirmed) return
+
+    setButtonLoading(completeSessionBtn, 'Completing...')
     submitBtn.disabled = true
     responseInput.disabled = true
     if (recordToggleBtn) recordToggleBtn.disabled = true
-    if (completeSessionBtn) completeSessionBtn.disabled = true
     stopSpeechRecognition()
     stopSpeaking()
 
-    setMessage('Completing session...')
-    const completeResult = await apiRequest(
-      `/api/sessions/${sessionId}/complete`,
-      {
-        method: 'POST',
-      }
-    )
+    setMessage('Completing session and queueing feedback...')
 
-    if (!completeResult.ok) {
+    let completeResult
+    try {
+      completeResult = await withRetry(
+        async () => {
+          const result = await apiRequest(
+            `/api/sessions/${sessionId}/complete`,
+            { method: 'POST' }
+          )
+          if (!result.ok) {
+            throw new Error(
+              result.payload?.error?.message || 'Failed to complete session.'
+            )
+          }
+          return result
+        },
+        { maxRetries: 2, label: 'Session completion' }
+      )
+    } catch (error) {
+      clearButtonLoading(completeSessionBtn)
       responseInput.disabled = false
       submitBtn.disabled = false
       if (recordToggleBtn && isAudioRecordingEnabled()) {
         recordToggleBtn.disabled = false
       }
       refreshSessionControls()
-      setMessage(
-        completeResult.payload?.error?.message || 'Failed to complete session.',
-        true
-      )
+      setMessage(error.message || 'Failed to complete session.', true)
       return
     }
 
+    clearButtonLoading(completeSessionBtn)
     recordingText.textContent = 'Completed'
     const completedSessionId = sessionId
     clearSessionDrafts(completedSessionId)
     allowNavigationWithoutWarning = true
     sessionId = null
     const nextUrl = `/feedback.html?sessionId=${encodeURIComponent(completedSessionId)}`
-    setMessage('Session completed. Redirecting to feedback...')
-    window.location.href = nextUrl
+    setSuccessMessage('Session completed! Redirecting to feedback...', {
+      durationMs: 0,
+    })
+    setTimeout(() => {
+      window.location.href = nextUrl
+    }, 800)
   }
 
   if (startBtn) {
@@ -1705,6 +1974,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (nextQuestionBtn) {
     nextQuestionBtn.addEventListener('click', moveToNextQuestion)
   }
+  if (prevQuestionBtn) {
+    prevQuestionBtn.addEventListener('click', () => {
+      if (!sessionId || currentQuestionIndex <= 0) return
+      setCurrentQuestionByIndex(currentQuestionIndex - 1, { resetDraft: true })
+      setMessage(
+        `Question ${currentQuestionIndex + 1} of ${sessionQuestions.length}.`
+      )
+      responseInput.focus()
+    })
+  }
   if (repeatQuestionBtn) {
     repeatQuestionBtn.addEventListener('click', prepareRepeatAttempt)
   }
@@ -1719,20 +1998,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     const minLength = uploadedAudioUrl ? 20 : 50
 
     if (textLength > 0 && textLength < minLength) {
-      setMessage(`Keep going. Minimum ${minLength} characters required.`)
+      const remaining = minLength - textLength
+      setMessage(
+        `${remaining} more character${remaining === 1 ? '' : 's'} needed.`
+      )
     } else if (textLength >= minLength) {
       if (uploadedAudioUrl) {
         transcriptConfidence = estimateTranscriptConfidence(responseInput.value)
       }
+      // Don't overwrite success messages from recent submit
+      if (messageTimeout) return
       const questionAttempts = getQuestionProgress(
         toQuestionId(currentQuestion)
       ).attempts
       if (questionAttempts > 0) {
-        setMessage(
-          'Updated attempt looks strong. Submit to improve your score.'
-        )
+        setMessage('Ready to submit an improved attempt.')
       } else {
-        setMessage('Response looks good. Submit your first attempt.')
+        setMessage('Ready to submit.')
       }
     }
   })
@@ -1755,15 +2037,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         `Response is too short. Minimum ${minLength} characters required.`,
         true
       )
+      responseInput.focus()
       return
     }
 
-    submitBtn.disabled = true
+    setButtonLoading(submitBtn, 'Submitting...')
     responseInput.disabled = true
     if (recordToggleBtn) recordToggleBtn.disabled = true
     stopSpeechRecognition()
 
-    setMessage('Submitting your response...')
     const currentProgress = getQuestionProgress(currentQuestion.id)
     const payload = {
       questionId: currentQuestion.id,
@@ -1781,29 +2063,50 @@ document.addEventListener('DOMContentLoaded', async () => {
       payload.transcriptProvider = 'browser'
     }
 
-    const submitResponseResult = await apiRequest(
-      `/api/sessions/${sessionId}/responses`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }
-    )
-
-    if (!submitResponseResult.ok) {
+    let submitResponseResult
+    try {
+      submitResponseResult = await withRetry(
+        async () => {
+          const result = await apiRequest(
+            `/api/sessions/${sessionId}/responses`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            }
+          )
+          if (!result.ok) {
+            // Don't retry 4xx client errors (duplicate, max attempts, etc.)
+            if (result.status >= 400 && result.status < 500) {
+              const clientError = new Error(
+                result.payload?.error?.message || 'Submission rejected.'
+              )
+              clientError.noRetry = true
+              throw clientError
+            }
+            throw new Error(
+              result.payload?.error?.message || 'Failed to submit response.'
+            )
+          }
+          return result
+        },
+        {
+          maxRetries: 2,
+          label: 'Response submission',
+        }
+      )
+    } catch (error) {
+      clearButtonLoading(submitBtn)
       responseInput.disabled = false
       submitBtn.disabled = false
       if (recordToggleBtn && isAudioRecordingEnabled()) {
         recordToggleBtn.disabled = false
       }
-      setMessage(
-        submitResponseResult.payload?.error?.message ||
-          'Failed to submit response.',
-        true
-      )
+      setMessage(error.message || 'Failed to submit response.', true)
       return
     }
 
+    clearButtonLoading(submitBtn)
     uploadedAudioUrl = null
     uploadedAudioMimeType = null
     transcriptConfidence = null
@@ -1826,21 +2129,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateSubmitState()
 
     if (sessionProgress?.isComplete) {
-      setMessage(
-        `Attempt ${attempts} saved. All questions are answered. Repeat this question or complete the session.`
+      setSuccessMessage(
+        `Attempt ${attempts} saved! All questions answered — complete the session whenever you're ready.`
       )
-    } else if (attempts > 1) {
-      setMessage(
-        `Attempt ${attempts} saved. Move on when ready or keep refining this question.`
-      )
+    } else if (attempts === 1) {
+      // First attempt saved — auto-advance to next unanswered question
+      const advanced = autoAdvanceToNextUnanswered()
+      if (advanced) {
+        setSuccessMessage(
+          `Attempt saved! Moved to the next unanswered question.`
+        )
+      } else {
+        setSuccessMessage(
+          'Attempt saved! Repeat this question or move to the next one.'
+        )
+      }
     } else {
-      setMessage(
-        'First attempt saved. You can repeat this question for improvement or continue to the next question.'
-      )
+      setSuccessMessage(`Attempt ${attempts} saved. Keep refining or move on.`)
     }
 
     refreshSessionControls()
     updateQuestionProgressText()
+    renderQuestionNav()
   })
 
   window.addEventListener('beforeunload', (event) => {

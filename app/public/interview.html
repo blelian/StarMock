@@ -108,6 +108,14 @@
               Question progress will appear here.
             </p>
 
+            <!-- Question Navigation Mini-Map -->
+            <div
+              id="question-nav-map"
+              class="hidden flex items-center gap-2 mb-4 flex-wrap"
+              aria-label="Question navigation"
+              role="navigation"
+            ></div>
+
             <!-- Read Aloud (Text-to-Speech) -->
             <button
               id="read-aloud-btn"
@@ -143,12 +151,20 @@
                   Repeat Question
                 </button>
                 <button
+                  id="prev-question-btn"
+                  type="button"
+                  class="hidden bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wide"
+                  disabled
+                >
+                  ← Previous
+                </button>
+                <button
                   id="next-question-btn"
                   type="button"
                   class="hidden bg-primary/20 hover:bg-primary/30 text-primary px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wide"
                   disabled
                 >
-                  Next Question
+                  Next Question →
                 </button>
                 <button
                   id="complete-session-btn"
