@@ -1898,9 +1898,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     setMessage('Completing session and queueing feedback...')
 
-    let completeResult
     try {
-      completeResult = await withRetry(
+      await withRetry(
         async () => {
           const result = await apiRequest(
             `/api/sessions/${sessionId}/complete`,
