@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const liveTranscriptStatus = document.getElementById('live-transcript-status')
 
   const DEFAULT_SESSION_QUESTION_COUNT = 3
+  const DRAFT_STORAGE_KEY_PREFIX = 'starmock:interview-draft:'
   let currentQuestion = null
   let preparedQuestions = []
   let sessionQuestions = []
@@ -85,6 +86,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let transcriptConfidence = null
   let careerProfile = null
   let isAirMode = false
+  let allowNavigationWithoutWarning = false
+  let unloadAbandonRequested = false
   let featureFlags = {
     aiRecording: true,
     audioUploads: true,
@@ -333,6 +336,132 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!question) return ''
     if (typeof question === 'string') return question
     return String(question.id || question._id || '')
+  }
+
+  const getDraftStorageKey = (activeSessionId, questionId) => {
+    const normalizedSessionId = String(activeSessionId || '').trim()
+    const normalizedQuestionId = String(questionId || '').trim()
+    if (!normalizedSessionId || !normalizedQuestionId) {
+      return ''
+    }
+    return `${DRAFT_STORAGE_KEY_PREFIX}${normalizedSessionId}:${normalizedQuestionId}`
+  }
+
+  const getStoredDraft = (activeSessionId, questionId) => {
+    const storageKey = getDraftStorageKey(activeSessionId, questionId)
+    if (!storageKey) return null
+
+    try {
+      const rawValue = window.localStorage.getItem(storageKey)
+      if (!rawValue) return null
+      const parsed = JSON.parse(rawValue)
+      if (!parsed || typeof parsed !== 'object') return null
+      return {
+        text: typeof parsed.text === 'string' ? parsed.text : '',
+        updatedAt: parsed.updatedAt || null,
+      }
+    } catch {
+      return null
+    }
+  }
+
+  const clearDraftForQuestion = (activeSessionId, questionId) => {
+    const storageKey = getDraftStorageKey(activeSessionId, questionId)
+    if (!storageKey) return
+    try {
+      window.localStorage.removeItem(storageKey)
+    } catch {
+      // localStorage may be blocked in strict browser modes
+    }
+  }
+
+  const clearSessionDrafts = (activeSessionId) => {
+    const normalizedSessionId = String(activeSessionId || '').trim()
+    if (!normalizedSessionId) return
+
+    const uniqueQuestionIds = new Set(
+      (Array.isArray(sessionQuestions) ? sessionQuestions : [])
+        .map((question) => toQuestionId(question))
+        .filter(Boolean)
+    )
+
+    for (const questionId of uniqueQuestionIds) {
+      clearDraftForQuestion(normalizedSessionId, questionId)
+    }
+  }
+
+  const saveCurrentDraft = () => {
+    if (!sessionId || !currentQuestion) return
+
+    const questionId = toQuestionId(currentQuestion)
+    const storageKey = getDraftStorageKey(sessionId, questionId)
+    if (!storageKey) return
+
+    const text = responseInput.value || ''
+    if (!text.trim()) {
+      clearDraftForQuestion(sessionId, questionId)
+      return
+    }
+
+    try {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          text,
+          updatedAt: new Date().toISOString(),
+        })
+      )
+    } catch {
+      // localStorage may be blocked in strict browser modes
+    }
+  }
+
+  const restoreDraftForCurrentQuestion = () => {
+    if (!sessionId || !currentQuestion) return
+    const questionId = toQuestionId(currentQuestion)
+    const draft = getStoredDraft(sessionId, questionId)
+    if (!draft || !draft.text) return
+
+    responseInput.value = draft.text
+    transcriptConfidence = estimateTranscriptConfidence(responseInput.value)
+    updateTranscriptWarning()
+    updateSubmitState()
+    setMessage('Restored your unsent draft for this question.')
+  }
+
+  const hasPendingSessionWork = () => {
+    if (!sessionId || sessionProgress?.isComplete) {
+      return false
+    }
+    return true
+  }
+
+  const abandonSessionOnUnload = () => {
+    if (
+      unloadAbandonRequested ||
+      allowNavigationWithoutWarning ||
+      !sessionId ||
+      sessionProgress?.isComplete
+    ) {
+      return
+    }
+
+    unloadAbandonRequested = true
+    const activeSessionId = sessionId
+    clearSessionDrafts(activeSessionId)
+    try {
+      fetch(`/api/sessions/${activeSessionId}/abandon`, {
+        method: 'PATCH',
+        credentials: 'include',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason: 'page_unload',
+        }),
+      }).catch(() => {})
+    } catch {
+      // keepalive is best-effort
+    }
   }
 
   const createEmptyProgress = () => ({
@@ -642,7 +771,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  const resetResponseDraft = (clearText = true) => {
+  const resetResponseDraft = (
+    clearText = true,
+    { clearStoredDraft = false } = {}
+  ) => {
+    const activeQuestionId = toQuestionId(currentQuestion)
+    const activeSessionId = sessionId
     stopSpeaking()
     stopSpeechRecognition()
     discardActiveRecording()
@@ -657,6 +791,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     transcriptConfidence = null
     if (clearText) {
       responseInput.value = ''
+      if (clearStoredDraft && activeSessionId && activeQuestionId) {
+        clearDraftForQuestion(activeSessionId, activeQuestionId)
+      }
     }
     responseInput.disabled = !sessionId
     resetRecordingState()
@@ -689,6 +826,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (combined) {
       responseInput.value = combined
       updateSubmitState()
+      saveCurrentDraft()
     }
   }
 
@@ -1006,8 +1144,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentQuestion = sessionQuestions[currentQuestionIndex]
     setPrompt(currentQuestion)
     if (resetDraft) {
-      resetResponseDraft(true)
+      resetResponseDraft(true, { clearStoredDraft: false })
     }
+    restoreDraftForCurrentQuestion()
     refreshSessionControls()
   }
 
@@ -1245,6 +1384,91 @@ document.addEventListener('DOMContentLoaded', async () => {
     return payload
   }
 
+  const getNextQuestionIndexFromProgress = (questions, progress) => {
+    const normalizedQuestions = Array.isArray(questions) ? questions : []
+    if (!normalizedQuestions.length) return 0
+
+    const answeredLookup = new Map(
+      (Array.isArray(progress?.questions) ? progress.questions : [])
+        .map((item) => [String(item?.questionId || ''), Boolean(item?.answered)])
+        .filter((entry) => entry[0])
+    )
+
+    const firstUnansweredIndex = normalizedQuestions.findIndex(
+      (question) => !answeredLookup.get(toQuestionId(question))
+    )
+    if (firstUnansweredIndex >= 0) {
+      return firstUnansweredIndex
+    }
+    return Math.max(normalizedQuestions.length - 1, 0)
+  }
+
+  const hydrateSessionFromServer = (serverSession) => {
+    if (!serverSession?.id) {
+      return false
+    }
+
+    sessionId = serverSession.id
+    allowNavigationWithoutWarning = false
+    unloadAbandonRequested = false
+    isAirMode = Boolean(serverSession.airMode)
+
+    if (Array.isArray(serverSession.questions) && serverSession.questions.length) {
+      sessionQuestions = serverSession.questions.map((question, index) =>
+        normalizeQuestion(question, index)
+      )
+      preparedQuestions = [...sessionQuestions]
+    } else {
+      sessionQuestions = [...preparedQuestions]
+    }
+
+    syncProgress(serverSession.progress || createEmptyProgress())
+
+    const nextQuestionIndex = getNextQuestionIndexFromProgress(
+      sessionQuestions,
+      sessionProgress
+    )
+
+    responseInput.classList.remove('hidden')
+    submitBtn.classList.remove('hidden')
+    responseInput.disabled = false
+    setControlVisibility(recordToggleBtn, isAudioRecordingEnabled())
+    recordingEmoji.classList.remove('hidden')
+    recordingText.textContent = 'Session active'
+    setCurrentQuestionByIndex(nextQuestionIndex, { resetDraft: true })
+    responseInput.focus()
+    refreshSessionControls()
+
+    return true
+  }
+
+  const resumeExistingSession = async (activeSessionId) => {
+    if (!activeSessionId) {
+      return false
+    }
+
+    const sessionResult = await apiRequest(`/api/sessions/${activeSessionId}`)
+    if (!sessionResult.ok || !sessionResult.payload?.session?.id) {
+      setMessage(
+        sessionResult.payload?.error?.message ||
+          'Unable to load your active session. Try again.',
+        true
+      )
+      return false
+    }
+
+    const resumed = hydrateSessionFromServer(sessionResult.payload.session)
+    if (!resumed) {
+      setMessage('Unable to restore your active session right now.', true)
+      return false
+    }
+
+    setMessage(
+      'Resumed your in-progress session. Continue where you left off.'
+    )
+    return true
+  }
+
   const startSession = async () => {
     if (sessionId) {
       setMessage('A session is already active.', true)
@@ -1279,40 +1503,54 @@ document.addEventListener('DOMContentLoaded', async () => {
       body: JSON.stringify(createPayload),
     })
 
-    if (!createResult.ok || !createResult.payload?.session?.id) {
+    if (!createResult.ok) {
+      let activeSessionConflictHandled = false
+      if (
+        createResult.status === 409 &&
+        createResult.payload?.error?.code === 'ACTIVE_SESSION_EXISTS'
+      ) {
+        activeSessionConflictHandled = true
+        const activeSessionId = createResult.payload?.session?.id
+        const shouldResume = window.confirm(
+          'You already have an interview session in progress. Resume it now?'
+        )
+
+        if (!shouldResume) {
+          startBtn.disabled = false
+          setMessage(
+            'Resume your existing session to continue, or close this page to abandon it.',
+            true
+          )
+          return
+        }
+
+        startBtn.disabled = true
+        setMessage('Loading your active session...')
+        const resumed = await resumeExistingSession(activeSessionId)
+        startBtn.disabled = false
+        if (!resumed) {
+          return
+        }
+      }
+
       startBtn.disabled = false
-      setMessage(
-        createResult.payload?.error?.message || 'Unable to start session.',
-        true
-      )
+      if (!activeSessionConflictHandled) {
+        setMessage(
+          createResult.payload?.error?.message || 'Unable to start session.',
+          true
+        )
+      }
       return
     }
 
-    sessionId = createResult.payload.session.id
-    const sessionFromServer = createResult.payload.session
-    if (
-      Array.isArray(sessionFromServer.questions) &&
-      sessionFromServer.questions.length
-    ) {
-      sessionQuestions = sessionFromServer.questions.map((question, index) =>
-        normalizeQuestion(question, index)
-      )
-    } else {
-      sessionQuestions = [...preparedQuestions]
+    if (!hydrateSessionFromServer(createResult.payload.session)) {
+      startBtn.disabled = false
+      setMessage('Unable to initialize the new session. Please retry.', true)
+      return
     }
-    currentQuestionIndex = 0
-    currentQuestion = sessionQuestions[0] || null
-    syncProgress(sessionFromServer.progress || createEmptyProgress())
 
-    responseInput.classList.remove('hidden')
-    submitBtn.classList.remove('hidden')
-    responseInput.disabled = false
-    responseInput.focus()
-    setControlVisibility(recordToggleBtn, isAudioRecordingEnabled())
-    recordingEmoji.classList.remove('hidden')
     recordingText.textContent = 'Session started'
-    setCurrentQuestionByIndex(0, { resetDraft: true })
-    refreshSessionControls()
+    startBtn.disabled = false
 
     if (isAudioRecordingEnabled()) {
       setMessage(
@@ -1427,6 +1665,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     recordingText.textContent = 'Completed'
     const completedSessionId = sessionId
+    clearSessionDrafts(completedSessionId)
+    allowNavigationWithoutWarning = true
+    sessionId = null
     const nextUrl = `/feedback.html?sessionId=${encodeURIComponent(completedSessionId)}`
     setMessage('Session completed. Redirecting to feedback...')
     window.location.href = nextUrl
@@ -1473,6 +1714,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   responseInput.addEventListener('input', () => {
     updateSubmitState()
+    saveCurrentDraft()
     const textLength = responseInput.value.trim().length
     const minLength = uploadedAudioUrl ? 20 : 50
 
@@ -1573,6 +1815,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       getQuestionProgress(currentQuestion.id)
     const attempts = Number(updatedQuestionProgress?.attempts || 1)
 
+    clearDraftForQuestion(sessionId, toQuestionId(currentQuestion))
     responseInput.value = ''
     responseInput.disabled = false
     submitBtn.disabled = false
@@ -1600,9 +1843,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateQuestionProgressText()
   })
 
-  window.addEventListener('beforeunload', () => {
+  window.addEventListener('beforeunload', (event) => {
     cleanupMedia()
     stopSpeechRecognition()
+
+    if (allowNavigationWithoutWarning) {
+      return
+    }
+
+    if (hasPendingSessionWork()) {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+  })
+
+  window.addEventListener('pagehide', () => {
+    cleanupMedia()
+    stopSpeechRecognition()
+    abandonSessionOnUnload()
   })
 
   syncProgress(createEmptyProgress())

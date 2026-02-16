@@ -358,6 +358,38 @@ describe('interview route validation guards', () => {
       },
     })
   })
+
+  it('blocks starting a new session when another is already in progress', async () => {
+    const questionFindSpy = vi
+      .spyOn(InterviewQuestion, 'find')
+      .mockResolvedValue([] as never)
+    vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
+      _id: 'session-active',
+      status: 'in_progress',
+      startedAt: new Date('2026-02-16T00:00:00.000Z'),
+      metadata: { airMode: true },
+    } as never)
+
+    const res = await runRouteHandlers(createSessionHandlers, {
+      ...createAuthenticatedRequest(),
+      body: {
+        questionIds: ['question-1'],
+      },
+    })
+
+    expect(res.statusCode).toBe(409)
+    expect(res.body).toMatchObject({
+      error: {
+        code: 'ACTIVE_SESSION_EXISTS',
+      },
+      session: {
+        id: 'session-active',
+        status: 'in_progress',
+        airMode: true,
+      },
+    })
+    expect(questionFindSpy).not.toHaveBeenCalled()
+  })
 })
 
 describe('interview completion route', () => {
@@ -585,6 +617,74 @@ describe('interview completion route', () => {
     })
     expect(enqueueSpy).not.toHaveBeenCalled()
     expect(save).not.toHaveBeenCalled()
+  })
+})
+
+describe('session abandonment route', () => {
+  const abandonSessionHandlers = getRouteHandlers(
+    interviewRouter,
+    'patch',
+    '/sessions/:id/abandon'
+  )
+
+  it('returns 404 when abandoning a missing session', async () => {
+    vi.spyOn(InterviewSession, 'findOne').mockResolvedValue(null)
+
+    const res = await runRouteHandlers(abandonSessionHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-missing' },
+    })
+
+    expect(res.statusCode).toBe(404)
+    expect(res.body).toMatchObject({
+      error: {
+        code: 'NOT_FOUND',
+      },
+    })
+  })
+
+  it('abandons an in-progress session', async () => {
+    const save = vi.fn().mockResolvedValue(undefined)
+    vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
+      _id: 'session-1',
+      status: 'in_progress',
+      completedAt: null,
+      duration: null,
+      save,
+    } as never)
+
+    const res = await runRouteHandlers(abandonSessionHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-1' },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(res.body).toMatchObject({
+      session: {
+        id: 'session-1',
+        status: 'abandoned',
+      },
+    })
+  })
+
+  it('rejects abandoning a completed session', async () => {
+    vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
+      _id: 'session-1',
+      status: 'completed',
+    } as never)
+
+    const res = await runRouteHandlers(abandonSessionHandlers, {
+      ...createAuthenticatedRequest(),
+      params: { id: 'session-1' },
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.body).toMatchObject({
+      error: {
+        code: 'SESSION_COMPLETED',
+      },
+    })
   })
 })
 

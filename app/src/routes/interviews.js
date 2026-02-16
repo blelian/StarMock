@@ -37,6 +37,7 @@ const ALLOWED_SESSION_STATUSES = new Set([
 const MAX_QUESTION_LIMIT = 20
 const MAX_HISTORY_LIMIT = 50
 const MAX_REPEAT_ATTEMPTS_PER_QUESTION = 5
+const ACTIVE_SESSION_CONFLICT_CODE = 'ACTIVE_SESSION_EXISTS'
 
 function toIdString(value) {
   if (!value) return ''
@@ -707,6 +708,101 @@ function serializeFeedbackJob(job) {
   }
 }
 
+function buildHistoryFeedbackSummary(session, feedbackReports = []) {
+  if (!Array.isArray(feedbackReports) || feedbackReports.length === 0) {
+    return null
+  }
+
+  const sessionQuestionOrder = Array.isArray(session?.questions)
+    ? session.questions.map((question) => toIdString(question))
+    : []
+  const questionRollup = buildQuestionFeedbackRollup(
+    feedbackReports,
+    sessionQuestionOrder
+  )
+  const summaryReports =
+    questionRollup.selectedReports.length > 0
+      ? questionRollup.selectedReports
+      : feedbackReports
+
+  const sessionAirContext = session?.metadata?.airContext || null
+  const expectedCompetencies = Array.isArray(sessionAirContext?.competencies)
+    ? sessionAirContext.competencies
+    : []
+  const normalizedExpectedCompetencies = expectedCompetencies
+    .map((competency) => normalizeCompetencyKey(competency))
+    .filter(Boolean)
+  const competencyScores = aggregateCompetencyScores(
+    summaryReports,
+    normalizedExpectedCompetencies
+  )
+  const coveredCount = normalizedExpectedCompetencies.filter((competencyKey) =>
+    competencyScores.some((item) => item.key === competencyKey)
+  ).length
+  const competencyCoverage =
+    normalizedExpectedCompetencies.length > 0
+      ? Math.round((coveredCount / normalizedExpectedCompetencies.length) * 100)
+      : null
+
+  return {
+    overallScore: average(summaryReports.map((item) => item?.scores?.overall)),
+    roleFitScore: average(summaryReports.map((item) => getRoleFitScore(item))),
+    competencyCoverage,
+    trend: null,
+    extraAttempts: Math.max(
+      questionRollup.totalAttempts - questionRollup.questionMetrics.length,
+      0
+    ),
+    airMode: Boolean(session?.metadata?.airMode),
+  }
+}
+
+async function buildHistoryFeedbackSummaryBySession(sessions = [], userId) {
+  const completedSessionIds = sessions
+    .filter((session) => session?.status === 'completed')
+    .map((session) => session?._id)
+    .filter(Boolean)
+
+  if (!completedSessionIds.length) {
+    return new Map()
+  }
+
+  const feedbackReports = await FeedbackReport.find({
+    userId,
+    sessionId: { $in: completedSessionIds },
+  })
+    .populate({
+      path: 'responseId',
+      select: 'questionId attemptNumber',
+      populate: {
+        path: 'questionId',
+        select: '_id questionText description title',
+      },
+    })
+    .select('sessionId scores analysis responseId createdAt')
+
+  const reportsBySession = new Map()
+  for (const report of feedbackReports) {
+    const sessionId = toIdString(report?.sessionId)
+    if (!sessionId) continue
+    if (!reportsBySession.has(sessionId)) {
+      reportsBySession.set(sessionId, [])
+    }
+    reportsBySession.get(sessionId).push(report)
+  }
+
+  const summaryBySession = new Map()
+  for (const session of sessions) {
+    const sessionId = toIdString(session?._id)
+    if (!sessionId) continue
+    const reports = reportsBySession.get(sessionId) || []
+    if (!reports.length) continue
+    summaryBySession.set(sessionId, buildHistoryFeedbackSummary(session, reports))
+  }
+
+  return summaryBySession
+}
+
 /**
  * @route   GET /api/questions
  * @desc    Get random interview questions with optional filters
@@ -921,6 +1017,26 @@ router.post(
           error: {
             message: 'Question IDs must be unique within a session',
             code: 'DUPLICATE_QUESTIONS',
+          },
+        })
+      }
+
+      const activeSession = await InterviewSession.findOne({
+        userId: req.userId,
+        status: 'in_progress',
+      })
+      if (activeSession) {
+        return res.status(409).json({
+          error: {
+            message:
+              'You already have an interview session in progress. Resume or abandon it before starting a new one.',
+            code: ACTIVE_SESSION_CONFLICT_CODE,
+          },
+          session: {
+            id: activeSession._id,
+            status: activeSession.status,
+            startedAt: activeSession.startedAt,
+            airMode: Boolean(activeSession.metadata?.airMode),
           },
         })
       }
@@ -1229,6 +1345,8 @@ router.post(
       })
 
       await response.save()
+      session.updatedAt = new Date()
+      await session.save()
 
       let transcriptionJobPayload = null
       if (
@@ -1401,6 +1519,65 @@ router.post('/sessions/:id/complete', requireAuth, async (req, res) => {
       error: {
         message: 'Failed to complete session',
         code: 'COMPLETE_ERROR',
+      },
+    })
+  }
+})
+
+/**
+ * @route   PATCH /api/sessions/:id/abandon
+ * @desc    Abandon an in-progress session
+ * @access  Private
+ */
+router.patch('/sessions/:id/abandon', requireAuth, async (req, res) => {
+  try {
+    const session = await InterviewSession.findOne({
+      _id: req.params.id,
+      userId: req.userId,
+    })
+
+    if (!session) {
+      return res.status(404).json({
+        error: {
+          message: 'Session not found',
+          code: 'NOT_FOUND',
+        },
+      })
+    }
+
+    if (session.status === 'completed') {
+      return res.status(400).json({
+        error: {
+          message: 'Completed sessions cannot be abandoned',
+          code: 'SESSION_COMPLETED',
+        },
+      })
+    }
+
+    const wasAlreadyAbandoned = session.status === 'abandoned'
+    if (!wasAlreadyAbandoned) {
+      session.status = 'abandoned'
+      session.completedAt = new Date()
+      await session.save()
+    }
+
+    return res.json({
+      message: wasAlreadyAbandoned
+        ? 'Session already abandoned'
+        : 'Session abandoned successfully',
+      session: {
+        id: session._id,
+        status: session.status,
+        completedAt: session.completedAt || null,
+        duration: session.duration ?? null,
+      },
+    })
+  } catch (error) {
+    console.error('Abandon session error:', error)
+    return res.status(500).json({
+      error: {
+        message: 'Failed to abandon session',
+        code: 'ABANDON_ERROR',
       },
     })
   }
@@ -1742,6 +1919,10 @@ router.get('/history', requireAuth, async (req, res) => {
 
     // Get total count for pagination
     const totalCount = await InterviewSession.countDocuments(filter)
+    const historySummaryBySession = await buildHistoryFeedbackSummaryBySession(
+      sessions,
+      req.userId
+    )
 
     res.json({
       sessions: sessions.map((s) => ({
@@ -1755,6 +1936,7 @@ router.get('/history', requireAuth, async (req, res) => {
         duration: s.duration,
         airMode: Boolean(s.metadata?.airMode),
         airContext: s.metadata?.airContext || null,
+        feedbackSummary: historySummaryBySession.get(toIdString(s._id)) || null,
       })),
       pagination: {
         currentPage: parsedPage,

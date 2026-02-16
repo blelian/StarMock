@@ -37,6 +37,10 @@ import {
   startTranscriptionWorker,
   stopTranscriptionWorker,
 } from './src/services/transcription/index.js'
+import {
+  startSessionAbandonmentWorker,
+  stopSessionAbandonmentWorker,
+} from './src/services/sessions/abandonmentWorker.js'
 
 dotenv.config()
 
@@ -104,6 +108,7 @@ const expensiveRouteLimiter = rateLimit({
       /^\/sessions\/[^/]+\/feedback-status$/,
       /^\/sessions\/[^/]+\/responses$/,
       /^\/sessions\/[^/]+\/responses\/[^/]+\/transcript$/,
+      /^\/sessions\/[^/]+\/abandon$/,
     ]
     return !expensiveRoutePatterns.some((pattern) => pattern.test(req.path))
   },
@@ -295,6 +300,7 @@ async function startServer() {
 
   startFeedbackJobWorker()
   startTranscriptionWorker()
+  startSessionAbandonmentWorker()
 
   server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`)
@@ -321,6 +327,7 @@ async function gracefulShutdown(signal) {
   console.log(`\n⚠️  ${signal} received. Starting graceful shutdown...`)
   stopFeedbackJobWorker()
   stopTranscriptionWorker()
+  stopSessionAbandonmentWorker()
 
   const closeDatabase = async () => {
     try {

@@ -710,6 +710,14 @@ test.describe('AIR feedback and history metrics', () => {
           startedAt: '2026-02-12T00:00:00.000Z',
           duration: 180,
           airMode: true,
+          feedbackSummary: {
+            overallScore: 81,
+            roleFitScore: 84,
+            competencyCoverage: 75,
+            trend: { direction: 'up', delta: 6 },
+            extraAttempts: 0,
+            airMode: true,
+          },
         },
         {
           id: 'session-generic',
@@ -720,6 +728,14 @@ test.describe('AIR feedback and history metrics', () => {
           startedAt: '2026-02-10T00:00:00.000Z',
           duration: 140,
           airMode: false,
+          feedbackSummary: {
+            overallScore: 64,
+            roleFitScore: null,
+            competencyCoverage: null,
+            trend: null,
+            extraAttempts: 0,
+            airMode: false,
+          },
         },
       ],
       feedbackBySession: {

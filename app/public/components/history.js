@@ -72,12 +72,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `Stable (${deltaLabel})`;
   };
 
-  const average = (values) => {
-    const numeric = values.filter((value) => Number.isFinite(value));
-    if (!numeric.length) return null;
-    return numeric.reduce((sum, value) => sum + value, 0) / numeric.length;
-  };
-
   const buildItemHtml = (session, metrics) => {
     const primaryType = session.questionTypes?.[0] || 'General';
     const statusLabel = (session.status || 'unknown').replace('_', ' ');
@@ -90,9 +84,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const badgeClass = getTypeBadgeClass(primaryType);
     const duration = formatDuration(session.duration);
     const scoreLabel =
-      metrics?.overall === null || metrics?.overall === undefined
+      metrics?.overallScore === null || metrics?.overallScore === undefined
         ? '--'
-        : `${Math.round(metrics.overall)}%`;
+        : `${Math.round(metrics.overallScore)}%`;
     const feedbackHref = `/feedback.html?sessionId=${encodeURIComponent(
       session.id
     )}`;
@@ -146,32 +140,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
   };
 
-  const fetchSessionMetrics = async (sessionId, status) => {
-    if (status !== 'completed') {
-      return null;
-    }
-
-    const feedbackResult = await apiRequest(`/api/sessions/${sessionId}/feedback`);
-    if (!feedbackResult.ok || !Array.isArray(feedbackResult.payload?.feedback)) {
-      return null;
-    }
-
-    const scores = feedbackResult.payload.feedback
-      .map((item) => item?.scores?.overall)
-      .filter((value) => Number.isFinite(value));
-    const summary = feedbackResult.payload?.summary || {};
-    const roleMetrics = summary.roleMetrics || {};
-
-    return {
-      overall: toPercent(summary?.starScores?.overall) ?? average(scores),
-      roleFitScore: toPercent(roleMetrics.roleFitScore),
-      competencyCoverage: toPercent(roleMetrics.competencyCoverage),
-      trend: roleMetrics.trend || null,
-      extraAttempts: summary?.sessionMetrics?.extraAttempts ?? null,
-      airMode: Boolean(summary.airMode),
-    };
-  };
-
   messageEl.textContent = 'Loading history...';
 
   const historyResult = await apiRequest('/api/history?page=1&limit=20');
@@ -190,12 +158,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  const sessionMetrics = await Promise.all(
-    sessions.map((session) => fetchSessionMetrics(session.id, session.status))
-  );
-
   listEl.innerHTML = sessions
-    .map((session, index) => buildItemHtml(session, sessionMetrics[index]))
+    .map((session) => buildItemHtml(session, session.feedbackSummary || null))
     .join('');
 
   messageEl.textContent = `Loaded ${sessions.length} session${

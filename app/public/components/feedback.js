@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     'question-rollup-summary'
   );
   const questionMetricsListEl = document.getElementById('question-metrics-list');
+  const progressIndicatorEl = document.getElementById(
+    'feedback-progress-indicator'
+  );
+  const progressTextEl = document.getElementById('feedback-progress-text');
 
   if (
     !messageEl ||
@@ -28,7 +32,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const DASH_ARRAY = 552;
-  const FEEDBACK_POLL_INTERVAL_MS = 2500;
+  const FEEDBACK_POLL_BASE_INTERVAL_MS = 2500;
+  const FEEDBACK_POLL_MAX_INTERVAL_MS = 30000;
+  const FEEDBACK_POLL_JITTER_RATIO = 0.2;
   const FEEDBACK_POLL_TIMEOUT_MS = 120000;
 
   const apiRequest = async (url, options = {}) => {
@@ -48,6 +54,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const computePollDelay = (attemptNumber) => {
+    const exponentialDelay = Math.min(
+      FEEDBACK_POLL_BASE_INTERVAL_MS * 2 ** attemptNumber,
+      FEEDBACK_POLL_MAX_INTERVAL_MS
+    );
+    const jitterOffset =
+      (Math.random() * 2 - 1) * FEEDBACK_POLL_JITTER_RATIO * exponentialDelay;
+    return Math.max(1000, Math.round(exponentialDelay + jitterOffset));
+  };
+
+  const setProgress = (message, isVisible = true) => {
+    if (!progressIndicatorEl || !progressTextEl) {
+      return;
+    }
+
+    progressTextEl.textContent = message;
+    progressIndicatorEl.classList.toggle('hidden', !isVisible);
+  };
 
   const escapeHtml = (value) =>
     String(value)
@@ -280,11 +305,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   messageEl.textContent = 'Loading feedback...';
+  setProgress('Preparing feedback generation status...');
 
   const sessionId = await resolveSessionId();
   if (!sessionId) {
     messageEl.textContent =
       'No completed interview session found. Complete an interview first.';
+    setProgress('', false);
     messageEl.classList.remove('text-slate-500', 'dark:text-slate-400');
     messageEl.classList.add('text-red-400');
     return;
@@ -292,6 +319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const loadFeedbackWithPolling = async () => {
     const startedAt = Date.now();
+    let pollAttempt = 0;
 
     while (Date.now() - startedAt < FEEDBACK_POLL_TIMEOUT_MS) {
       const statusResult = await apiRequest(
@@ -314,9 +342,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (feedbackState.ready) {
         const feedbackResult = await apiRequest(`/api/sessions/${sessionId}/feedback`);
         if (feedbackResult.status === 202) {
+          const waitMs = computePollDelay(pollAttempt);
+          pollAttempt += 1;
           messageEl.textContent =
             feedbackResult.payload?.message || 'Feedback is still processing...';
-          await wait(FEEDBACK_POLL_INTERVAL_MS);
+          setProgress(`Checking again in ${Math.ceil(waitMs / 1000)}s...`);
+          await wait(waitMs);
           continue;
         }
 
@@ -345,6 +376,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
       }
 
+      const waitMs = computePollDelay(pollAttempt);
+      pollAttempt += 1;
       if (job?.status === 'processing') {
         messageEl.textContent = `Generating feedback (attempt ${job.attempts || 1}/${job.maxAttempts || 3})...`;
       } else if (job?.status === 'queued') {
@@ -352,8 +385,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         messageEl.textContent = 'Preparing feedback...';
       }
+      setProgress(`Checking again in ${Math.ceil(waitMs / 1000)}s...`);
 
-      await wait(FEEDBACK_POLL_INTERVAL_MS);
+      await wait(waitMs);
     }
 
     return {
@@ -365,12 +399,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const feedbackLoadResult = await loadFeedbackWithPolling();
   if (!feedbackLoadResult.ok) {
+    setProgress('', false);
     messageEl.textContent = feedbackLoadResult.message;
     messageEl.classList.remove('text-slate-500', 'dark:text-slate-400');
     messageEl.classList.add('text-red-400');
     return;
   }
 
+  setProgress('', false);
   const feedbackItems = feedbackLoadResult.feedbackItems;
   const summary = feedbackLoadResult.summary || null;
   if (!feedbackItems.length) {

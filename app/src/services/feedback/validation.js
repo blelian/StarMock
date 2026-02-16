@@ -38,6 +38,7 @@ export function validateFeedbackEvaluation(payload) {
   const errors = []
   const input = payload || {}
   const sourceScores = input.scores || {}
+  const normalizedDefaults = []
 
   const scores = {
     situation: toScore(sourceScores.situation),
@@ -52,21 +53,35 @@ export function validateFeedbackEvaluation(payload) {
     if (scores[key] === null) {
       errors.push(`scores.${key} must be a finite number`)
       scores[key] = 0
+      normalizedDefaults.push(`scores.${key}`)
     }
   }
 
   if (scores.detail === null) {
     scores.detail = 0
+    normalizedDefaults.push('scores.detail')
   }
 
   if (scores.overall === null) {
     scores.overall = deriveOverall(scores)
+    normalizedDefaults.push('scores.overall')
   }
 
   const rating =
     typeof input.rating === 'string' ? input.rating.trim().toLowerCase() : ''
   if (!ALLOWED_RATINGS.has(rating)) {
     errors.push('rating must be one of excellent|good|fair|needs_improvement')
+    normalizedDefaults.push('rating')
+  }
+
+  if (normalizedDefaults.length > 0) {
+    console.warn(
+      `[feedback-validation] Normalized invalid evaluation fields: ${normalizedDefaults.join(', ')}`,
+      {
+        providedScores: sourceScores,
+        providedRating: input.rating,
+      }
+    )
   }
 
   const strengths = sanitizeStringList(input.strengths)
