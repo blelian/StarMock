@@ -689,6 +689,7 @@ describe('session abandonment route', () => {
 })
 
 describe('feedback status routes', () => {
+  const VALID_SESSION_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa'
   const feedbackStatusHandlers = getRouteHandlers(
     interviewRouter,
     'get',
@@ -702,7 +703,7 @@ describe('feedback status routes', () => {
 
   it('returns feedback-status payload with job and feedback counts', async () => {
     vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
-      _id: 'session-1',
+      _id: VALID_SESSION_ID,
       status: 'completed',
       completedAt: new Date('2026-02-12T00:00:00.000Z'),
     } as never)
@@ -716,12 +717,12 @@ describe('feedback status routes', () => {
 
     const res = await runRouteHandlers(feedbackStatusHandlers, {
       ...createAuthenticatedRequest(),
-      params: { id: 'session-1' },
+      params: { id: VALID_SESSION_ID },
     })
 
     expect(res.statusCode).toBe(200)
     expect(res.body).toMatchObject({
-      session: { id: 'session-1', status: 'completed' },
+      session: { id: VALID_SESSION_ID, status: 'completed' },
       feedback: {
         ready: false,
         count: 0,
@@ -732,7 +733,7 @@ describe('feedback status routes', () => {
 
   it('returns 202 for pending feedback jobs', async () => {
     vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
-      _id: 'session-1',
+      _id: VALID_SESSION_ID,
       status: 'completed',
       completedAt: new Date('2026-02-12T00:00:00.000Z'),
     } as never)
@@ -748,7 +749,7 @@ describe('feedback status routes', () => {
 
     const res = await runRouteHandlers(feedbackHandlers, {
       ...createAuthenticatedRequest(),
-      params: { id: 'session-1' },
+      params: { id: VALID_SESSION_ID },
     })
 
     expect(res.statusCode).toBe(202)
@@ -780,7 +781,7 @@ describe('feedback status routes', () => {
     ]
 
     vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
-      _id: 'session-1',
+      _id: VALID_SESSION_ID,
       status: 'completed',
       completedAt: new Date('2026-02-12T00:00:00.000Z'),
     } as never)
@@ -790,7 +791,7 @@ describe('feedback status routes', () => {
 
     const res = await runRouteHandlers(feedbackHandlers, {
       ...createAuthenticatedRequest(),
-      params: { id: 'session-1' },
+      params: { id: VALID_SESSION_ID },
     })
 
     expect(res.statusCode).toBe(200)
@@ -869,7 +870,7 @@ describe('feedback status routes', () => {
     ]
 
     vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
-      _id: 'session-1',
+      _id: VALID_SESSION_ID,
       status: 'completed',
       questions: ['question-1', 'question-2'],
       metadata: { airMode: false },
@@ -881,7 +882,7 @@ describe('feedback status routes', () => {
 
     const res = await runRouteHandlers(feedbackHandlers, {
       ...createAuthenticatedRequest(),
-      params: { id: 'session-1' },
+      params: { id: VALID_SESSION_ID },
     })
 
     expect(res.statusCode).toBe(200)
@@ -982,7 +983,7 @@ describe('feedback status routes', () => {
     ]
 
     vi.spyOn(InterviewSession, 'findOne').mockResolvedValue({
-      _id: 'session-1',
+      _id: VALID_SESSION_ID,
       status: 'completed',
       metadata: {
         airMode: true,
@@ -1002,7 +1003,7 @@ describe('feedback status routes', () => {
 
     const res = await runRouteHandlers(feedbackHandlers, {
       ...createAuthenticatedRequest(),
-      params: { id: 'session-1' },
+      params: { id: VALID_SESSION_ID },
     })
 
     expect(res.statusCode).toBe(200)

@@ -22,6 +22,7 @@ import { resolveAirContext } from '../services/air/index.js'
 import { generateAirQuestions } from '../services/air/openAIQuestionProvider.js'
 
 const router = express.Router()
+const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/
 const ALLOWED_QUESTION_TYPES = new Set([
   'behavioral',
   'technical',
@@ -1967,6 +1968,16 @@ router.get('/history', requireAuth, async (req, res) => {
 router.get('/sessions/:id/feedback-status', requireAuth, async (req, res) => {
   try {
     const sessionId = req.params.id
+
+    if (!OBJECT_ID_RE.test(sessionId)) {
+      return res.status(400).json({
+        error: {
+          message: 'Invalid session ID format',
+          code: 'INVALID_ID',
+        },
+      })
+    }
+
     const session = await InterviewSession.findOne({
       _id: sessionId,
       userId: req.userId,
@@ -2021,6 +2032,15 @@ router.get('/sessions/:id/feedback-status', requireAuth, async (req, res) => {
 router.get('/sessions/:id/feedback', requireAuth, async (req, res) => {
   try {
     const sessionId = req.params.id
+
+    if (!OBJECT_ID_RE.test(sessionId)) {
+      return res.status(400).json({
+        error: {
+          message: 'Invalid session ID format',
+          code: 'INVALID_ID',
+        },
+      })
+    }
 
     // Verify session exists and belongs to user
     const session = await InterviewSession.findOne({

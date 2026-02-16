@@ -783,7 +783,9 @@ test.describe('AIR feedback and history metrics', () => {
       },
     })
 
-    await page.goto('/feedback.html?sessionId=session-generic')
+    await page.goto('/feedback.html?sessionId=session-generic', {
+      waitUntil: 'commit',
+    })
     await expect(page.locator('#air-metrics-panel')).toBeHidden()
   })
 
@@ -855,7 +857,7 @@ test.describe('AIR feedback and history metrics', () => {
       },
     })
 
-    await page.goto('/history.html')
+    await page.goto('/history.html', { waitUntil: 'commit' })
 
     const airRow = page.locator('[data-session-id="session-air"]')
     await expect(airRow).toContainText('AIR mode')

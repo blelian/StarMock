@@ -410,58 +410,70 @@ document.addEventListener('DOMContentLoaded', async () => {
     messageEl.textContent = 'Loading feedback...'
     setProgress('Preparing feedback generation status...')
 
-    const sessionId = await resolveSessionId()
-    if (!sessionId) {
-      messageEl.textContent =
-        'No completed interview session found. Complete an interview first.'
+    try {
+      const sessionId = await resolveSessionId()
+      if (!sessionId) {
+        messageEl.textContent =
+          'No completed interview session found. Complete an interview first.'
+        setProgress('', false)
+        messageEl.classList.remove('text-slate-500', 'dark:text-slate-400')
+        messageEl.classList.add('text-red-400')
+        showFeedbackActions(false)
+        return
+      }
+
+      const feedbackLoadResult = await loadFeedbackWithPolling(sessionId)
+      if (!feedbackLoadResult.ok) {
+        setProgress('', false)
+        messageEl.textContent = feedbackLoadResult.message
+        messageEl.classList.remove('text-slate-500', 'dark:text-slate-400')
+        messageEl.classList.add('text-red-400')
+        showFeedbackActions(true)
+        return
+      }
+
       setProgress('', false)
-      messageEl.classList.remove('text-slate-500', 'dark:text-slate-400')
-      messageEl.classList.add('text-red-400')
+      const feedbackItems = feedbackLoadResult.feedbackItems
+      const summary = feedbackLoadResult.summary || null
+      if (!feedbackItems.length) {
+        messageEl.textContent = 'No feedback generated for this session yet.'
+        showFeedbackActions(true)
+        return
+      }
+
+      const aggregateScores = summary?.starScores || {
+        situation: average(
+          feedbackItems.map((item) => item?.scores?.situation)
+        ),
+        task: average(feedbackItems.map((item) => item?.scores?.task)),
+        action: average(feedbackItems.map((item) => item?.scores?.action)),
+        result: average(feedbackItems.map((item) => item?.scores?.result)),
+        overall: average(feedbackItems.map((item) => item?.scores?.overall)),
+      }
+
+      const overall = toPercent(aggregateScores.overall) ?? 0
+      overallScoreValueEl.textContent = `${overall}%`
+      overallScoreRingEl.setAttribute(
+        'stroke-dashoffset',
+        String(DASH_ARRAY - (DASH_ARRAY * overall) / 100)
+      )
+
+      renderBreakdown(aggregateScores)
+      renderSuggestions(feedbackItems)
+      renderAirMetrics(summary)
+      renderQuestionMetrics(summary)
+
+      messageEl.textContent = `Feedback loaded for session ${sessionId.slice(-6)}.`
       showFeedbackActions(false)
-      return
-    }
-
-    const feedbackLoadResult = await loadFeedbackWithPolling(sessionId)
-    if (!feedbackLoadResult.ok) {
+    } catch (error) {
+      console.error('Feedback load error:', error)
       setProgress('', false)
-      messageEl.textContent = feedbackLoadResult.message
+      messageEl.textContent =
+        'Unable to load feedback. Please check your connection and try again.'
       messageEl.classList.remove('text-slate-500', 'dark:text-slate-400')
       messageEl.classList.add('text-red-400')
       showFeedbackActions(true)
-      return
     }
-
-    setProgress('', false)
-    const feedbackItems = feedbackLoadResult.feedbackItems
-    const summary = feedbackLoadResult.summary || null
-    if (!feedbackItems.length) {
-      messageEl.textContent = 'No feedback generated for this session yet.'
-      showFeedbackActions(true)
-      return
-    }
-
-    const aggregateScores = summary?.starScores || {
-      situation: average(feedbackItems.map((item) => item?.scores?.situation)),
-      task: average(feedbackItems.map((item) => item?.scores?.task)),
-      action: average(feedbackItems.map((item) => item?.scores?.action)),
-      result: average(feedbackItems.map((item) => item?.scores?.result)),
-      overall: average(feedbackItems.map((item) => item?.scores?.overall)),
-    }
-
-    const overall = toPercent(aggregateScores.overall) ?? 0
-    overallScoreValueEl.textContent = `${overall}%`
-    overallScoreRingEl.setAttribute(
-      'stroke-dashoffset',
-      String(DASH_ARRAY - (DASH_ARRAY * overall) / 100)
-    )
-
-    renderBreakdown(aggregateScores)
-    renderSuggestions(feedbackItems)
-    renderAirMetrics(summary)
-    renderQuestionMetrics(summary)
-
-    messageEl.textContent = `Feedback loaded for session ${sessionId.slice(-6)}.`
-    showFeedbackActions(false)
   }
 
   // Wire up retry button

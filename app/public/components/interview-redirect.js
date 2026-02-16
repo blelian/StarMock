@@ -2109,6 +2109,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     uploadedAudioUrl = null
     uploadedAudioMimeType = null
     transcriptConfidence = null
+    liveTranscriptParts = []
+    interimTranscript = ''
+    recordedChunks = []
+    hideLiveTranscriptIndicator()
     updateTranscriptWarning()
 
     syncProgress(submitResponseResult.payload?.progress)
