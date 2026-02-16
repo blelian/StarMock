@@ -388,11 +388,29 @@ test.describe('AI recording interview flows', () => {
       )
     await page.getByRole('button', { name: /submit answer/i }).click()
 
-    // Accept the confirmation dialog added by the UX overhaul
-    page.on('dialog', (dialog) => dialog.accept())
-    await page.getByRole('button', { name: /complete session/i }).click()
+    // Wait for the complete button to become enabled (sessionProgress.isComplete)
+    await page.waitForFunction(
+      () => {
+        const btn = document.getElementById(
+          'complete-session-btn'
+        ) as HTMLButtonElement
+        return btn && !btn.disabled
+      },
+      { timeout: 10000 }
+    )
 
-    await expect(page).toHaveURL(/feedback\.html\?sessionId=session-1/)
+    // Accept the confirmation dialog and click Complete Session.
+    // Use waitForURL in parallel so click() doesn't block on the
+    // feedback page's load event (which depends on external CDN assets).
+    page.on('dialog', (dialog) => dialog.accept())
+    await Promise.all([
+      page.waitForURL(/feedback\.html\?sessionId=session-1/, {
+        timeout: 15000,
+        waitUntil: 'commit',
+      }),
+      page.getByRole('button', { name: /complete session/i }).click(),
+    ])
+
     expect(payloads).toHaveLength(1)
     expect(payloads[0]).toMatchObject({ responseType: 'text' })
   })
@@ -575,11 +593,27 @@ test.describe('AI recording interview flows', () => {
 
     await page.getByRole('button', { name: /submit answer/i }).click()
 
-    // Accept the confirmation dialog added by the UX overhaul
-    page.on('dialog', (dialog) => dialog.accept())
-    await page.getByRole('button', { name: /complete session/i }).click()
+    // Wait for the complete button to become enabled (sessionProgress.isComplete)
+    await page.waitForFunction(
+      () => {
+        const btn = document.getElementById(
+          'complete-session-btn'
+        ) as HTMLButtonElement
+        return btn && !btn.disabled
+      },
+      { timeout: 10000 }
+    )
 
-    await expect(page).toHaveURL(/feedback\.html\?sessionId=session-1/)
+    // Accept the confirmation dialog and click Complete Session.
+    page.on('dialog', (dialog) => dialog.accept())
+    await Promise.all([
+      page.waitForURL(/feedback\.html\?sessionId=session-1/, {
+        timeout: 15000,
+        waitUntil: 'commit',
+      }),
+      page.getByRole('button', { name: /complete session/i }).click(),
+    ])
+
     expect(payloads).toHaveLength(1)
     expect(payloads[0]).toMatchObject({
       responseType: 'audio_transcript',
@@ -611,11 +645,27 @@ test.describe('AI recording interview flows', () => {
       )
     await page.getByRole('button', { name: /submit answer/i }).click()
 
-    // Accept the confirmation dialog added by the UX overhaul
-    page.on('dialog', (dialog) => dialog.accept())
-    await page.getByRole('button', { name: /complete session/i }).click()
+    // Wait for the complete button to become enabled (sessionProgress.isComplete)
+    await page.waitForFunction(
+      () => {
+        const btn = document.getElementById(
+          'complete-session-btn'
+        ) as HTMLButtonElement
+        return btn && !btn.disabled
+      },
+      { timeout: 10000 }
+    )
 
-    await expect(page).toHaveURL(/feedback\.html\?sessionId=session-1/)
+    // Accept the confirmation dialog and click Complete Session.
+    page.on('dialog', (dialog) => dialog.accept())
+    await Promise.all([
+      page.waitForURL(/feedback\.html\?sessionId=session-1/, {
+        timeout: 15000,
+        waitUntil: 'commit',
+      }),
+      page.getByRole('button', { name: /complete session/i }).click(),
+    ])
+
     expect(payloads).toHaveLength(1)
     expect(payloads[0]?.responseText).toContain('refined the transcript')
   })
