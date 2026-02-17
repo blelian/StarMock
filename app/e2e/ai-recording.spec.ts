@@ -369,6 +369,22 @@ async function mockFeedbackAndHistoryApis(
   })
 }
 
+/**
+ * Dismiss the career-profile wizard overlay that appears on interview.html.
+ * The mock profile API returns profileComplete:true so the wizard jumps to
+ * step 4. Click "Start Practicing" to submit and hide the overlay, then
+ * wait for the overlay to disappear before proceeding.
+ */
+async function dismissCareerWizard(page: import('@playwright/test').Page) {
+  const overlay = page.locator('#career-profile-overlay')
+  // The wizard may already be hidden if a previous action dismissed it
+  if (!(await overlay.isVisible())) return
+  await page
+    .getByRole('button', { name: /start practicing/i })
+    .click({ timeout: 5000 })
+  await overlay.waitFor({ state: 'hidden', timeout: 10000 })
+}
+
 test.describe('AI recording interview flows', () => {
   test('text-only flow submits text response and completes', async ({
     page,
@@ -380,7 +396,8 @@ test.describe('AI recording interview flows', () => {
     })
 
     await page.goto('/interview.html')
-    await page.getByRole('button', { name: /start/i }).click()
+    await dismissCareerWizard(page)
+    await page.getByRole('button', { name: /start session/i }).click()
     await page
       .locator('#response-input')
       .fill(
@@ -533,7 +550,8 @@ test.describe('AI recording interview flows', () => {
     })
 
     await page.goto('/interview.html')
-    await page.getByRole('button', { name: /start/i }).click()
+    await dismissCareerWizard(page)
+    await page.getByRole('button', { name: /start session/i }).click()
 
     // Wait for the record toggle button to be visible after session starts
     // Button text includes emoji: "🎙️ Start Recording"
@@ -636,7 +654,8 @@ test.describe('AI recording interview flows', () => {
     })
 
     await page.goto('/interview.html')
-    await page.getByRole('button', { name: /start/i }).click()
+    await dismissCareerWizard(page)
+    await page.getByRole('button', { name: /start session/i }).click()
 
     await page
       .locator('#response-input')
