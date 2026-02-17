@@ -2,7 +2,8 @@ name: 🚀 Deploy to Render
 
 on:
   push:
-    branches: [ main, olwal-qa ]
+    branches-ignore:
+      - 'dependabot/**'  # skip dependabot auto-branches; all other pushes are evaluated by pre-check gate
   workflow_dispatch:
     inputs:
       skip_tests:
@@ -19,10 +20,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ─── Gate: skip entire pipeline for fork + main (main is just a mirror) ───
+  pre-check:
+    name: 🔎 Pre-check
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+    steps:
+    - name: 🔎 Evaluate deploy eligibility
+      id: gate
+      run: |
+        REPO="${{ github.repository }}"
+        BRANCH="${{ github.ref_name }}"
+        UPSTREAM="blelian/StarMock"
+
+        if [ "$REPO" != "$UPSTREAM" ] && [ "$BRANCH" = "main" ]; then
+          echo "⏭️ Fork + main detected — skipping entire pipeline (main is a mirror, not a deploy target)"
+          echo "should_run=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "✅ Pipeline will run: repo=$REPO branch=$BRANCH"
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+        fi
+
   quality-checks:
     name: 🎨 Code Quality
+    needs: pre-check
+    if: ${{ needs.pre-check.outputs.should_run == 'true' && github.event.inputs.skip_tests != true }}
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.skip_tests != true }}
     
     steps:
     - name: 📥 Checkout code
@@ -80,8 +104,9 @@ jobs:
   
   tests:
     name: 🧪 Unit Tests
+    needs: pre-check
+    if: ${{ needs.pre-check.outputs.should_run == 'true' && github.event.inputs.skip_tests != true }}
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.skip_tests != true }}
     
     steps:
     - name: 📥 Checkout code
@@ -112,8 +137,9 @@ jobs:
   
   integration-tests:
     name: 🔗 Integration Tests
+    needs: pre-check
+    if: ${{ needs.pre-check.outputs.should_run == 'true' && github.event.inputs.skip_tests != true }}
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.skip_tests != true }}
     
     services:
       mongodb:
@@ -217,8 +243,9 @@ jobs:
   
   e2e-tests:
     name: 🌐 E2E Tests
+    needs: pre-check
+    if: ${{ needs.pre-check.outputs.should_run == 'true' && github.event.inputs.skip_tests != true }}
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.skip_tests != true }}
     
     steps:
     - name: 📥 Checkout code
@@ -256,8 +283,9 @@ jobs:
   
   security:
     name: 🔒 Security Audit
+    needs: pre-check
+    if: ${{ needs.pre-check.outputs.should_run == 'true' && github.event.inputs.skip_tests != true }}
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.skip_tests != true }}
     
     steps:
     - name: 📥 Checkout code
@@ -289,8 +317,8 @@ jobs:
   build:
     name: 🏗️ Build
     runs-on: ubuntu-latest
-    needs: [quality-checks, tests, integration-tests, e2e-tests, security]
-    if: always() && (needs.quality-checks.result == 'success' || needs.quality-checks.result == 'skipped') && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') && (needs.e2e-tests.result == 'success' || needs.e2e-tests.result == 'skipped') && (needs.security.result == 'success' || needs.security.result == 'skipped')
+    needs: [pre-check, quality-checks, tests, integration-tests, e2e-tests, security]
+    if: always() && needs.pre-check.outputs.should_run == 'true' && (needs.quality-checks.result == 'success' || needs.quality-checks.result == 'skipped') && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') && (needs.e2e-tests.result == 'success' || needs.e2e-tests.result == 'skipped') && (needs.security.result == 'success' || needs.security.result == 'skipped')
     outputs:
       build_time: ${{ steps.timing.outputs.build_time }}
       
@@ -350,22 +378,34 @@ jobs:
         echo "🔍 DEBUG - Branch: ${{ github.ref_name }}"
 
         # Determine which secrets to use based on repository and branch
-        if [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
-          # Always use dev secrets for fork repository (any branch)
+        # Rules (works for ALL contributors):
+        #   - Upstream (blelian/StarMock) + main  → Production deploy
+        #   - Any fork + working branch → Dev deploy (each contributor's own Render)
+        #   - Any fork + main → Skip (main is just a mirror, not a deploy target)
+        #   - Upstream + non-main branch → Dev deploy if secrets exist, else skip
+        UPSTREAM="blelian/StarMock"
+
+        if [ "${{ github.repository }}" != "$UPSTREAM" ] && [ "${{ github.ref_name }}" != "main" ]; then
+          # Fork working branch → deploy to contributor's dev Render
           DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
 
-          echo "🔍 DEBUG - Fork repo (olwalgeorge/StarMock) - using dev secrets"
+          echo "🔍 DEBUG - Fork (${{ github.repository }}) working branch (${{ github.ref_name }}) - using dev secrets"
           echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
           echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
-          echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
-          echo "🔍 DEBUG - App URL value: [$APP_URL]"
 
           echo "deploy_target=Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
 
           echo "📍 Deploying to: Development (${{ github.ref_name }})"
           echo "🌐 Target URL: $APP_URL"
-        elif [ "${{ github.repository }}" = "blelian/StarMock" ] && [ "${{ github.ref_name }}" = "main" ]; then
+        elif [ "${{ github.repository }}" != "$UPSTREAM" ] && [ "${{ github.ref_name }}" = "main" ]; then
+          # Fork main branch → skip deploy (main is a mirror, not a deploy target)
+          echo "🔍 DEBUG - Fork (${{ github.repository }}) main branch - skipping deployment (main is a mirror)"
+          echo "deploy_target=Skipped (fork main)" >> "$GITHUB_OUTPUT"
+          echo "skip_deploy=true" >> "$GITHUB_OUTPUT"
+          echo "skip_reason=Fork main branch does not deploy. Only working branches deploy to dev Render." >> "$GITHUB_OUTPUT"
+          echo "📍 Skipping deployment: Fork main is a mirror, not a deploy target"
+        elif [ "${{ github.repository }}" = "$UPSTREAM" ] && [ "${{ github.ref_name }}" = "main" ]; then
           # Use prod secrets for main branch in upstream repository
           DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" | xargs)
           APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
@@ -380,8 +420,8 @@ jobs:
 
           echo "📍 Deploying to: Production (Main Branch)"
           echo "🌐 Target URL: $APP_URL"
-        elif [ "${{ github.repository }}" = "blelian/StarMock" ]; then
-          # Check if upstream has dev secrets configured for branch deployments
+        elif [ "${{ github.repository }}" = "$UPSTREAM" ]; then
+          # Upstream non-main branch — check if dev secrets are configured
           DEV_DEPLOY_HOOK_URL=$(echo "${{ secrets.RENDER_DEPLOY_HOOK_URL_DEV }}" | xargs)
           DEV_APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
           
@@ -453,7 +493,7 @@ jobs:
         if [ -z "${{ steps.set_env.outputs.app_url }}" ]; then
           echo "❌ ERROR: app_url output is empty in same job and skip_deploy is not set!"
           echo "🔍 This could indicate the secret is missing (not set in this repository) or contains only whitespace/newlines."
-          echo "🔍 If this run is from a fork or a contributor repo, production secrets are not available here — production deploys must be triggered from the canonical repository (olwalgeorge/StarMock)."
+          echo "🔍 If this run is from a fork or a contributor repo, check that RENDER_APP_URL_DEV is set in the repository secrets."
           exit 1
         fi
 
@@ -655,9 +695,9 @@ jobs:
   
   dashboard:
     name: 📊 Deployment Dashboard
-    needs: [quality-checks, tests, security, build, deploy, healthcheck]
+    needs: [pre-check, quality-checks, tests, security, build, deploy, healthcheck]
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && needs.pre-check.outputs.should_run == 'true'
     
     steps:
     - name: 📊 Generate Enhanced Deployment Dashboard
