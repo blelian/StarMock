@@ -2,9 +2,7 @@ name: 🚀 Deploy to Render
 
 on:
   push:
-    branches: [ main, olwal-qa, blessing ]
-  pull_request:
-    types: [closed]
+    branches: [ main, olwal-qa ]
   workflow_dispatch:
     inputs:
       skip_tests:
@@ -17,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: render-deploy-${{ github.ref }}
+  group: render-deploy-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -340,6 +338,7 @@ jobs:
       deploy_time: ${{ steps.deploy_timing.outputs.deploy_time }}
       deploy_status: ${{ steps.deploy_timing.outputs.deploy_status }}
       deploy_target: ${{ steps.deploy_timing.outputs.deploy_target }}
+      app_url: ${{ steps.set_env.outputs.app_url }}
       skip_deploy: ${{ steps.set_env.outputs.skip_deploy }}
       skip_reason: ${{ steps.set_env.outputs.skip_reason }}
     
@@ -349,18 +348,6 @@ jobs:
       run: |
         echo "🔍 DEBUG - Repo: ${{ github.repository }}"
         echo "🔍 DEBUG - Branch: ${{ github.ref_name }}"
-
-        # Determine if this run should be treated as a Production deploy.
-        # We allow two canonical flows that can trigger a production deploy:
-        #  1) A push to the main branch in the canonical repository.
-        #  2) A merged pull request (closed with merged=true) targeting main in the canonical repository.
-        IS_PROD=false
-
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "main" ] && [ "${{ github.repository }}" = "blelian/StarMock" ]; then
-            IS_PROD=true
-          fi
-        fi
 
         # Determine which secrets to use based on repository and branch
         if [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
@@ -596,54 +583,25 @@ jobs:
     - name: 🔍 Health Check with Smart Retry
       id: health
       run: |
-        # If deploy job marked this run as skipped, fail healthcheck with a clear message.
+        # If deploy job marked this run as skipped, skip healthcheck gracefully.
         if [ "${{ needs.deploy.outputs.deploy_status }}" = "skipped" ]; then
-          echo "❌ ERROR: Deployment was skipped."
-          echo "🔍 Healthcheck cannot run without a successful deployment."
-          echo "health_status=failed" >> $GITHUB_OUTPUT
-          echo "health_time=0s" >> $GITHUB_OUTPUT
-          echo "health_attempts=0" >> $GITHUB_OUTPUT
-          exit 1
-        fi
-        
-        # Get the correct URL based on branch (same logic as deploy job)
-        # Determine if this run should be treated as a Production deploy.
-        # We allow two canonical flows that can trigger a production deploy:
-        #  1) A push to the main branch in the canonical repository.
-        #  2) A merged pull request (closed with merged=true) targeting main in the canonical repository.
-        IS_PROD=false
-        
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "main" ] && [ "${{ github.repository }}" = "blelian/StarMock" ]; then
-            IS_PROD=true
-          fi
-        fi
-        
-        # Determine which secrets to use based on repository and branch
-        if [ "${{ github.repository }}" = "olwalgeorge/StarMock" ]; then
-          # Always use dev secrets for fork repository (any branch)
-          APP_URL=$(echo "${{ secrets.RENDER_APP_URL_DEV }}" | xargs)
-          echo "🔍 DEBUG - Fork repo (olwalgeorge/StarMock) - using dev secrets"
-          echo "🔍 DEBUG - Dev app URL configured: ${#APP_URL} chars"
-        elif [ "${{ github.repository }}" = "blelian/StarMock" ] && [ "${{ github.ref_name }}" = "main" ]; then
-          # Use prod secrets for main branch in upstream repository
-          APP_URL=$(echo "${{ secrets.RENDER_APP_URL }}" | xargs)
-          echo "🔍 DEBUG - Upstream main branch - using prod secrets"
-          echo "🔍 DEBUG - Production app URL configured: ${#APP_URL} chars"
-        else
-          # Skip healthcheck for upstream non-main branches (no deployment occurred)
-          echo "🔍 DEBUG - Upstream non-main branch - skipping healthcheck (no deployment)"
+          echo "⏭️ Deployment was skipped — skipping healthcheck."
+          echo "🔍 Reason: ${{ needs.deploy.outputs.skip_reason }}"
           echo "health_status=skipped" >> $GITHUB_OUTPUT
           echo "health_time=0s" >> $GITHUB_OUTPUT
           echo "health_attempts=0" >> $GITHUB_OUTPUT
           exit 0
         fi
         
+        # Use the app_url output from the deploy job (single source of truth)
+        APP_URL="${{ needs.deploy.outputs.app_url }}"
+        
         MAX_RETRIES=12
         RETRY_COUNT=0
         HEALTH_URL="${APP_URL}/api/health"
         START_TIME=$(date +%s)
         SUCCESS=false
+        WAIT_TIME=10
         
         echo "🔍 DEBUG - App URL: [$APP_URL]"
         echo "🔍 DEBUG - Health URL: [$HEALTH_URL]"
@@ -658,6 +616,7 @@ jobs:
           exit 1
         fi
         
+        DEPLOY_TARGET="${{ needs.deploy.outputs.deploy_target }}"
         echo "🏥 Checking health endpoint: $HEALTH_URL"
         echo "📍 Target: $DEPLOY_TARGET"
         echo "🔄 Max retries: $MAX_RETRIES with exponential backoff"
@@ -697,7 +656,15 @@ jobs:
             exit 1
           else
             # Other response codes (3xx, etc.) - retry
-            echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES: Status $RESPONSE - Waiting ${WAIT_TIME}s before retry... (${ELAPSED}s elapsed)"
+            echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES: Status $RESPONSE (${ELAPSED}s elapsed)"
+          fi
+          
+          # Exponential backoff: 10s, 15s, 22s, 33s, ... capped at 60s
+          echo "⏳ Waiting ${WAIT_TIME}s before next retry..."
+          sleep $WAIT_TIME
+          WAIT_TIME=$(( WAIT_TIME * 3 / 2 ))
+          if [ $WAIT_TIME -gt 60 ]; then
+            WAIT_TIME=60
           fi
         done
         
@@ -759,6 +726,14 @@ jobs:
           OVERALL_STATUS="SUCCESS"
           OVERALL_EMOJI="🎉"
           OVERALL_COLOR="🟢"
+        elif [ "$DEPLOY_STATUS" = "success" ] && [ "$HEALTH_STATUS" = "skipped" ]; then
+          OVERALL_STATUS="DEPLOYED (Health Check Skipped)"
+          OVERALL_EMOJI="⏭️"
+          OVERALL_COLOR="🟡"
+        elif [ "$HEALTH_STATUS" = "skipped" ]; then
+          OVERALL_STATUS="SKIPPED (No deployment)"
+          OVERALL_EMOJI="⏭️"
+          OVERALL_COLOR="⚪"
         elif [ "$DEPLOY_STATUS" = "success" ] && [ "$HEALTH_STATUS" = "failed" ]; then
           OVERALL_STATUS="DEPLOYED (Health Check Failed)"
           OVERALL_EMOJI="⚠️"
