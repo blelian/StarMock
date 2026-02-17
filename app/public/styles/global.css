@@ -2,6 +2,16 @@
 /* Shared UI Utilities        */
 /* ========================== */
 
+/* Ensure Material Icons font-family is never overridden by Tailwind utilities */
+.material-icons-round {
+  font-family: 'Material Icons Round' !important;
+  font-style: normal;
+  font-weight: normal;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
 .glass-panel {
   background: rgba(18, 23, 33, 0.7);
   backdrop-filter: blur(12px);

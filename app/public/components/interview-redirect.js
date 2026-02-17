@@ -927,6 +927,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateWizardNav()
   }
 
+  // ── Jump wizard directly to a specific step (no animation) ──────
+  const showWizardAtStep = (step) => {
+    for (let i = 1; i <= WIZARD_TOTAL_STEPS; i++) {
+      const stepEl = getWizardStepEl(i)
+      if (!stepEl) continue
+      if (i === step) {
+        stepEl.classList.remove('hidden')
+      } else {
+        stepEl.classList.add('hidden')
+      }
+    }
+    wizardCurrentStep = step
+    updateProgressBar(step)
+    updateWizardNav()
+  }
+
   // ── Initialize wizard visuals on load ────────────────────────────
   renderIndustryGrid()
   renderSeniorityTrack()
@@ -2003,18 +2019,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     fillWizardFromProfile(profileResult.profile)
 
-    if (profileResult.profileComplete) {
-      await startAirMode(profileResult.profile)
-      return
-    }
-
-    // Profile is incomplete — require the user to fill it before proceeding
+    // Always show the wizard so the user can review / confirm their profile
+    // before we start a session. If their profile is already complete, we
+    // jump to the final step so they can quickly hit "Start Practicing".
     if (!careerProfileOverlay) {
-      await startGenericMode()
+      // Fallback: no wizard in the DOM — use profile directly
+      if (profileResult.profileComplete) {
+        await startAirMode(profileResult.profile)
+      } else {
+        await startGenericMode()
+      }
       return
     }
 
-    resetWizardToStep1()
+    if (profileResult.profileComplete) {
+      // Pre-filled & complete → jump straight to step 4 (review + start)
+      showWizardAtStep(WIZARD_TOTAL_STEPS)
+    } else {
+      resetWizardToStep1()
+    }
+
     toggleCareerProfileOverlay(true)
     setMessage(
       'Set your target role, industry, and seniority to begin your personalized interview practice.'
