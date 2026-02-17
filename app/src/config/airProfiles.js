@@ -294,11 +294,7 @@ const ROLE_CATALOG = [
   {
     id: 'ux_researcher',
     label: 'UX Researcher',
-    aliases: [
-      'ux researcher',
-      'user researcher',
-      'design researcher',
-    ],
+    aliases: ['ux researcher', 'user researcher', 'design researcher'],
     competencies: [
       'user-research',
       'analytical-thinking',
@@ -561,9 +557,17 @@ const INDUSTRY_COMPETENCIES = {
   healthcare: ['safety-mindset', 'compliance-awareness', 'ethical-practice'],
   education: ['communication', 'coaching', 'adaptability'],
   retail: ['customer-focus', 'execution', 'adaptability'],
-  manufacturing: ['process-improvement', 'quality-focus', 'attention-to-detail'],
+  manufacturing: [
+    'process-improvement',
+    'quality-focus',
+    'attention-to-detail',
+  ],
   government: ['policy-awareness', 'accountability', 'ethical-practice'],
-  consulting: ['stakeholder-management', 'problem-solving', 'strategic-thinking'],
+  consulting: [
+    'stakeholder-management',
+    'problem-solving',
+    'strategic-thinking',
+  ],
   media: ['storytelling', 'agility', 'communication'],
   energy: ['safety-mindset', 'compliance-awareness', 'problem-solving'],
   legal: ['analytical-thinking', 'attention-to-detail', 'ethical-practice'],
@@ -572,8 +576,16 @@ const INDUSTRY_COMPETENCIES = {
   transportation: ['planning', 'risk-assessment', 'execution'],
   hospitality: ['customer-obsession', 'adaptability', 'communication'],
   agriculture: ['problem-solving', 'planning', 'adaptability'],
-  pharmaceutical: ['compliance-awareness', 'attention-to-detail', 'critical-thinking'],
-  telecommunications: ['technical-depth', 'customer-obsession', 'problem-solving'],
+  pharmaceutical: [
+    'compliance-awareness',
+    'attention-to-detail',
+    'critical-thinking',
+  ],
+  telecommunications: [
+    'technical-depth',
+    'customer-obsession',
+    'problem-solving',
+  ],
   aerospace: ['technical-depth', 'attention-to-detail', 'safety-mindset'],
   construction: ['planning', 'risk-assessment', 'execution'],
   other: ['communication', 'execution', 'problem-solving'],

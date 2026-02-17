@@ -879,7 +879,7 @@ router.get('/questions', requireAuth, async (req, res) => {
 
       if (previouslyAskedIds.size > 0) {
         const excludeIds = Array.from(previouslyAskedIds).map(
-          (id) => new (InterviewSession.base.Types.ObjectId)(id)
+          (id) => new InterviewSession.base.Types.ObjectId(id)
         )
         filter._id = { $nin: excludeIds }
       }

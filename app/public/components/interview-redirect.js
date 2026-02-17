@@ -29,9 +29,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const careerProfileSubmitBtn = document.getElementById(
     'career-profile-submit-btn'
   )
-  const careerProfileSkipBtn = document.getElementById(
-    'career-profile-skip-btn'
-  )
   const careerJobTitleInput = document.getElementById('career-job-title')
   const careerIndustrySelect = document.getElementById('career-industry')
   const careerSenioritySelect = document.getElementById('career-seniority')
@@ -47,8 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const wizardBackBtn = document.getElementById('wizard-back-btn')
   const wizardNextBtn = document.getElementById('wizard-next-btn')
   const wizardSkipStepBtn = document.getElementById('wizard-skip-step-btn')
-  const wizardNextLabel = document.getElementById('wizard-next-label')
-  const wizardNextIcon = document.getElementById('wizard-next-icon')
   const wizardStepLabel = document.getElementById('wizard-step-label')
   const jobTitleAutocomplete = document.getElementById(
     'job-title-autocomplete'
