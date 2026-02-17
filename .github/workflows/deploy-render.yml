@@ -361,9 +361,7 @@ jobs:
           echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
           echo "🔍 DEBUG - App URL value: [$APP_URL]"
 
-          echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
-          echo "Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "deploy_target=Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
 
           echo "📍 Deploying to: Development (${{ github.ref_name }})"
           echo "🌐 Target URL: $APP_URL"
@@ -378,9 +376,7 @@ jobs:
           echo "🔍 DEBUG - Deploy hook value: [$DEPLOY_HOOK_URL]"
           echo "🔍 DEBUG - App URL value: [$APP_URL]"
 
-          echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
-          echo "Production" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "deploy_target=Production" >> "$GITHUB_OUTPUT"
 
           echo "📍 Deploying to: Production (Main Branch)"
           echo "🌐 Target URL: $APP_URL"
@@ -398,46 +394,29 @@ jobs:
             echo "🔍 DEBUG - Dev deploy hook length: ${#DEPLOY_HOOK_URL}"
             echo "🔍 DEBUG - Dev app URL length: ${#APP_URL}"
             
-            echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
-            echo "Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "deploy_target=Development (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
             
             echo "📍 Deploying to: Development (${{ github.ref_name }})"
             echo "🌐 Target URL: $APP_URL"
           else
             # Skip deployment if no dev secrets configured in upstream
             echo "🔍 DEBUG - Upstream branch without dev secrets - skipping deployment"
-            echo "deploy_target<<EOF" >> "$GITHUB_OUTPUT"
-            echo "Skipped (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-            
-            echo "skip_deploy<<EOF" >> "$GITHUB_OUTPUT"
-            echo "true" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-            
-            echo "skip_reason<<EOF" >> "$GITHUB_OUTPUT"
-            echo "Branch deployments require RENDER_APP_URL_DEV and RENDER_DEPLOY_HOOK_URL_DEV secrets to be configured in the upstream repository." >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "deploy_target=Skipped (${{ github.ref_name }})" >> "$GITHUB_OUTPUT"
+            echo "skip_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=Branch deployments require RENDER_APP_URL_DEV and RENDER_DEPLOY_HOOK_URL_DEV secrets to be configured in the upstream repository." >> "$GITHUB_OUTPUT"
             
             echo "📍 Skipping deployment: Dev secrets not configured in upstream repository"
           fi
         fi
-        echo "deploy_hook<<EOF" >> "$GITHUB_OUTPUT"
-        echo "$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
-        echo "EOF" >> "$GITHUB_OUTPUT"
-        
-        echo "app_url<<EOF" >> "$GITHUB_OUTPUT"
-        echo "$APP_URL" >> "$GITHUB_OUTPUT"
-        echo "EOF" >> "$GITHUB_OUTPUT"
+        echo "deploy_hook=$DEPLOY_HOOK_URL" >> "$GITHUB_OUTPUT"
+        echo "app_url=$APP_URL" >> "$GITHUB_OUTPUT"
         
         echo "🔍 DEBUG - GITHUB_OUTPUT file contents:"
         cat "$GITHUB_OUTPUT" | tail -20
         # If required secrets are missing, mark this run to skip deploy.
         if [ -z "$APP_URL" ] || [ -z "$DEPLOY_HOOK_URL" ]; then
           echo "⚠️ WARNING: Deployment secrets missing or empty. Skipping deploy step."
-          echo "skip_deploy<<EOF" >> "$GITHUB_OUTPUT"
-          echo "true" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "skip_deploy=true" >> "$GITHUB_OUTPUT"
 
           # Provide a readable reason for logs and dashboard
           if [ -z "$APP_URL" ] && [ -z "$DEPLOY_HOOK_URL" ]; then
@@ -448,15 +427,10 @@ jobs:
             SKIP_REASON="Missing RENDER_DEPLOY_HOOK_URL (or RENDER_DEPLOY_HOOK_URL_DEV)."
           fi
 
-          echo "skip_reason<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$SKIP_REASON" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
+          echo "skip_reason=$SKIP_REASON" >> "$GITHUB_OUTPUT"
           echo "🔍 DEBUG - Skip reason: $SKIP_REASON"
         else
-          echo "skip_deploy<<EOF" >> "$GITHUB_OUTPUT"
-          echo "false" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "skip_deploy=false" >> "$GITHUB_OUTPUT"
         fi
     
     - name: � Verify Step Outputs
