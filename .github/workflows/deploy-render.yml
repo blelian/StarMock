@@ -58,7 +58,7 @@ jobs:
         git config --global core.eol lf
     
     - name: ⚙️ Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '20.x'
         cache: 'npm'
@@ -118,7 +118,7 @@ jobs:
         git config --global core.eol lf
     
     - name: ⚙️ Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '20.x'
         cache: 'npm'
@@ -297,7 +297,7 @@ jobs:
         git config --global core.eol lf
     
     - name: ⚙️ Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '20.x'
         cache: 'npm'
@@ -332,7 +332,7 @@ jobs:
         git config --global core.eol lf
     
     - name: ⚙️ Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '20.x'
         cache: 'npm'
