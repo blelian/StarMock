@@ -22,6 +22,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   const progressTextEl = document.getElementById('feedback-progress-text')
   const feedbackActionsEl = document.getElementById('feedback-actions')
   const feedbackRetryBtn = document.getElementById('feedback-retry-btn')
+  const providerBadgeEl = document.getElementById('provider-badge')
+  const providerBadgeLabelEl = document.getElementById('provider-badge-label')
+  const providerBadgeIconEl = document.getElementById('provider-badge-icon')
+  const providerBadgeTextEl = document.getElementById('provider-badge-text')
+  const strengthsEl = document.getElementById('feedback-strengths')
+  const airRoleFitSummaryPanelEl = document.getElementById(
+    'air-role-fit-summary-panel'
+  )
+  const airRoleFitSummaryEl = document.getElementById('air-role-fit-summary')
+  const perQuestionFeedbackEl = document.getElementById(
+    'per-question-feedback'
+  )
+  const perQuestionCardsEl = document.getElementById('per-question-cards')
 
   if (
     !messageEl ||
@@ -297,6 +310,155 @@ document.addEventListener('DOMContentLoaded', async () => {
       .join('')
   }
 
+  const renderProviderBadge = (feedbackItems) => {
+    if (
+      !providerBadgeEl ||
+      !providerBadgeLabelEl ||
+      !providerBadgeIconEl ||
+      !providerBadgeTextEl
+    ) {
+      return
+    }
+
+    const providers = new Set(
+      feedbackItems
+        .map((item) => item?.evaluatorType)
+        .filter((type) => typeof type === 'string')
+    )
+
+    if (!providers.size) {
+      providerBadgeEl.classList.add('hidden')
+      return
+    }
+
+    const isAI = providers.has('ai_model')
+    const isFallback = feedbackItems.some(
+      (item) => item?.evaluatorMetadata?.fallback === true
+    )
+
+    if (isAI && !isFallback) {
+      providerBadgeIconEl.textContent = 'auto_awesome'
+      providerBadgeTextEl.textContent = 'AI-Powered Feedback'
+      providerBadgeLabelEl.className =
+        'inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full uppercase bg-violet-500/15 text-violet-400'
+    } else if (isAI && isFallback) {
+      providerBadgeIconEl.textContent = 'auto_awesome'
+      providerBadgeTextEl.textContent = 'AI + Rule-Based Feedback'
+      providerBadgeLabelEl.className =
+        'inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full uppercase bg-amber-500/15 text-amber-400'
+    } else {
+      providerBadgeIconEl.textContent = 'rule'
+      providerBadgeTextEl.textContent = 'Rule-Based Feedback'
+      providerBadgeLabelEl.className =
+        'inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full uppercase bg-primary/10 text-primary'
+    }
+
+    providerBadgeEl.classList.remove('hidden')
+    providerBadgeEl.style.display = 'flex'
+  }
+
+  const renderStrengths = (feedbackItems) => {
+    if (!strengthsEl) return
+
+    const strengthPool = feedbackItems.flatMap((item) =>
+      Array.isArray(item.strengths) ? item.strengths : []
+    )
+    const uniqueStrengths = [...new Set(strengthPool)].slice(0, 4)
+
+    if (!uniqueStrengths.length) {
+      strengthsEl.innerHTML =
+        '<li>Complete more responses to see identified strengths.</li>'
+      return
+    }
+
+    strengthsEl.innerHTML = uniqueStrengths
+      .map((strength) => `<li>${escapeHtml(strength)}</li>`)
+      .join('')
+  }
+
+  const renderRoleFitSummary = (feedbackItems) => {
+    if (!airRoleFitSummaryPanelEl || !airRoleFitSummaryEl) return
+
+    const summaries = feedbackItems
+      .map((item) => item?.analysis?.roleFitSummary)
+      .filter((summary) => typeof summary === 'string' && summary.trim())
+
+    if (!summaries.length) {
+      airRoleFitSummaryPanelEl.classList.add('hidden')
+      return
+    }
+
+    airRoleFitSummaryEl.textContent = summaries[0]
+    airRoleFitSummaryPanelEl.classList.remove('hidden')
+  }
+
+  const renderPerQuestionFeedback = (feedbackItems) => {
+    if (!perQuestionFeedbackEl || !perQuestionCardsEl) return
+
+    const validItems = feedbackItems.filter(
+      (item) => item?.scores && typeof item.scores.overall === 'number'
+    )
+
+    if (!validItems.length) {
+      perQuestionFeedbackEl.classList.add('hidden')
+      return
+    }
+
+    perQuestionCardsEl.innerHTML = validItems
+      .map((item, index) => {
+        const questionLabel =
+          typeof item.questionText === 'string' && item.questionText.trim()
+            ? item.questionText.trim()
+            : `Question ${index + 1}`
+        const overall = toPercent(item.scores.overall) ?? 0
+        const tone = scoreTone(overall)
+        const label = scoreLabel(overall)
+        const starEntries = [
+          ['S', item.scores.situation],
+          ['T', item.scores.task],
+          ['A', item.scores.action],
+          ['R', item.scores.result],
+        ]
+        const itemSuggestions = Array.isArray(item.suggestions)
+          ? item.suggestions.slice(0, 2)
+          : []
+        const itemStrengths = Array.isArray(item.strengths)
+          ? item.strengths.slice(0, 2)
+          : []
+
+        return `
+          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div class="flex items-start justify-between mb-3">
+              <p class="font-semibold text-sm leading-snug flex-1 pr-3">${escapeHtml(questionLabel)}</p>
+              <span class="text-xs font-bold ${tone.labelColor} uppercase whitespace-nowrap">${label} (${overall}%)</span>
+            </div>
+            <div class="flex gap-2 mb-3">
+              ${starEntries
+                .map(([key, value]) => {
+                  const score = toPercent(value) ?? 0
+                  const entryTone = scoreTone(score)
+                  return `<span class="text-xs font-semibold px-2 py-1 rounded-lg ${entryTone.iconColor}">${key}: ${score}%</span>`
+                })
+                .join('')}
+            </div>
+            ${
+              itemStrengths.length
+                ? `<div class="mb-2"><p class="text-xs font-semibold text-emerald-400 mb-1">Strengths</p><ul class="text-xs text-slate-500 dark:text-primary/60 space-y-1">${itemStrengths.map((s) => `<li>• ${escapeHtml(s)}</li>`).join('')}</ul></div>`
+                : ''
+            }
+            ${
+              itemSuggestions.length
+                ? `<div><p class="text-xs font-semibold text-primary mb-1">Suggestions</p><ul class="text-xs text-slate-500 dark:text-primary/60 space-y-1">${itemSuggestions.map((s) => `<li>• ${escapeHtml(s)}</li>`).join('')}</ul></div>`
+                : ''
+            }
+          </div>
+        `
+      })
+      .join('')
+
+    perQuestionFeedbackEl.classList.remove('hidden')
+  }
+
   const resolveSessionId = async () => {
     const fromQuery = new URLSearchParams(window.location.search).get(
       'sessionId'
@@ -460,8 +622,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       renderBreakdown(aggregateScores)
       renderSuggestions(feedbackItems)
+      renderStrengths(feedbackItems)
+      renderProviderBadge(feedbackItems)
       renderAirMetrics(summary)
+      renderRoleFitSummary(feedbackItems)
       renderQuestionMetrics(summary)
+      renderPerQuestionFeedback(feedbackItems)
 
       messageEl.textContent = `Feedback loaded for session ${sessionId.slice(-6)}.`
       showFeedbackActions(false)

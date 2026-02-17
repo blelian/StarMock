@@ -78,6 +78,17 @@
       </div>
 
       <div class="glass-panel rounded-2xl border border-white/5 p-6 space-y-6">
+        <!-- Provider badge -->
+        <div id="provider-badge" class="hidden justify-center">
+          <span
+            id="provider-badge-label"
+            class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full uppercase"
+          >
+            <span id="provider-badge-icon" class="material-icons-round text-sm"></span>
+            <span id="provider-badge-text"></span>
+          </span>
+        </div>
+
         <div class="flex flex-col items-center justify-center py-6">
           <div class="relative flex items-center justify-center">
             <svg class="w-48 h-48 -rotate-90">
@@ -180,6 +191,14 @@
               class="space-y-2 text-sm text-slate-600 dark:text-primary/70"
             ></ul>
           </div>
+
+          <div id="air-role-fit-summary-panel" class="hidden mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="material-icons-round text-primary text-lg">psychology</span>
+              <p class="text-sm font-semibold">AI Role-Fit Assessment</p>
+            </div>
+            <p id="air-role-fit-summary" class="text-sm text-slate-600 dark:text-primary/70 leading-relaxed"></p>
+          </div>
         </section>
 
         <div class="flex items-center justify-between mb-4 px-1">
@@ -214,7 +233,22 @@
         </section>
 
         <div
-          class="mt-8 mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20"
+          class="mt-8 mb-2 p-4 bg-emerald-500/5 rounded-xl border border-emerald-500/20"
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <span class="material-icons-round text-emerald-400 text-xl"
+              >verified</span
+            >
+            <p class="text-sm font-bold text-emerald-400">Strengths</p>
+          </div>
+          <ul
+            id="feedback-strengths"
+            class="text-sm text-slate-600 dark:text-emerald-300/70 space-y-2"
+          ></ul>
+        </div>
+
+        <div
+          class="mt-2 mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20"
         >
           <div class="flex items-center gap-2 mb-2">
             <span class="material-icons-round text-primary text-xl"
@@ -227,6 +261,21 @@
             class="text-sm text-slate-600 dark:text-primary/70 italic space-y-2"
           ></ul>
         </div>
+
+        <!-- Per-question feedback cards -->
+        <section id="per-question-feedback" class="hidden mt-6">
+          <div class="flex items-center justify-between mb-4 px-1">
+            <h3 class="text-lg font-bold leading-tight tracking-tight">
+              Per-Question Feedback
+            </h3>
+            <span
+              class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full uppercase"
+            >
+              Individual
+            </span>
+          </div>
+          <div id="per-question-cards" class="space-y-4"></div>
+        </section>
 
         <!-- Error/retry and navigation actions -->
         <div
