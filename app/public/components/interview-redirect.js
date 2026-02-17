@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const prevQuestionBtn = document.getElementById('prev-question-btn')
   const nextQuestionBtn = document.getElementById('next-question-btn')
   const completeSessionBtn = document.getElementById('complete-session-btn')
-  const newSessionBtn = document.getElementById('new-session-btn')
   const submitBtn = document.getElementById('submit-response-btn')
   const responseInput = document.getElementById('response-input')
   const recordingEmoji = document.getElementById('recording-emoji')
@@ -794,6 +793,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       Array.isArray(sessionQuestions) && currentQuestionIndex > 0
 
     setControlVisibility(startBtn, !hasActiveSession)
+    // Enable Start button when visible — startSession() will auto-fetch
+    // questions if none are prepared yet.
+    if (startBtn && !hasActiveSession) {
+      startBtn.disabled = isRecordingActive
+    }
     setControlVisibility(
       repeatQuestionBtn,
       hasActiveSession && Boolean(currentQuestion)
@@ -811,7 +815,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         sessionQuestions.length > 1
     )
     setControlVisibility(completeSessionBtn, hasActiveSession)
-    setControlVisibility(newSessionBtn, !hasActiveSession)
 
     if (repeatQuestionBtn) {
       repeatQuestionBtn.disabled = !hasAnsweredCurrent || isRecordingActive
@@ -1943,20 +1946,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (startBtn) {
     startBtn.addEventListener('click', startSession)
-  }
-
-  if (newSessionBtn) {
-    newSessionBtn.addEventListener('click', async () => {
-      if (sessionId) {
-        setMessage(
-          'Complete the current session before starting a new one.',
-          true
-        )
-        return
-      }
-      resetResponseDraft(true)
-      await prepareSessionQuestions()
-    })
   }
 
   if (recordToggleBtn) {
