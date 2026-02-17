@@ -19,13 +19,38 @@ const INDUSTRY_REVIEW_LENSES = {
   government: 'policy alignment, public accountability, and stakeholder trust',
   consulting: 'client impact, stakeholder alignment, and structured analysis',
   media: 'audience impact, editorial judgment, and delivery velocity',
+  energy: 'safety protocols, regulatory compliance, and sustainable operations',
+  legal: 'case strategy, regulatory precision, and persuasive advocacy',
+  nonprofit: 'mission alignment, donor stewardship, and resource optimization',
+  'real-estate':
+    'deal negotiation, market analysis, and client relationship management',
+  transportation:
+    'logistics optimization, safety compliance, and route efficiency',
+  hospitality:
+    'guest satisfaction, service recovery, and operational consistency',
+  agriculture:
+    'yield optimization, sustainability practices, and supply chain management',
+  pharmaceutical:
+    'regulatory compliance, clinical rigor, and patient safety standards',
+  telecommunications:
+    'network reliability, customer retention, and technology migration',
+  aerospace:
+    'safety-critical engineering, certification compliance, and system integration',
+  construction:
+    'project scheduling, safety compliance, and stakeholder coordination',
   other:
     'domain-specific constraints, stakeholder impact, and measurable outcomes',
 }
 const SENIORITY_REVIEW_EXPECTATIONS = {
+  intern: 'learning agility, curiosity, and foundational skill demonstration',
   entry: 'foundational execution and learning agility',
   mid: 'independent ownership and cross-functional delivery',
   senior: 'strategic judgment, leadership, and complex decision-making',
+  lead: 'technical vision, team influence, and architectural ownership',
+  director:
+    'organizational strategy, cross-team alignment, and talent development',
+  executive:
+    'enterprise-wide vision, board-level communication, and transformational leadership',
 }
 
 function getQuestionText(question) {
@@ -247,6 +272,9 @@ AIR guidance:
 - Evaluate answer quality in the context of this role and industry.
 - Score stronger when evidence matches the seniority expectation.
 - Penalize generic answers that ignore domain constraints.
+- Reward correct domain terminology and context-aware tradeoffs.
+- Check for industry-specific best practices (e.g., "data-driven" in tech, "patient-centered" in healthcare, "risk-adjusted" in finance).
+- Assess whether the candidate demonstrates ownership, customer focus, and measurable outcomes appropriate for a ${summary.seniority || 'mid'}-level ${summary.roleLabel || 'professional'}.
 - Keep STAR scoring objective and role-appropriate.
 - Include concise role-fit observations in "analysis".
 `.trim()

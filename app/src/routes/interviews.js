@@ -855,6 +855,41 @@ router.get('/questions', requireAuth, async (req, res) => {
       filter.difficulty = difficulty
     }
 
+    // Cross-session deduplication: exclude questions the user has already seen
+    // in recent sessions so they get fresh questions every time.
+    const MAX_HISTORY_SESSIONS_FOR_DEDUP = 10
+    try {
+      const recentSessions = await InterviewSession.find({
+        userId: req.userId,
+        status: { $in: ['completed', 'in_progress'] },
+      })
+        .sort({ startedAt: -1 })
+        .limit(MAX_HISTORY_SESSIONS_FOR_DEDUP)
+        .select('questions')
+        .lean()
+
+      const previouslyAskedIds = new Set()
+      for (const session of recentSessions) {
+        if (Array.isArray(session.questions)) {
+          for (const qId of session.questions) {
+            previouslyAskedIds.add(String(qId))
+          }
+        }
+      }
+
+      if (previouslyAskedIds.size > 0) {
+        const excludeIds = Array.from(previouslyAskedIds).map(
+          (id) => new (InterviewSession.base.Types.ObjectId)(id)
+        )
+        filter._id = { $nin: excludeIds }
+      }
+    } catch (dedupError) {
+      // Non-critical: if dedup lookup fails, continue without exclusion
+      console.warn(
+        `[questions] Cross-session dedup lookup failed: ${dedupError.message}`
+      )
+    }
+
     const isAirMode = parseBooleanFlag(req.query.airMode)
     let airContext = null
     let sourceBreakdown = {

@@ -20,8 +20,8 @@ const DEFAULT_FLAGS = {
   airQuestionGeneration: {
     envEnabledKey: 'FEATURE_AIR_QUESTION_GENERATION_ENABLED',
     envRolloutKey: 'FEATURE_AIR_QUESTION_GENERATION_ROLLOUT_PERCENT',
-    defaultEnabled: false,
-    defaultRolloutPercent: 0,
+    defaultEnabled: true,
+    defaultRolloutPercent: 100,
   },
 }
 

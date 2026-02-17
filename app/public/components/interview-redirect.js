@@ -43,6 +43,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   const careerContextEditBtn = document.getElementById(
     'career-context-edit-btn'
   )
+  // ── Wizard UI elements ───────────────────────────────────────────
+  const wizardBackBtn = document.getElementById('wizard-back-btn')
+  const wizardNextBtn = document.getElementById('wizard-next-btn')
+  const wizardSkipStepBtn = document.getElementById('wizard-skip-step-btn')
+  const wizardNextLabel = document.getElementById('wizard-next-label')
+  const wizardNextIcon = document.getElementById('wizard-next-icon')
+  const wizardStepLabel = document.getElementById('wizard-step-label')
+  const jobTitleAutocomplete = document.getElementById(
+    'job-title-autocomplete'
+  )
+  const jobTitleMatchHint = document.getElementById('job-title-match-hint')
+  const industryGrid = document.getElementById('industry-grid')
+  const seniorityTrack = document.getElementById('seniority-track')
+  const jdCharCount = document.getElementById('jd-char-count')
+  const summaryRole = document.getElementById('summary-role')
+  const summaryIndustry = document.getElementById('summary-industry')
+  const summarySeniority = document.getElementById('summary-seniority')
+  const wizardProgressBars = [1, 2, 3, 4].map((n) =>
+    document.getElementById(`wizard-progress-${n}`)
+  )
   const readAloudBtn = document.getElementById('read-aloud-btn')
   const readAloudLabel = document.getElementById('read-aloud-label')
 
@@ -377,8 +397,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (careerProfileSubmitBtn) {
       careerProfileSubmitBtn.disabled = isSubmitting
     }
-    if (careerProfileSkipBtn) {
-      careerProfileSkipBtn.disabled = isSubmitting
+    if (wizardNextBtn) {
+      wizardNextBtn.disabled = isSubmitting
+    }
+    if (wizardBackBtn) {
+      wizardBackBtn.disabled = isSubmitting
     }
   }
 
@@ -419,6 +442,501 @@ document.addEventListener('DOMContentLoaded', async () => {
     seniority: toNonEmptyString(careerSenioritySelect?.value).toLowerCase(),
     jobDescriptionText: toNonEmptyString(careerJobDescriptionInput?.value),
   })
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Career Profile Wizard — multi-step engine
+  // ═══════════════════════════════════════════════════════════════════
+
+  const WIZARD_TOTAL_STEPS = 4
+  let wizardCurrentStep = 1
+
+  // ── Static data (mirrored from airProfiles.js for client use) ────
+  const ROLE_CATALOG = [
+    { id: 'software_engineer', label: 'Software Engineer', aliases: ['software engineer','software developer','full stack developer','full stack engineer','application engineer','developer','sde','web developer'] },
+    { id: 'frontend_developer', label: 'Frontend Developer', aliases: ['frontend developer','front-end developer','frontend engineer','front-end engineer','ui engineer','ui developer'] },
+    { id: 'backend_developer', label: 'Backend Developer', aliases: ['backend developer','back-end developer','backend engineer','back-end engineer','api engineer','platform engineer','server engineer'] },
+    { id: 'devops_engineer', label: 'DevOps Engineer', aliases: ['devops engineer','site reliability engineer','sre','infrastructure engineer','cloud engineer','platform engineer','systems engineer'] },
+    { id: 'qa_engineer', label: 'QA Engineer', aliases: ['qa engineer','quality assurance engineer','test engineer','sdet','software tester','automation tester'] },
+    { id: 'mobile_developer', label: 'Mobile Developer', aliases: ['mobile developer','mobile engineer','ios developer','android developer','flutter developer','react native developer'] },
+    { id: 'ml_engineer', label: 'Machine Learning Engineer', aliases: ['machine learning engineer','ml engineer','ai engineer','deep learning engineer'] },
+    { id: 'security_engineer', label: 'Security Engineer', aliases: ['security engineer','cybersecurity engineer','information security analyst','appsec engineer','security analyst'] },
+    { id: 'data_analyst', label: 'Data Analyst', aliases: ['data analyst','business intelligence analyst','bi analyst','analytics analyst','reporting analyst'] },
+    { id: 'data_scientist', label: 'Data Scientist', aliases: ['data scientist','ml scientist','machine learning scientist','research scientist','applied scientist'] },
+    { id: 'data_engineer', label: 'Data Engineer', aliases: ['data engineer','etl developer','data platform engineer','analytics engineer'] },
+    { id: 'product_manager', label: 'Product Manager', aliases: ['product manager','pm','technical product manager','product owner','associate product manager','apm'] },
+    { id: 'ux_designer', label: 'UX Designer', aliases: ['ux designer','ui ux designer','product designer','interaction designer','user experience designer','visual designer'] },
+    { id: 'ux_researcher', label: 'UX Researcher', aliases: ['ux researcher','user researcher','design researcher'] },
+    { id: 'project_manager', label: 'Project Manager', aliases: ['project manager','program manager','delivery manager','scrum master','agile coach'] },
+    { id: 'engineering_manager', label: 'Engineering Manager', aliases: ['engineering manager','software engineering manager','dev manager','development manager','tech lead manager'] },
+    { id: 'business_analyst', label: 'Business Analyst', aliases: ['business analyst','systems analyst','process analyst','business systems analyst'] },
+    { id: 'marketing_manager', label: 'Marketing Manager', aliases: ['marketing manager','digital marketing manager','growth marketer','marketing specialist','brand manager','content strategist'] },
+    { id: 'sales_representative', label: 'Sales Representative', aliases: ['sales representative','account executive','sales engineer','business development representative','bdr','sdr','sales manager'] },
+    { id: 'hr_specialist', label: 'HR Specialist', aliases: ['hr specialist','human resources specialist','hr generalist','people operations','talent acquisition','recruiter','hr manager'] },
+    { id: 'financial_analyst', label: 'Financial Analyst', aliases: ['financial analyst','finance analyst','investment analyst','fp&a analyst','accountant','auditor'] },
+    { id: 'operations_manager', label: 'Operations Manager', aliases: ['operations manager','operations analyst','supply chain manager','logistics manager','warehouse manager'] },
+    { id: 'customer_success', label: 'Customer Success Manager', aliases: ['customer success manager','csm','customer support manager','client success','account manager'] },
+    { id: 'consultant', label: 'Consultant', aliases: ['consultant','management consultant','strategy consultant','it consultant','advisory'] },
+    { id: 'teacher', label: 'Teacher / Educator', aliases: ['teacher','educator','professor','instructor','lecturer','tutor'] },
+    { id: 'nurse', label: 'Nurse', aliases: ['nurse','registered nurse','rn','lpn','nurse practitioner','clinical nurse'] },
+    { id: 'lawyer', label: 'Lawyer', aliases: ['lawyer','attorney','legal counsel','paralegal','law clerk','solicitor'] },
+  ]
+
+  const INDUSTRY_DATA = [
+    { value: 'technology', label: 'Technology', emoji: '💻' },
+    { value: 'finance', label: 'Finance', emoji: '🏦' },
+    { value: 'healthcare', label: 'Healthcare', emoji: '🏥' },
+    { value: 'education', label: 'Education', emoji: '🎓' },
+    { value: 'retail', label: 'Retail', emoji: '🛒' },
+    { value: 'manufacturing', label: 'Manufacturing', emoji: '🏭' },
+    { value: 'government', label: 'Government', emoji: '🏛️' },
+    { value: 'consulting', label: 'Consulting', emoji: '📊' },
+    { value: 'media', label: 'Media', emoji: '🎬' },
+    { value: 'energy', label: 'Energy', emoji: '⚡' },
+    { value: 'legal', label: 'Legal', emoji: '⚖️' },
+    { value: 'nonprofit', label: 'Nonprofit', emoji: '🤝' },
+    { value: 'real-estate', label: 'Real Estate', emoji: '🏠' },
+    { value: 'transportation', label: 'Transport', emoji: '🚀' },
+    { value: 'hospitality', label: 'Hospitality', emoji: '🏨' },
+    { value: 'agriculture', label: 'Agriculture', emoji: '🌾' },
+    { value: 'pharmaceutical', label: 'Pharma', emoji: '💊' },
+    { value: 'telecommunications', label: 'Telecom', emoji: '📡' },
+    { value: 'aerospace', label: 'Aerospace', emoji: '✈️' },
+    { value: 'construction', label: 'Construction', emoji: '🏗️' },
+    { value: 'other', label: 'Other', emoji: '🌐' },
+  ]
+
+  const SENIORITY_DATA = [
+    { value: 'intern', label: 'Intern', desc: 'Learning the basics', icon: '🌱' },
+    { value: 'entry', label: 'Entry Level', desc: '0-2 years experience', icon: '🔰' },
+    { value: 'mid', label: 'Mid Level', desc: '2-5 years experience', icon: '⭐' },
+    { value: 'senior', label: 'Senior', desc: '5-10 years experience', icon: '🏅' },
+    { value: 'lead', label: 'Lead / Staff', desc: 'Technical leadership', icon: '🎯' },
+    { value: 'director', label: 'Director', desc: 'Org-level strategy', icon: '👔' },
+    { value: 'executive', label: 'Executive / VP+', desc: 'C-suite / VP', icon: '🏆' },
+  ]
+
+  // ── Render industry grid ─────────────────────────────────────────
+  const renderIndustryGrid = () => {
+    if (!industryGrid) return
+    industryGrid.innerHTML = ''
+
+    // Also populate the hidden <select> for form compatibility
+    if (careerIndustrySelect) {
+      careerIndustrySelect.innerHTML = '<option value="">Select industry</option>'
+    }
+
+    INDUSTRY_DATA.forEach((ind) => {
+      // Grid card
+      const card = document.createElement('div')
+      card.className = 'industry-card'
+      card.setAttribute('role', 'radio')
+      card.setAttribute('aria-checked', 'false')
+      card.setAttribute('tabindex', '0')
+      card.setAttribute('data-value', ind.value)
+      card.innerHTML = `<span class="industry-emoji">${ind.emoji}</span><span class="industry-label">${ind.label}</span>`
+      card.addEventListener('click', () => selectIndustry(ind.value))
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          selectIndustry(ind.value)
+        }
+      })
+      industryGrid.appendChild(card)
+
+      // Hidden <select> option
+      if (careerIndustrySelect) {
+        const opt = document.createElement('option')
+        opt.value = ind.value
+        opt.textContent = ind.label
+        careerIndustrySelect.appendChild(opt)
+      }
+    })
+  }
+
+  const selectIndustry = (value) => {
+    if (!industryGrid) return
+    industryGrid.querySelectorAll('.industry-card').forEach((c) => {
+      c.setAttribute('aria-checked', c.dataset.value === value ? 'true' : 'false')
+    })
+    if (careerIndustrySelect) careerIndustrySelect.value = value
+    updateWizardNav()
+  }
+
+  // ── Render seniority track ───────────────────────────────────────
+  const renderSeniorityTrack = () => {
+    if (!seniorityTrack) return
+    seniorityTrack.innerHTML = ''
+
+    if (careerSenioritySelect) {
+      careerSenioritySelect.innerHTML = '<option value="">Select level</option>'
+    }
+
+    SENIORITY_DATA.forEach((s) => {
+      const item = document.createElement('div')
+      item.className = 'seniority-item'
+      item.setAttribute('role', 'radio')
+      item.setAttribute('aria-checked', 'false')
+      item.setAttribute('tabindex', '0')
+      item.setAttribute('data-value', s.value)
+      item.innerHTML =
+        `<span class="seniority-dot"></span>` +
+        `<span class="seniority-label">${s.icon} ${s.label}</span>` +
+        `<span class="seniority-desc">${s.desc}</span>`
+      item.addEventListener('click', () => selectSeniority(s.value))
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          selectSeniority(s.value)
+        }
+      })
+      seniorityTrack.appendChild(item)
+
+      if (careerSenioritySelect) {
+        const opt = document.createElement('option')
+        opt.value = s.value
+        opt.textContent = s.label
+        careerSenioritySelect.appendChild(opt)
+      }
+    })
+  }
+
+  const selectSeniority = (value) => {
+    if (!seniorityTrack) return
+    seniorityTrack.querySelectorAll('.seniority-item').forEach((item) => {
+      item.setAttribute('aria-checked', item.dataset.value === value ? 'true' : 'false')
+    })
+    if (careerSenioritySelect) careerSenioritySelect.value = value
+    updateWizardNav()
+  }
+
+  // ── Autocomplete for job title ───────────────────────────────────
+  let autocompleteActiveIndex = -1
+
+  const fuzzyMatch = (query, target) => {
+    const q = query.toLowerCase()
+    const t = target.toLowerCase()
+    if (t.includes(q)) return true
+    // token overlap
+    const qTokens = q.split(/\s+/).filter(Boolean)
+    return qTokens.every((token) => t.includes(token))
+  }
+
+  const getAutocompleteResults = (query) => {
+    if (!query || query.length < 2) return []
+    const results = []
+    for (const role of ROLE_CATALOG) {
+      if (
+        fuzzyMatch(query, role.label) ||
+        role.aliases.some((alias) => fuzzyMatch(query, alias))
+      ) {
+        results.push(role)
+      }
+    }
+    return results.slice(0, 8)
+  }
+
+  const renderAutocomplete = (results) => {
+    if (!jobTitleAutocomplete) return
+    if (!results.length) {
+      jobTitleAutocomplete.classList.add('hidden')
+      if (careerJobTitleInput) careerJobTitleInput.setAttribute('aria-expanded', 'false')
+      autocompleteActiveIndex = -1
+      return
+    }
+
+    jobTitleAutocomplete.innerHTML = ''
+    results.forEach((role, idx) => {
+      const item = document.createElement('div')
+      item.className = 'autocomplete-item'
+      item.setAttribute('role', 'option')
+      item.setAttribute('data-index', idx)
+      item.setAttribute('data-label', role.label)
+      const aliasPreview = role.aliases.slice(0, 2).join(', ')
+      item.innerHTML =
+        `<span class="ac-label">${role.label}</span>` +
+        `<span class="ac-aliases">${aliasPreview}</span>`
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+        selectAutocompleteItem(role.label)
+      })
+      jobTitleAutocomplete.appendChild(item)
+    })
+    jobTitleAutocomplete.classList.remove('hidden')
+    if (careerJobTitleInput) careerJobTitleInput.setAttribute('aria-expanded', 'true')
+    autocompleteActiveIndex = -1
+  }
+
+  const selectAutocompleteItem = (label) => {
+    if (careerJobTitleInput) {
+      careerJobTitleInput.value = label
+    }
+    if (jobTitleAutocomplete) jobTitleAutocomplete.classList.add('hidden')
+    if (careerJobTitleInput) careerJobTitleInput.setAttribute('aria-expanded', 'false')
+    autocompleteActiveIndex = -1
+    showMatchHint(label)
+    updateWizardNav()
+  }
+
+  const showMatchHint = (title) => {
+    if (!jobTitleMatchHint) return
+    const matched = ROLE_CATALOG.find(
+      (r) =>
+        r.label.toLowerCase() === title.toLowerCase() ||
+        r.aliases.some((a) => a.toLowerCase() === title.toLowerCase())
+    )
+    if (matched) {
+      jobTitleMatchHint.textContent = `✓ Matched to "${matched.label}" competency framework`
+      jobTitleMatchHint.className = 'mt-3 text-xs font-semibold text-primary'
+      jobTitleMatchHint.classList.remove('hidden')
+    } else if (title.trim().length >= 2) {
+      jobTitleMatchHint.textContent = '⚡ Custom role — we\'ll use a general STAR framework'
+      jobTitleMatchHint.className = 'mt-3 text-xs font-semibold text-amber-400'
+      jobTitleMatchHint.classList.remove('hidden')
+    } else {
+      jobTitleMatchHint.classList.add('hidden')
+    }
+  }
+
+  // Bind autocomplete events
+  if (careerJobTitleInput) {
+    careerJobTitleInput.addEventListener('input', () => {
+      const query = careerJobTitleInput.value.trim()
+      const results = getAutocompleteResults(query)
+      renderAutocomplete(results)
+      showMatchHint(query)
+      updateWizardNav()
+    })
+
+    careerJobTitleInput.addEventListener('keydown', (e) => {
+      if (!jobTitleAutocomplete || jobTitleAutocomplete.classList.contains('hidden')) {
+        return
+      }
+      const items = jobTitleAutocomplete.querySelectorAll('.autocomplete-item')
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        autocompleteActiveIndex = Math.min(autocompleteActiveIndex + 1, items.length - 1)
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        autocompleteActiveIndex = Math.max(autocompleteActiveIndex - 1, 0)
+      } else if (e.key === 'Enter' && autocompleteActiveIndex >= 0) {
+        e.preventDefault()
+        const activeItem = items[autocompleteActiveIndex]
+        if (activeItem) selectAutocompleteItem(activeItem.dataset.label)
+        return
+      } else if (e.key === 'Escape') {
+        jobTitleAutocomplete.classList.add('hidden')
+        careerJobTitleInput.setAttribute('aria-expanded', 'false')
+        autocompleteActiveIndex = -1
+        return
+      } else {
+        return
+      }
+      // Highlight active
+      items.forEach((it, i) => {
+        it.setAttribute('data-active', i === autocompleteActiveIndex ? 'true' : 'false')
+      })
+      if (items[autocompleteActiveIndex]) {
+        items[autocompleteActiveIndex].scrollIntoView({ block: 'nearest' })
+      }
+    })
+
+    careerJobTitleInput.addEventListener('blur', () => {
+      // small delay so mousedown on autocomplete fires first
+      setTimeout(() => {
+        if (jobTitleAutocomplete) jobTitleAutocomplete.classList.add('hidden')
+        if (careerJobTitleInput) careerJobTitleInput.setAttribute('aria-expanded', 'false')
+      }, 150)
+    })
+  }
+
+  // ── JD character count ───────────────────────────────────────────
+  if (careerJobDescriptionInput && jdCharCount) {
+    careerJobDescriptionInput.addEventListener('input', () => {
+      jdCharCount.textContent = careerJobDescriptionInput.value.length
+    })
+  }
+
+  // ── Wizard navigation engine ─────────────────────────────────────
+  const getWizardStepEl = (step) => document.getElementById(`wizard-step-${step}`)
+
+  const isStepValid = (step) => {
+    switch (step) {
+      case 1:
+        return (careerJobTitleInput?.value?.trim().length || 0) >= 2
+      case 2:
+        return Boolean(careerIndustrySelect?.value)
+      case 3:
+        return Boolean(careerSenioritySelect?.value)
+      case 4:
+        return true // JD is optional
+      default:
+        return false
+    }
+  }
+
+  const updateProgressBar = (step) => {
+    wizardProgressBars.forEach((bar, idx) => {
+      if (!bar) return
+      const segStep = idx + 1
+      if (segStep <= step) {
+        bar.classList.remove('bg-slate-700')
+        bar.classList.add('bg-primary')
+      } else {
+        bar.classList.remove('bg-primary')
+        bar.classList.add('bg-slate-700')
+      }
+    })
+    if (wizardStepLabel) {
+      wizardStepLabel.textContent = `Step ${step} of ${WIZARD_TOTAL_STEPS}`
+    }
+  }
+
+  const updateWizardNav = () => {
+    const valid = isStepValid(wizardCurrentStep)
+    const isLast = wizardCurrentStep === WIZARD_TOTAL_STEPS
+
+    // Back button
+    if (wizardBackBtn) {
+      wizardBackBtn.classList.toggle('invisible', wizardCurrentStep === 1)
+    }
+
+    // Next button
+    if (wizardNextBtn) {
+      wizardNextBtn.disabled = !valid
+      wizardNextBtn.classList.toggle('hidden', isLast)
+    }
+
+    // Submit button (final step)
+    if (careerProfileSubmitBtn) {
+      if (isLast) {
+        careerProfileSubmitBtn.classList.remove('hidden')
+        careerProfileSubmitBtn.classList.add('flex')
+      } else {
+        careerProfileSubmitBtn.classList.add('hidden')
+        careerProfileSubmitBtn.classList.remove('flex')
+      }
+    }
+
+    // Skip button — only on step 4 (JD is optional)
+    if (wizardSkipStepBtn) {
+      wizardSkipStepBtn.classList.toggle('hidden', wizardCurrentStep !== 4)
+    }
+
+    // Update summary on step 4
+    if (wizardCurrentStep === WIZARD_TOTAL_STEPS) {
+      updateWizardSummary()
+    }
+  }
+
+  const updateWizardSummary = () => {
+    const title = careerJobTitleInput?.value?.trim() || '—'
+    const indValue = careerIndustrySelect?.value || ''
+    const senValue = careerSenioritySelect?.value || ''
+
+    const indData = INDUSTRY_DATA.find((i) => i.value === indValue)
+    const senData = SENIORITY_DATA.find((s) => s.value === senValue)
+
+    if (summaryRole) summaryRole.textContent = title
+    if (summaryIndustry) summaryIndustry.textContent = indData ? `${indData.emoji} ${indData.label}` : '—'
+    if (summarySeniority) summarySeniority.textContent = senData ? `${senData.icon} ${senData.label}` : '—'
+  }
+
+  const goToStep = (step, direction = 'forward') => {
+    if (step < 1 || step > WIZARD_TOTAL_STEPS) return
+
+    const currentEl = getWizardStepEl(wizardCurrentStep)
+    const targetEl = getWizardStepEl(step)
+    if (!currentEl || !targetEl) return
+
+    // Exit animation
+    currentEl.classList.add('wizard-step-exit')
+    currentEl.addEventListener(
+      'animationend',
+      () => {
+        currentEl.classList.add('hidden')
+        currentEl.classList.remove('wizard-step-exit')
+
+        // Enter new step
+        targetEl.classList.remove('hidden')
+        targetEl.classList.remove('wizard-step-enter-back', 'wizard-step')
+        targetEl.classList.add(
+          direction === 'back' ? 'wizard-step-enter-back' : 'wizard-step'
+        )
+
+        wizardCurrentStep = step
+        updateProgressBar(step)
+        updateWizardNav()
+
+        // Auto-focus appropriate element
+        if (step === 1 && careerJobTitleInput) careerJobTitleInput.focus()
+      },
+      { once: true }
+    )
+  }
+
+  // ── Wizard button handlers ───────────────────────────────────────
+  if (wizardNextBtn) {
+    wizardNextBtn.addEventListener('click', () => {
+      if (!isStepValid(wizardCurrentStep)) return
+      goToStep(wizardCurrentStep + 1, 'forward')
+    })
+  }
+
+  if (wizardBackBtn) {
+    wizardBackBtn.addEventListener('click', () => {
+      goToStep(wizardCurrentStep - 1, 'back')
+    })
+  }
+
+  if (wizardSkipStepBtn) {
+    // Skip on step 4 = submit (JD is optional)
+    wizardSkipStepBtn.addEventListener('click', () => {
+      if (careerProfileForm) {
+        careerProfileForm.requestSubmit()
+      }
+    })
+  }
+
+  // ── Enhanced fillCareerProfileInputs for wizard ──────────────────
+  const fillWizardFromProfile = (profile) => {
+    fillCareerProfileInputs(profile)
+
+    // Sync visual selections
+    if (profile?.industry) {
+      selectIndustry(profile.industry)
+    }
+    if (profile?.seniority) {
+      selectSeniority(profile.seniority)
+    }
+    if (profile?.targetJobTitle) {
+      showMatchHint(profile.targetJobTitle)
+    }
+    if (profile?.jobDescriptionText && jdCharCount) {
+      jdCharCount.textContent = profile.jobDescriptionText.length
+    }
+  }
+
+  // ── Reset wizard to step 1 ──────────────────────────────────────
+  const resetWizardToStep1 = () => {
+    for (let i = 1; i <= WIZARD_TOTAL_STEPS; i++) {
+      const stepEl = getWizardStepEl(i)
+      if (!stepEl) continue
+      if (i === 1) {
+        stepEl.classList.remove('hidden')
+      } else {
+        stepEl.classList.add('hidden')
+      }
+    }
+    wizardCurrentStep = 1
+    updateProgressBar(1)
+    updateWizardNav()
+  }
+
+  // ── Initialize wizard visuals on load ────────────────────────────
+  renderIndustryGrid()
+  renderSeniorityTrack()
+
+  // ═══════════════════════════════════════════════════════════════════
 
   const toQuestionId = (question) => {
     if (!question) return ''
@@ -1475,26 +1993,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     const profileResult = await loadCareerProfile()
 
     if (!profileResult.ok) {
-      // Keep interview usable if profile API is unavailable.
-      await startGenericMode()
+      // Profile API unavailable — show the wizard so user can still fill it
+      if (careerProfileOverlay) {
+        resetWizardToStep1()
+        toggleCareerProfileOverlay(true)
+        setMessage(
+          'Set your target role, industry, and seniority to begin your personalized interview practice.'
+        )
+      } else {
+        await startGenericMode()
+      }
       return
     }
 
-    fillCareerProfileInputs(profileResult.profile)
+    fillWizardFromProfile(profileResult.profile)
 
     if (profileResult.profileComplete) {
       await startAirMode(profileResult.profile)
       return
     }
 
+    // Profile is incomplete — require the user to fill it before proceeding
     if (!careerProfileOverlay) {
       await startGenericMode()
       return
     }
 
+    resetWizardToStep1()
     toggleCareerProfileOverlay(true)
     setMessage(
-      'Set your target role to enable AIR prompts, or skip to continue in generic mode.'
+      'Set your target role, industry, and seniority to begin your personalized interview practice.'
     )
   }
 
@@ -1528,17 +2056,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
   }
 
-  if (careerProfileSkipBtn) {
-    careerProfileSkipBtn.addEventListener('click', async () => {
-      clearCareerProfileMessage()
-      setCareerProfileSubmitting(true)
-      try {
-        await startGenericMode()
-      } finally {
-        setCareerProfileSubmitting(false)
-      }
-    })
-  }
+  // Note: careerProfileSkipBtn no longer exists in the wizard UI.
+  // The wizard requires completing all 3 required fields before submitting.
 
   if (careerContextEditBtn) {
     careerContextEditBtn.addEventListener('click', () => {
@@ -1550,8 +2069,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         return
       }
 
-      fillCareerProfileInputs(careerProfile)
+      fillWizardFromProfile(careerProfile)
       clearCareerProfileMessage()
+      resetWizardToStep1()
       toggleCareerProfileOverlay(true)
       setMessage('Update your role profile and save to refresh AIR prompts.')
     })

@@ -45,12 +45,38 @@ const INDUSTRY_FOCUS_AREAS = {
   consulting:
     'client outcomes, stakeholder alignment, and structured problem solving',
   media: 'audience engagement, editorial judgment, and delivery speed',
+  energy: 'safety protocols, regulatory compliance, and sustainable operations',
+  legal: 'case strategy, regulatory precision, and client advocacy',
+  nonprofit: 'mission alignment, donor stewardship, and resource optimization',
+  'real-estate':
+    'deal negotiation, market analysis, and client relationship management',
+  transportation:
+    'logistics optimization, safety compliance, and route efficiency',
+  hospitality:
+    'guest satisfaction, service recovery, and operational consistency',
+  agriculture:
+    'yield optimization, sustainability practices, and supply chain management',
+  pharmaceutical:
+    'regulatory compliance, clinical rigor, and patient safety standards',
+  telecommunications:
+    'network reliability, customer retention, and technology migration',
+  aerospace:
+    'safety-critical engineering, certification compliance, and system integration',
+  construction:
+    'project scheduling, safety compliance, and stakeholder coordination',
   other: 'domain constraints, stakeholder impact, and measurable outcomes',
 }
 const SENIORITY_EXPECTATIONS = {
+  intern:
+    'learning agility, curiosity, willingness to ask questions, and foundational skills',
   entry: 'foundational execution, collaboration, and learning agility',
   mid: 'independent ownership, prioritization, and cross-functional delivery',
   senior: 'strategic leadership, mentoring, and complex decision-making',
+  lead: 'technical vision, team influence, and architectural ownership',
+  director:
+    'organizational strategy, cross-team alignment, and talent development',
+  executive:
+    'enterprise-wide vision, board-level communication, and transformational leadership',
 }
 
 function toPositiveInteger(value, fallback) {
@@ -263,7 +289,7 @@ function buildPrompt({
       : 'Set realistic interview difficulty for the role and seniority.'
 
   return `
-Generate ${count} realistic mock interview questions.
+Generate ${count} realistic mock interview questions for a candidate applying for a specific role.
 Return ONLY strict JSON with this exact shape:
 {
   "questions": [
@@ -288,20 +314,32 @@ AIR context:
 - Raw target job title: ${airContext.targetJobTitle}
 - Industry: ${airContext.industry}
 - Seniority: ${airContext.seniority}
-- Core competencies: ${competencies || 'communication, execution'}
+- Core competencies to assess: ${competencies || 'communication, execution'}
 - Industry interview lens: ${industryFocus}
 - Seniority expectation: ${seniorityExpectation}
 - Job description hints: ${airContext.jobDescriptionText || 'Not provided'}
 
+Competency framework guidance (inspired by industry-standard hiring rubrics):
+- "Customer Obsession": Does the candidate put the customer/user/stakeholder first?
+- "Ownership": Does the candidate take end-to-end responsibility?
+- "Bias for Action": Does the candidate move fast and take calculated risks?
+- "Deliver Results": Can the candidate execute under constraints?
+- "Dive Deep": Does the candidate use data and go into details?
+- "Earn Trust": Can the candidate build credibility with teams and stakeholders?
+- "Learn and Be Curious": Does the candidate pursue continuous growth?
+- "Insist on Highest Standards": Does the candidate raise the quality bar?
+Each question should probe at least one of the listed core competencies AND one of these universal leadership dimensions.
+
 Rules:
-- Questions must be specific to this role and industry.
+- Questions MUST be highly specific to the "${roleLabel}" role in the "${airContext.industry}" industry.
 - ${typeRule}
 - ${difficultyRule}
-- Every question must include a concrete industry-relevant constraint or scenario.
-- Every question must probe at least one listed core competency.
-- Align the challenge depth with the seniority expectation.
-- Avoid generic or repeated wording.
-- Use interview prompts that are answerable via STAR.
+- Every question must include a concrete, realistic scenario that a "${roleLabel}" at "${airContext.seniority}" level would actually encounter in the "${airContext.industry}" industry.
+- Use real domain terminology (e.g., "sprint velocity" for engineering, "patient triage" for healthcare, "underwriting criteria" for finance).
+- Vary question angles: some should focus on individual contribution, others on team dynamics, cross-functional work, conflict, failure recovery, and measurable outcomes.
+- For "${airContext.seniority}" seniority, calibrate complexity: ${seniorityExpectation}.
+- Avoid generic or repeated wording — each question must feel unique and job-specific.
+- The STAR guidelines must coach the candidate on what a strong answer looks like for THIS specific role and seniority.
 - Keep each questionText under 320 characters.
 - Do NOT repeat these already-seen prompts:
 ${exclusions}

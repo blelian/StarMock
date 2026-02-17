@@ -332,127 +332,180 @@
       </section>
     </main>
 
+    <!-- ═══════════════════════════════════════════════════════════
+         CAREER PROFILE WIZARD — 4-step multi-stage onboarding
+         ═══════════════════════════════════════════════════════════ -->
     <div
       id="career-profile-overlay"
-      class="hidden fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm px-4 py-6"
+      class="hidden fixed inset-0 z-40 bg-slate-950/90 backdrop-blur-md px-4 py-4 overflow-y-auto"
     >
       <div
-        class="max-w-xl mx-auto bg-card-bg border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl mt-10"
+        class="wizard-shell max-w-2xl mx-auto bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/50 rounded-3xl shadow-2xl shadow-primary/5 mt-6 mb-10 overflow-hidden"
       >
-        <div class="mb-5">
-          <p
-            class="text-[10px] text-primary uppercase tracking-[0.2em] font-bold mb-2"
-          >
-            AIR Setup
-          </p>
-          <h3 class="text-xl font-bold mb-2">Set your target interview role</h3>
-          <p class="text-sm text-slate-400">
-            Add your role focus so interview prompts and AI feedback are more
-            relevant.
-          </p>
+        <!-- ── Header + progress ────────────────────────────────── -->
+        <div class="px-6 pt-6 pb-4 border-b border-slate-800/50">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <span class="material-icons-round text-primary text-xl" aria-hidden="true">rocket_launch</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold leading-tight">Set Up Your Interview Profile</h3>
+              <p class="text-xs text-slate-400">We'll tailor every question and review to you</p>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="flex items-center gap-1.5 mt-2">
+            <div id="wizard-progress-1" class="h-1 flex-1 rounded-full bg-primary transition-colors duration-300"></div>
+            <div id="wizard-progress-2" class="h-1 flex-1 rounded-full bg-slate-700 transition-colors duration-300"></div>
+            <div id="wizard-progress-3" class="h-1 flex-1 rounded-full bg-slate-700 transition-colors duration-300"></div>
+            <div id="wizard-progress-4" class="h-1 flex-1 rounded-full bg-slate-700 transition-colors duration-300"></div>
+          </div>
+          <p id="wizard-step-label" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Step 1 of 4</p>
         </div>
 
-        <form id="career-profile-form" class="space-y-4">
-          <div>
-            <label
-              for="career-job-title"
-              class="block text-xs uppercase tracking-wide text-slate-400 font-bold mb-1"
-            >
-              Job Title
-            </label>
-            <input
-              id="career-job-title"
-              type="text"
-              class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2.5 text-sm"
-              placeholder="Software Engineer"
-              maxlength="120"
-              required
-            />
-          </div>
+        <!-- ── Wizard steps container ───────────────────────────── -->
+        <form id="career-profile-form" class="relative overflow-hidden" autocomplete="off">
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label
-                for="career-industry"
-                class="block text-xs uppercase tracking-wide text-slate-400 font-bold mb-1"
-              >
-                Industry
-              </label>
-              <select
-                id="career-industry"
-                class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2.5 text-sm"
+          <!-- ── STEP 1 — Job Title w/ autocomplete ─────────────── -->
+          <div id="wizard-step-1" class="wizard-step px-6 py-6" data-step="1">
+            <h4 class="text-base font-bold mb-1">What role are you preparing for?</h4>
+            <p class="text-sm text-slate-400 mb-5">Type your target job title — we'll match it to our competency frameworks.</p>
+
+            <div class="relative">
+              <span class="material-icons-round absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-lg pointer-events-none">work</span>
+              <input
+                id="career-job-title"
+                type="text"
+                class="w-full rounded-2xl border border-slate-700 bg-slate-800/70 text-slate-100 pl-11 pr-4 py-3.5 text-sm placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary/40 transition-colors"
+                placeholder="e.g. Software Engineer, Product Manager, Data Analyst..."
+                maxlength="120"
                 required
-              >
-                <option value="">Select industry</option>
-                <option value="technology">Technology</option>
-                <option value="finance">Finance</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="education">Education</option>
-                <option value="retail">Retail</option>
-                <option value="manufacturing">Manufacturing</option>
-                <option value="government">Government</option>
-                <option value="consulting">Consulting</option>
-                <option value="media">Media</option>
-                <option value="other">Other</option>
-              </select>
+                aria-label="Target job title"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded="false"
+                aria-controls="job-title-autocomplete"
+              />
+              <!-- Autocomplete dropdown -->
+              <div
+                id="job-title-autocomplete"
+                class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-2xl shadow-xl shadow-black/30 max-h-52 overflow-y-auto z-50"
+                role="listbox"
+                aria-label="Job title suggestions"
+              ></div>
             </div>
 
-            <div>
-              <label
-                for="career-seniority"
-                class="block text-xs uppercase tracking-wide text-slate-400 font-bold mb-1"
-              >
-                Seniority
-              </label>
-              <select
-                id="career-seniority"
-                class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2.5 text-sm"
-                required
-              >
-                <option value="">Select level</option>
-                <option value="entry">Entry</option>
-                <option value="mid">Mid</option>
-                <option value="senior">Senior</option>
-              </select>
+            <p id="job-title-match-hint" class="hidden mt-3 text-xs font-semibold"></p>
+          </div>
+
+          <!-- ── STEP 2 — Industry visual grid ──────────────────── -->
+          <div id="wizard-step-2" class="wizard-step hidden px-6 py-6" data-step="2">
+            <h4 class="text-base font-bold mb-1">Which industry?</h4>
+            <p class="text-sm text-slate-400 mb-5">Choose one — questions will reference real scenarios from this field.</p>
+
+            <!-- Hidden select preserves the form value -->
+            <select id="career-industry" class="sr-only" required aria-label="Industry">
+              <option value="">Select industry</option>
+            </select>
+
+            <div
+              id="industry-grid"
+              class="grid grid-cols-2 sm:grid-cols-3 gap-2.5"
+              role="radiogroup"
+              aria-label="Select your industry"
+            >
+              <!-- Cards rendered by JS -->
             </div>
           </div>
 
-          <div>
-            <label
-              for="career-job-description"
-              class="block text-xs uppercase tracking-wide text-slate-400 font-bold mb-1"
+          <!-- ── STEP 3 — Seniority visual track ────────────────── -->
+          <div id="wizard-step-3" class="wizard-step hidden px-6 py-6" data-step="3">
+            <h4 class="text-base font-bold mb-1">Your experience level?</h4>
+            <p class="text-sm text-slate-400 mb-5">This calibrates question difficulty and evaluator expectations.</p>
+
+            <select id="career-seniority" class="sr-only" required aria-label="Seniority level">
+              <option value="">Select level</option>
+            </select>
+
+            <div
+              id="seniority-track"
+              class="flex flex-col gap-2"
+              role="radiogroup"
+              aria-label="Select your seniority level"
             >
-              Job Description (Optional)
-            </label>
+              <!-- Track items rendered by JS -->
+            </div>
+          </div>
+
+          <!-- ── STEP 4 — Job description (optional) + summary ─── -->
+          <div id="wizard-step-4" class="wizard-step hidden px-6 py-6" data-step="4">
+            <h4 class="text-base font-bold mb-1">
+              Paste a job description
+              <span class="text-slate-500 font-normal">(optional)</span>
+            </h4>
+            <p class="text-sm text-slate-400 mb-5">Key responsibilities from the listing help us ask hyper-relevant questions.</p>
+
             <textarea
               id="career-job-description"
-              class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2.5 text-sm min-h-[96px]"
-              placeholder="Paste key responsibilities to tailor interview prompts..."
+              class="w-full rounded-2xl border border-slate-700 bg-slate-800/70 text-slate-100 px-4 py-3.5 text-sm placeholder-slate-500 min-h-[120px] focus:border-primary focus:ring-1 focus:ring-primary/40 transition-colors resize-y"
+              placeholder="Paste key responsibilities from the job listing here..."
               maxlength="3000"
+              aria-label="Job description text"
             ></textarea>
+            <p class="mt-2 text-[10px] text-slate-500"><span id="jd-char-count">0</span> / 3 000 characters</p>
+
+            <!-- Profile summary card -->
+            <div id="wizard-summary" class="mt-5 rounded-2xl border border-slate-700/50 bg-slate-800/40 p-4">
+              <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">Your interview profile</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <span id="summary-role" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold"></span>
+                <span id="summary-industry" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-bold"></span>
+                <span id="summary-seniority" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-bold"></span>
+              </div>
+            </div>
           </div>
 
-          <p
-            id="career-profile-message"
-            class="hidden text-sm text-red-400"
-            role="alert"
-          ></p>
+          <!-- ── Error / info message ───────────────────────────── -->
+          <p id="career-profile-message" class="hidden mx-6 mb-2 text-sm text-red-400" role="alert"></p>
 
-          <div class="flex flex-wrap items-center gap-2 pt-2">
+          <!-- ── Navigation footer ──────────────────────────────── -->
+          <div class="wizard-nav px-6 py-4 border-t border-slate-800/50 flex items-center justify-between">
             <button
-              id="career-profile-submit-btn"
-              type="submit"
-              class="bg-primary hover:bg-primary/90 text-background-dark px-4 py-2 rounded-xl font-bold text-sm"
-            >
-              Save and continue
-            </button>
-            <button
-              id="career-profile-skip-btn"
+              id="wizard-back-btn"
               type="button"
-              class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl font-bold text-sm"
+              class="invisible text-sm text-slate-400 hover:text-slate-200 font-semibold transition-colors px-3 py-2 -ml-3 rounded-xl flex items-center gap-1"
             >
-              Skip for now
+              <span class="material-icons-round text-base" aria-hidden="true">arrow_back</span>
+              Back
             </button>
+
+            <div class="flex items-center gap-2">
+              <button
+                id="wizard-skip-step-btn"
+                type="button"
+                class="hidden text-sm text-slate-500 hover:text-slate-300 font-medium transition-colors px-3 py-2 rounded-xl"
+              >
+                Skip
+              </button>
+              <button
+                id="wizard-next-btn"
+                type="button"
+                class="wizard-primary-btn bg-primary hover:bg-primary/90 text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled
+              >
+                <span id="wizard-next-label">Next</span>
+                <span class="material-icons-round text-base" aria-hidden="true" id="wizard-next-icon">arrow_forward</span>
+              </button>
+              <button
+                id="career-profile-submit-btn"
+                type="submit"
+                class="hidden wizard-primary-btn bg-primary hover:bg-primary/90 text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 items-center gap-2"
+              >
+                <span class="material-icons-round text-base" aria-hidden="true">check</span>
+                Start Practicing
+              </button>
+            </div>
           </div>
         </form>
       </div>
