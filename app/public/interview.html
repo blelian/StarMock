@@ -125,9 +125,7 @@
               aria-label="Read question aloud"
               aria-live="polite"
             >
-              <span class="material-icons-round text-base" aria-hidden="true"
-                >volume_up</span
-              >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
               <span id="read-aloud-label">Read Aloud</span>
             </button>
             <div
@@ -139,7 +137,7 @@
                   class="start-btn bg-primary hover:opacity-90 transition-opacity text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2"
                   disabled
                 >
-                  <span class="material-icons-round text-base">play_arrow</span>
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
                   Start Session
                 </button>
                 <button
@@ -337,16 +335,17 @@
          ═══════════════════════════════════════════════════════════ -->
     <div
       id="career-profile-overlay"
-      class="hidden fixed inset-0 z-40 bg-slate-950/90 backdrop-blur-md px-4 py-4 overflow-y-auto"
+      class="hidden fixed inset-0 z-40 bg-slate-950/90 backdrop-blur-md overflow-y-auto"
     >
+      <div class="min-h-full px-4 pt-2 pb-10 flex items-start justify-center">
       <div
-        class="wizard-shell max-w-2xl mx-auto bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/50 rounded-3xl shadow-2xl shadow-primary/5 mt-6 mb-10 overflow-hidden"
+        class="wizard-shell w-full max-w-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/50 rounded-3xl shadow-2xl shadow-primary/5 mt-2 overflow-hidden"
       >
         <!-- ── Header + progress ────────────────────────────────── -->
         <div class="px-6 pt-6 pb-4 border-b border-slate-800/50">
           <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <span class="material-icons-round text-primary text-xl" aria-hidden="true">rocket_launch</span>
+            <div class="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-xl" aria-hidden="true">
+              🚀
             </div>
             <div>
               <h3 class="text-lg font-bold leading-tight">Set Up Your Interview Profile</h3>
@@ -373,7 +372,7 @@
             <p class="text-sm text-slate-400 mb-5">Type your target job title — we'll match it to our competency frameworks.</p>
 
             <div class="relative">
-              <span class="material-icons-round absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-lg pointer-events-none">work</span>
+              <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/></svg>
               <input
                 id="career-job-title"
                 type="text"
@@ -476,8 +475,7 @@
               type="button"
               class="invisible text-sm text-slate-400 hover:text-slate-200 font-semibold transition-colors px-3 py-2 -ml-3 rounded-xl flex items-center gap-1"
             >
-              <span class="material-icons-round text-base" aria-hidden="true">arrow_back</span>
-              Back
+              ← Back
             </button>
 
             <div class="flex items-center gap-2">
@@ -495,19 +493,20 @@
                 disabled
               >
                 <span id="wizard-next-label">Next</span>
-                <span class="material-icons-round text-base" aria-hidden="true" id="wizard-next-icon">arrow_forward</span>
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
               </button>
               <button
                 id="career-profile-submit-btn"
                 type="submit"
                 class="hidden wizard-primary-btn bg-primary hover:bg-primary/90 text-background-dark px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 items-center gap-2"
               >
-                <span class="material-icons-round text-base" aria-hidden="true">check</span>
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 Start Practicing
               </button>
             </div>
           </div>
         </form>
+      </div>
       </div>
     </div>
 
