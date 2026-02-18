@@ -447,33 +447,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Static data (mirrored from airProfiles.js for client use) ────
   const ROLE_CATALOG = [
-    { id: 'software_engineer', label: 'Software Engineer', aliases: ['software engineer','software developer','full stack developer','full stack engineer','application engineer','developer','sde','web developer'] },
-    { id: 'frontend_developer', label: 'Frontend Developer', aliases: ['frontend developer','front-end developer','frontend engineer','front-end engineer','ui engineer','ui developer'] },
-    { id: 'backend_developer', label: 'Backend Developer', aliases: ['backend developer','back-end developer','backend engineer','back-end engineer','api engineer','platform engineer','server engineer'] },
-    { id: 'devops_engineer', label: 'DevOps Engineer', aliases: ['devops engineer','site reliability engineer','sre','infrastructure engineer','cloud engineer','platform engineer','systems engineer'] },
-    { id: 'qa_engineer', label: 'QA Engineer', aliases: ['qa engineer','quality assurance engineer','test engineer','sdet','software tester','automation tester'] },
-    { id: 'mobile_developer', label: 'Mobile Developer', aliases: ['mobile developer','mobile engineer','ios developer','android developer','flutter developer','react native developer'] },
-    { id: 'ml_engineer', label: 'Machine Learning Engineer', aliases: ['machine learning engineer','ml engineer','ai engineer','deep learning engineer'] },
-    { id: 'security_engineer', label: 'Security Engineer', aliases: ['security engineer','cybersecurity engineer','information security analyst','appsec engineer','security analyst'] },
-    { id: 'data_analyst', label: 'Data Analyst', aliases: ['data analyst','business intelligence analyst','bi analyst','analytics analyst','reporting analyst'] },
-    { id: 'data_scientist', label: 'Data Scientist', aliases: ['data scientist','ml scientist','machine learning scientist','research scientist','applied scientist'] },
-    { id: 'data_engineer', label: 'Data Engineer', aliases: ['data engineer','etl developer','data platform engineer','analytics engineer'] },
-    { id: 'product_manager', label: 'Product Manager', aliases: ['product manager','pm','technical product manager','product owner','associate product manager','apm'] },
-    { id: 'ux_designer', label: 'UX Designer', aliases: ['ux designer','ui ux designer','product designer','interaction designer','user experience designer','visual designer'] },
-    { id: 'ux_researcher', label: 'UX Researcher', aliases: ['ux researcher','user researcher','design researcher'] },
-    { id: 'project_manager', label: 'Project Manager', aliases: ['project manager','program manager','delivery manager','scrum master','agile coach'] },
-    { id: 'engineering_manager', label: 'Engineering Manager', aliases: ['engineering manager','software engineering manager','dev manager','development manager','tech lead manager'] },
-    { id: 'business_analyst', label: 'Business Analyst', aliases: ['business analyst','systems analyst','process analyst','business systems analyst'] },
-    { id: 'marketing_manager', label: 'Marketing Manager', aliases: ['marketing manager','digital marketing manager','growth marketer','marketing specialist','brand manager','content strategist'] },
-    { id: 'sales_representative', label: 'Sales Representative', aliases: ['sales representative','account executive','sales engineer','business development representative','bdr','sdr','sales manager'] },
-    { id: 'hr_specialist', label: 'HR Specialist', aliases: ['hr specialist','human resources specialist','hr generalist','people operations','talent acquisition','recruiter','hr manager'] },
-    { id: 'financial_analyst', label: 'Financial Analyst', aliases: ['financial analyst','finance analyst','investment analyst','fp&a analyst','accountant','auditor'] },
-    { id: 'operations_manager', label: 'Operations Manager', aliases: ['operations manager','operations analyst','supply chain manager','logistics manager','warehouse manager'] },
-    { id: 'customer_success', label: 'Customer Success Manager', aliases: ['customer success manager','csm','customer support manager','client success','account manager'] },
-    { id: 'consultant', label: 'Consultant', aliases: ['consultant','management consultant','strategy consultant','it consultant','advisory'] },
-    { id: 'teacher', label: 'Teacher / Educator', aliases: ['teacher','educator','professor','instructor','lecturer','tutor'] },
-    { id: 'nurse', label: 'Nurse', aliases: ['nurse','registered nurse','rn','lpn','nurse practitioner','clinical nurse'] },
-    { id: 'lawyer', label: 'Lawyer', aliases: ['lawyer','attorney','legal counsel','paralegal','law clerk','solicitor'] },
+    { id: 'software_engineer', label: 'Software Engineer', aliases: ['software engineer', 'software developer', 'full stack developer', 'full stack engineer', 'application engineer', 'developer', 'sde', 'web developer'] },
+    { id: 'frontend_developer', label: 'Frontend Developer', aliases: ['frontend developer', 'front-end developer', 'frontend engineer', 'front-end engineer', 'ui engineer', 'ui developer'] },
+    { id: 'backend_developer', label: 'Backend Developer', aliases: ['backend developer', 'back-end developer', 'backend engineer', 'back-end engineer', 'api engineer', 'platform engineer', 'server engineer'] },
+    { id: 'devops_engineer', label: 'DevOps Engineer', aliases: ['devops engineer', 'site reliability engineer', 'sre', 'infrastructure engineer', 'cloud engineer', 'platform engineer', 'systems engineer'] },
+    { id: 'qa_engineer', label: 'QA Engineer', aliases: ['qa engineer', 'quality assurance engineer', 'test engineer', 'sdet', 'software tester', 'automation tester'] },
+    { id: 'mobile_developer', label: 'Mobile Developer', aliases: ['mobile developer', 'mobile engineer', 'ios developer', 'android developer', 'flutter developer', 'react native developer'] },
+    { id: 'ml_engineer', label: 'Machine Learning Engineer', aliases: ['machine learning engineer', 'ml engineer', 'ai engineer', 'deep learning engineer'] },
+    { id: 'security_engineer', label: 'Security Engineer', aliases: ['security engineer', 'cybersecurity engineer', 'information security analyst', 'appsec engineer', 'security analyst'] },
+    { id: 'data_analyst', label: 'Data Analyst', aliases: ['data analyst', 'business intelligence analyst', 'bi analyst', 'analytics analyst', 'reporting analyst'] },
+    { id: 'data_scientist', label: 'Data Scientist', aliases: ['data scientist', 'ml scientist', 'machine learning scientist', 'research scientist', 'applied scientist'] },
+    { id: 'data_engineer', label: 'Data Engineer', aliases: ['data engineer', 'etl developer', 'data platform engineer', 'analytics engineer'] },
+    { id: 'product_manager', label: 'Product Manager', aliases: ['product manager', 'pm', 'technical product manager', 'product owner', 'associate product manager', 'apm'] },
+    { id: 'ux_designer', label: 'UX Designer', aliases: ['ux designer', 'ui ux designer', 'product designer', 'interaction designer', 'user experience designer', 'visual designer'] },
+    { id: 'ux_researcher', label: 'UX Researcher', aliases: ['ux researcher', 'user researcher', 'design researcher'] },
+    { id: 'project_manager', label: 'Project Manager', aliases: ['project manager', 'program manager', 'delivery manager', 'scrum master', 'agile coach'] },
+    { id: 'engineering_manager', label: 'Engineering Manager', aliases: ['engineering manager', 'software engineering manager', 'dev manager', 'development manager', 'tech lead manager'] },
+    { id: 'business_analyst', label: 'Business Analyst', aliases: ['business analyst', 'systems analyst', 'process analyst', 'business systems analyst'] },
+    { id: 'marketing_manager', label: 'Marketing Manager', aliases: ['marketing manager', 'digital marketing manager', 'growth marketer', 'marketing specialist', 'brand manager', 'content strategist'] },
+    { id: 'sales_representative', label: 'Sales Representative', aliases: ['sales representative', 'account executive', 'sales engineer', 'business development representative', 'bdr', 'sdr', 'sales manager'] },
+    { id: 'hr_specialist', label: 'HR Specialist', aliases: ['hr specialist', 'human resources specialist', 'hr generalist', 'people operations', 'talent acquisition', 'recruiter', 'hr manager'] },
+    { id: 'financial_analyst', label: 'Financial Analyst', aliases: ['financial analyst', 'finance analyst', 'investment analyst', 'fp&a analyst', 'accountant', 'auditor'] },
+    { id: 'operations_manager', label: 'Operations Manager', aliases: ['operations manager', 'operations analyst', 'supply chain manager', 'logistics manager', 'warehouse manager'] },
+    { id: 'customer_success', label: 'Customer Success Manager', aliases: ['customer success manager', 'csm', 'customer support manager', 'client success', 'account manager'] },
+    { id: 'consultant', label: 'Consultant', aliases: ['consultant', 'management consultant', 'strategy consultant', 'it consultant', 'advisory'] },
+    { id: 'teacher', label: 'Teacher / Educator', aliases: ['teacher', 'educator', 'professor', 'instructor', 'lecturer', 'tutor'] },
+    { id: 'nurse', label: 'Nurse', aliases: ['nurse', 'registered nurse', 'rn', 'lpn', 'nurse practitioner', 'clinical nurse'] },
+    { id: 'lawyer', label: 'Lawyer', aliases: ['lawyer', 'attorney', 'legal counsel', 'paralegal', 'law clerk', 'solicitor'] },
   ]
 
   const INDUSTRY_DATA = [
@@ -1075,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         body: JSON.stringify({
           reason: 'page_unload',
         }),
-      }).catch(() => {})
+      }).catch(() => { })
     } catch {
       // keepalive is best-effort
     }
@@ -1120,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         : fallbackTotal
     const answeredQuestions =
       Number.isFinite(progress.answeredQuestions) &&
-      progress.answeredQuestions >= 0
+        progress.answeredQuestions >= 0
         ? progress.answeredQuestions
         : 0
     const totalAttempts =
@@ -1334,14 +1334,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     setControlVisibility(
       prevQuestionBtn,
       hasActiveSession &&
-        Boolean(currentQuestion) &&
-        sessionQuestions.length > 1
+      Boolean(currentQuestion) &&
+      sessionQuestions.length > 1
     )
     setControlVisibility(
       nextQuestionBtn,
       hasActiveSession &&
-        Boolean(currentQuestion) &&
-        sessionQuestions.length > 1
+      Boolean(currentQuestion) &&
+      sessionQuestions.length > 1
     )
     setControlVisibility(completeSessionBtn, hasActiveSession)
 
@@ -1658,7 +1658,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!uploadResponse.ok) {
       throw new Error(
         uploadPayload?.error?.message ||
-          'Audio upload failed. Please try again.'
+        'Audio upload failed. Please try again.'
       )
     }
 
@@ -1674,6 +1674,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       'audio/webm;codecs=opus',
       'audio/webm',
       'audio/mp4',
+      'audio/aac',
+      'audio/x-m4a',
+      'audio/ogg',
       'audio/mpeg',
     ]
     return candidates.find((mime) => MediaRecorder.isTypeSupported(mime)) || ''
@@ -1778,7 +1781,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       cleanupMedia()
       setMessage(
         error.message ||
-          'Unable to access microphone. Check browser permissions.',
+        'Unable to access microphone. Check browser permissions.',
         true
       )
     }
@@ -1867,7 +1870,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (!result.ok || !result.payload?.questions?.length) {
             throw new Error(
               result.payload?.error?.message ||
-                'Unable to load interview questions.'
+              'Unable to load interview questions.'
             )
           }
           return result
@@ -2186,7 +2189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!sessionResult.ok || !sessionResult.payload?.session?.id) {
       setMessage(
         sessionResult.payload?.error?.message ||
-          'Unable to load your active session. Try again.',
+        'Unable to load your active session. Try again.',
         true
       )
       return false

@@ -18,6 +18,9 @@ const DEFAULT_ALLOWED_MIME_TYPES = [
   'audio/mpeg',
   'audio/wav',
   'audio/x-wav',
+  'audio/aac',
+  'audio/x-m4a',
+  'audio/ogg',
 ]
 
 const DEFAULT_UPLOAD_TTL_SECONDS = 300
@@ -57,6 +60,9 @@ function guessExtension(mimeType) {
   if (mimeType.includes('mpeg')) return 'mp3'
   if (mimeType.includes('wav')) return 'wav'
   if (mimeType.includes('mp4')) return 'mp4'
+  if (mimeType.includes('aac')) return 'aac'
+  if (mimeType.includes('m4a')) return 'm4a'
+  if (mimeType.includes('ogg')) return 'ogg'
   return 'bin'
 }
 
@@ -142,8 +148,12 @@ router.post(
       } = req.body
 
       const normalizedMimeType = String(mimeType).trim().toLowerCase()
+      const baseMimeType = normalizedMimeType.split(';')[0].trim()
       const allowedMimeTypes = getAllowedMimeTypes()
-      if (!allowedMimeTypes.has(normalizedMimeType)) {
+
+      const isAllowed = allowedMimeTypes.has(normalizedMimeType) || allowedMimeTypes.has(baseMimeType)
+
+      if (!isAllowed) {
         incrementCounter('starmock_upload_presign_total', {
           status: 'invalid_mime',
         })
